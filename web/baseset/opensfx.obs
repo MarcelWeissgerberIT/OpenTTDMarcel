@@ -1,0 +1,50 @@
+[metadata]
+name        = OpenSFX
+shortname   = OSFX
+version     = 7974
+description.ar_EG = OpenSFX مجموعة الأصوات الاساسية لـOpenTTD. متاحة مجانا تحت أنظمة الرخص التالية :  +CC BY-SA 3.0, GPLv2  و CDDL 1.1.  لتفاصيل الكاملة اقرا "readme.txt " المرفق. [OpenSFX 1.0.3]
+description.pt_BR = Conjunto de sons base OpenSFX para OpenTTD. Disponível gratuitamente dentro dos termos destas licenças: CC BY-SA 3.0, GPLv2 (ou posterior) e CDDL 1.1. Para créditos completos ver "readme.txt". [OpenSFX 1.0.3]
+description.ca_ES = Joc base de sons OpenSFX per a l'OpenTTD. Disponible lliurement sota els termes de les llicències CC BY-SA 3.0, GPLv2 (o posterior) i CDDL 1.1. Per veure la llista de col·laboradors, vegeu el fitxer "readme.txt". [OpenSFX 1.0.3]
+description.cs_CZ = OpenSFX je základní zvuková sada pro OpenTTD. Volně dostupná za dodržení podmínek stanovených licencemi: CC BY-SA 3.0, GPLv2 (nebo novější) a CDDL 1.1. Bližší informace najdete v "readme.txt". [OpenSFX 1.0.3]
+description.da_DK = OpenSFX-lydpakke til OpenTTD. Frit tilgængelig under betingelserne i følgende licenser: CC BY-SA 3.0, GPL v2 (eller senere), og CDDL 1.1. For komplet kreditering, se "readme.txt". [OpenSFX 1.0.3]
+description.nl_NL = OpenSFX-basisset voor geluiden voor OpenTTD. Beschikbaar onder de voorwaarden van de licenties: CC BY-SA 3.0, GPLv2 (of later) en CDDL 1.1. Voor volledige verantwoording, zie "readme.txt". [OpenSFX 1.0.3]
+description.en_GB = OpenSFX base sound set for OpenTTD. Freely available under the terms of these licences: CC BY-SA 3.0, GPLv2 (or later) and CDDL 1.1. For full credits see "readme.txt". [OpenSFX 1.0.3]
+description.en_US = OpenSFX base sound set for OpenTTD. Freely available under the terms of these licences: CC BY-SA 3.0, GPLv2 (or later) and CDDL 1.1. For full credits see "readme.txt". [OpenSFX 1.0.3]
+description.eo_EO = OpenSFX sonanstataŭaro por OpenTTD. Uzebla laŭ kondiĉoj de la licencoj: CC BY-SA 3.0, GPLv2 (aŭ pli poste) kaj CDDL 1.1. Por la tute respondecularo, vidu "readme.txt". [OpenSFX 1.0.3]
+description.fi_FI = OpenSFX-perusäänisarja OpenTTD: lle. Vapaasti saatavana näiden lisenssien ehtojen mukaisesti: CC BY-SA 3.0, GPLv2 (tai uudempi) ja CDDL 1.1. Katso täydet alkutekstit kohdasta "readme.txt". [OpenSFX 1.0.3]
+description.fr_FR = Sons de Base OpenSFX pour OpenTTD. Disponible librement selon les termes de ces licences : CC BY-SA 3.0, GPLv2 (ou version ultérieure) et CDDL 1.1. Pour les crédits complets voir "readme.txt". [OpenSFX 1.0.3]
+description.de_DE = OpenSFX-Basissoundset für OpenTTD. Frei verfügbar unter diesen Lizenzen: CC BY-SA 3.0, GPLv2 (oder später) und CDDL 1.1. Vollständige Referenzen sind in „readme.txt“ zu finden. [OpenSFX 1.0.3]
+description.el_GR = Βασικό πακέτο ήχων OpenSFX για το OpenTTD. Ελεύθερα διαθέσιμο υπό τους όρους των εξής αδειών: CC BY-SA 3.0, GPLv2 (ή μεταγενέστερη) και CDDL 1.1. Για πλήρη εύσημα δείτε το αρχείο "readme.txt". [OpenSFX 1.0.3]
+description.hu_HU = OpenSFX hang alapcsomag az OpenTTD-hez. Szabadon elérhető a CC-BY-SA 3.0, GPLv2 (vagy későbbi) és CDDL 1.1 licencek feltételei mellett. A teljes stáblistához lásd a readme-t. [OpenSFX 1.0.3]
+description.id_ID = Kumpulan suara dasar OpenSFX untuk OpenTTD. Tersedia secara bebas di bawah persyaratan lisensi ini: CC BY-SA 3.0, GPLv2 (atau lebih baru) dan CDDL 1.1. Untuk kredit penuh lihat "readme.txt". [OpenSFX 1.0.3]
+description.it_IT = OpenSFX è il pacchetto dei suoni base per OpenTTD. Liberamente disponibile secondo i termini delle seguenti licenze: CC BY-SA 3.0, GPL v2 (o successive) e CDDL 1.1. Per l'elenco completo dei riconoscimenti, vedasi "readme.txt". [OpenSFX 1.0.3]
+description.ja_JP = OpenTTD のための OpenSFX ベース効果音セット。CC BY-SA 3.0、GPLv2 (or later)、CDDL 1.1 に基づいて自由に利用できます。完全なクレジットは "readme.txt" を参照してください。 [OpenSFX 1.0.3]
+description.ko_KR = OpenTTD용 OpenSFX 기본 효과음 세트입니다. CC BY-SA 3.0, GPL v2 이상 및 CDDL 1.1 약관 하에 자유롭게 사용하실 수 있습니다. 자세한 사항은 "readme.txt"을 읽어보십시오. [OpenSFX 1.0.3]
+description.lv_LV = OpenSFX bāzes skaņas komplekts OpenTTD. Pieejams bezmaksas, saskaņā ar šo licenču nosacījumiem: CC BY-SA 3.0, GPLv2 (vai jaunāka versija) un CDDL 1.1. Pilnu autoru sarakstu skatiet "readme.txt". [OpenSFX 1.0.3]
+description.lt_LT = OpenSFX yra bazinis garsų failų rinkinys, skirtas OpenTTD. Laisvai prieinamas pagal CC BY-SA 3.0, GPLv2 (ar naujesnę) ir CDDL 1.1 licezijas. Daugiau informacijos rasite faile "readme.txt". [OpenSFX 1.0.3]
+description.lb_LU = OpenSFX Basis Soundset fir OpenTTD. Gratis verfügbar ënnert folgender Lizens: CC BY-SA 3.0, GPLv2 (or later) and CDDL 1.1. Fir méi Infos, lies "readme.txt". [OpenSFX 1.0.3]
+description.nb_NO = OpenSFX erstatter musikken i OpenTTD. Fritt tilgjengelig under betingelsene i: CC BY-SA 3.0, GPLv2 (eller senere) og CDDL 1.1.For fulle akkrediteringer se "readme.txt". [OpenSFX 1.0.3]
+description.pl_PL = Zestaw OpenSFX zawierający dźwięki dla gry OpenTTD. Swobodnie dostępne na warunkach tych licencji: CC BY-SA 3.0, GPLv2 (lub nowsza) i CDDL 1.1. Pełen tekst znajdziesz w pliku readme.txt. [OpenSFX 1.0.3]
+description.pt_PT = Conjunto de sons base OpenSFX para OpenTTD. Disponível gratuitamente dentro dos termos destas licenças: CC BY-SA 3.0, GPLv2 (ou posterior) e CDDL 1.1. Para créditos completos ver "readme.txt". [OpenSFX 1.0.3]
+description.ro_RO = Set de bază cu sunete OpenSFX pentru OpenTTD. Disponibil liber sub termenii licențelor următoare: CC BY-SA 3.0, GPLv2 (sau ulterioară) și CDDL 1.1. Pentru lista completă de credite, citiți fișierul "readme.txt". [OpenSFX 1.0.3]
+description.ru_RU = Базовый набор звуков OpenSFX для OpenTTD. Свободно доступен на условиях этих лицензий: CC BY-SA 3.0, GPLv2 (или более поздняя версия) и CDDL 1.1. Полный текст см. в "readme.txt". [OpenSFX 1.0.3]
+description.sr_RS = OpenSFX skup osnovnih zvukova za OpenTTD. Slobodno dostupno kroz uslove ovih licenci: CC BY-SA 3.0, GPLv2 (ili kasnija) i CDDL 1.1. Za potpune zasluge pogledati "readme.txt" [OpenSFX 1.0.3]
+description.zh_CN = OpenSFX 是一套供 OpenTTD 使用的基础音效包。在知识共享署名-相同方式共享 3.0、GNU 通用公共授权条款版本 2 （或更新）与 CDDL 1.1之授权下可自由使用。完整的鸣谢清单请参阅 "readme.txt"。 [OpenSFX 1.0.3]
+description.sk_SK = OpenSFX, základná sada zvukov pre OpenTTD. Voľne dostupná pod licenciami: CC BY-SA 3.0, GPLv2 (alebo novšie) a CDDL 1.1. Viac informácií nájdete v súbore "readme.txt". [OpenSFX 1.0.3]
+description.es_ES = OpenSFX es un conjunto base de sonidos para OpenTTD. Está disponible de forma libre bajo los términos de las licencias: CC BY-SA 3.0, GPLv2 (o posterior) y CDDL 1.1. Consulta el léeme para ver la lista completa de contribuidores al proyecto. [OpenSFX 1.0.3]
+description.es_MX = Paquete base de sonidos OpenSFX para OpenTTD, disponible de forma libre bajo los términos de las licencias CC BY-SA 3.0, GPL v2 (o posterior) y CDDL 1.1. Créditos completos en el archivo Léeme [OpenSFX 1.0.3]
+description.sv_SE = OpenSFX ljudpaket för OpenTTD. Fritt tillgänglig under villkoren för licenserna CC BY-SA 3.0, GPLv2 (eller senare) samt CDDL 1.1. För samtliga medverkande se "readme.txt". [OpenSFX 1.0.3]
+description.ta_IN = OpenSFX OpenTTD இன் அடிப்படை ஒலித் தொகுப்பாகும். பின்வரும் உரிமங்களின் கீழ் இலவசமாகக் கிடைக்கிறது:{}CC BY-SA 3.0, GPLv2 (அல்லது அதற்கு மேல்) மற்றும் CDDL 1.1.{}முழு மதிப்புகளுக்காக  "readme.txt"-ஐ பார்க்கவும்.[OpenSFX 1.0.3]
+description.tr_TR = OpenTTD için OpenSFX temel ses seti. Bu lisansların koşulları altında özgürce kullanılabilir: CC BY-SA 3.0, GPLv2 (veya üstü) ve CDDL 1.1. Tamamı için "readme.txt"'ye bakın. [OpenSFX 1.0.3]
+description.uk_UA = Базовий набір звуків OpenSFX для OpenTTD. Вільно доступний на умовах цих ліцензій: CC BY-SA 3.0, GPLv2 (або пізнішої версії) та CDDL 1.1. Повний текст див. у "readme.txt". [OpenSFX 1.0.3]
+description.vi_VN = Gói âm thanh nền tảng OpenSFX dùng cho OpenTTD. Được phát hành miễn phí dưới giấy phép CC BY-SA 3.0, GPLv2 (hoặc mới hơn) và CDDL 1.1. Xem các cá nhân đóng góp trong tệp "readme.txt" [OpenSFX 1.0.3]
+description = OpenSFX base sound set for OpenTTD. Freely available under the terms of these licences: CC BY-SA 3.0, GPLv2 (or later) and CDDL 1.1. For full credits see "readme.txt". [OpenSFX 1.0.3]
+
+[files]
+samples = opensfx.cat
+
+[md5s]
+opensfx.cat = 56edd8f20cfa7413b68b2f0fb8a27be1
+
+[origin]
+default = Please redownload from BaNaNaS.

@@ -1,4 +1,5 @@
-Module.arguments.push('-mnull', '-snull', '-vsdl');
+/* Sound läuft über SDL-Audio (OpenSFX ist gebündelt); Musik bleibt aus. */
+Module.arguments.push('-mnull', '-vsdl');
 Module['websocket'] = { url: function(host, port, proto) {
     /* openttd.org hosts a WebSocket proxy for the content service. */
     if (host == "content.openttd.org" && port == 3978 && proto == "tcp") {
