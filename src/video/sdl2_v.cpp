@@ -422,6 +422,13 @@ static float _touch_pinch_accum = 0.0f;
 static uint32_t _touch_press_start = 0;
 static bool _touch_long_press_fired = false;
 static float _touch_press_travel = 0.0f;
+/* Eigene Pinch-Erkennung: Positionen (normalisiert) der ersten zwei Finger.
+ * Der SDL-Gesten-Layer liefert unter Emscripten keine MULTIGESTURE-Events. */
+static SDL_FingerID _touch_id[2] = {-1, -1};
+static float _touch_x[2], _touch_y[2];
+static float _touch_last_dist = -1.0f;
+static int _touch_two_mode = 0;   ///< 0 = unentschieden, 1 = Pan, 2 = Pinch
+static float _touch_pan_accum = 0.0f;
 
 bool VideoDriver_SDL_Base::PollEvent()
 {
@@ -452,6 +459,14 @@ bool VideoDriver_SDL_Base::PollEvent()
 
 		case SDL_FINGERDOWN:
 			_touch_fingers++;
+			for (int i = 0; i < 2; i++) {
+				if (_touch_id[i] == -1) {
+					_touch_id[i] = ev.tfinger.fingerId;
+					_touch_x[i] = ev.tfinger.x;
+					_touch_y[i] = ev.tfinger.y;
+					break;
+				}
+			}
 			if (_touch_fingers == 1) {
 				_touch_press_start = SDL_GetTicks();
 				_touch_long_press_fired = false;
@@ -461,43 +476,77 @@ bool VideoDriver_SDL_Base::PollEvent()
 				_touch_press_start = 0;
 				_left_button_down = false;
 				_left_button_clicked = false;
+				_touch_last_dist = -1.0f;
+				_touch_two_mode = 0;
+				_touch_pan_accum = 0.0f;
+				_touch_pinch_accum = 0.0f;
 			}
 			break;
 
 		case SDL_FINGERUP:
 			_touch_fingers = std::max(0, _touch_fingers - 1);
+			for (int i = 0; i < 2; i++) {
+				if (_touch_id[i] == ev.tfinger.fingerId) _touch_id[i] = -1;
+			}
 			if (_touch_long_press_fired) {
 				_right_button_down = false;
 				_touch_long_press_fired = false;
 			}
 			_touch_press_start = 0;
-			if (_touch_fingers < 2) _touch_pinch_accum = 0.0f;
-			break;
-
-		case SDL_FINGERMOTION:
-			if (_touch_fingers >= 2) {
-				/* Zwei-Finger-Pan: Kartenausschnitt folgt den Fingern.
-				 * Jeder Finger trägt die Hälfte bei. */
-				_cursor.h_wheel -= ev.tfinger.dx * _screen.width / 2.0f;
-				_cursor.v_wheel -= ev.tfinger.dy * _screen.height / 2.0f;
-				_cursor.wheel_moved = true;
-			} else {
-				_touch_press_travel += std::abs(ev.tfinger.dx) + std::abs(ev.tfinger.dy);
+			if (_touch_fingers < 2) {
+				_touch_pinch_accum = 0.0f;
+				_touch_last_dist = -1.0f;
 			}
 			break;
 
-		case SDL_MULTIGESTURE:
-			if (ev.mgesture.numFingers == 2) {
-				_touch_pinch_accum += ev.mgesture.dDist;
-				const float PINCH_STEP = 0.05f;
-				while (_touch_pinch_accum > PINCH_STEP) {
-					_cursor.wheel--;  /* auseinanderziehen = reinzoomen */
-					_touch_pinch_accum -= PINCH_STEP;
+		case SDL_FINGERMOTION:
+			for (int i = 0; i < 2; i++) {
+				if (_touch_id[i] == ev.tfinger.fingerId) {
+					_touch_x[i] = ev.tfinger.x;
+					_touch_y[i] = ev.tfinger.y;
 				}
-				while (_touch_pinch_accum < -PINCH_STEP) {
-					_cursor.wheel++;
-					_touch_pinch_accum += PINCH_STEP;
+			}
+			if (_touch_fingers >= 2 && _touch_id[0] != -1 && _touch_id[1] != -1) {
+				/* Erst entscheiden, ob die Geste Pan oder Pinch ist — beides
+				 * gleichzeitig kollidiert im Wheel-Pfad des Spiels. */
+				float ddx = (_touch_x[0] - _touch_x[1]) * _screen.width;
+				float ddy = (_touch_y[0] - _touch_y[1]) * _screen.height;
+				float dist = std::sqrt(ddx * ddx + ddy * ddy);
+				float ddist = (_touch_last_dist >= 0.0f) ? dist - _touch_last_dist : 0.0f;
+				_touch_last_dist = dist;
+
+				if (_touch_two_mode == 0) {
+					_touch_pinch_accum += ddist;
+					_touch_pan_accum += (std::abs(ev.tfinger.dx) * _screen.width + std::abs(ev.tfinger.dy) * _screen.height) / 2.0f;
+					if (std::abs(_touch_pinch_accum) > 40.0f) {
+						_touch_two_mode = 2;
+					} else if (_touch_pan_accum > 30.0f) {
+						_touch_two_mode = 1;
+						_touch_pinch_accum = 0.0f;
+					}
+				} else if (_touch_two_mode == 2) {
+					_touch_pinch_accum += ddist;
 				}
+
+				if (_touch_two_mode == 2) {
+					/* Pinch-Zoom: Abstandsänderung in Zoomstufen übersetzen. */
+					const float PINCH_STEP_PX = 90.0f;
+					while (_touch_pinch_accum > PINCH_STEP_PX) {
+						_cursor.wheel--;  /* auseinanderziehen = reinzoomen */
+						_touch_pinch_accum -= PINCH_STEP_PX;
+					}
+					while (_touch_pinch_accum < -PINCH_STEP_PX) {
+						_cursor.wheel++;
+						_touch_pinch_accum += PINCH_STEP_PX;
+					}
+				} else if (_touch_two_mode == 1) {
+					/* Zwei-Finger-Pan: Kartenausschnitt folgt den Fingern. */
+					_cursor.h_wheel -= ev.tfinger.dx * _screen.width / 2.0f;
+					_cursor.v_wheel -= ev.tfinger.dy * _screen.height / 2.0f;
+					_cursor.wheel_moved = true;
+				}
+			} else {
+				_touch_press_travel += std::abs(ev.tfinger.dx) + std::abs(ev.tfinger.dy);
 			}
 			break;
 
