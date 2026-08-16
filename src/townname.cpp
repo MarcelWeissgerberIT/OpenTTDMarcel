@@ -933,6 +933,30 @@ static void MakeCatalanTownName(StringBuilder &builder, uint32_t seed)
 }
 
 
+/** Candyland-Namensteile (Fork-Feature). */
+static const std::string_view _name_candy_1[] = {
+	"Zucker", "Karamell", "Bonbon", "Schoko", "Schokoladen", "Marzipan",
+	"Lakritz", "Toffee", "Vanille", "Sahne", "Brause", "Gummi", "Waffel",
+	"Keks", "Pudding", "Honig", "Zimt", "Nougat", "Krokant", "Praline",
+	"Streusel", "Sirup", "Kandis", "Fondant",
+};
+static const std::string_view _name_candy_2[] = {
+	"hausen", "burg", "heim", "dorf", "stadt", "tal", "bach", "feld",
+	"berg", "hofen", "kirchen", "weiler", "furt", "linden",
+};
+
+/**
+ * Generates Candyland town name from given seed (Fork-Feature).
+ * @param builder string builder
+ * @param seed town name seed
+ */
+static void MakeCandyTownName(StringBuilder &builder, uint32_t seed)
+{
+	builder += _name_candy_1[SeedChance(0, std::size(_name_candy_1), seed)];
+	builder += _name_candy_2[SeedChance(8, std::size(_name_candy_2), seed)];
+}
+
+
 /**
  * Type for all town name generator functions.
  * @param builder The builder to write the name to.
@@ -963,6 +987,7 @@ static TownNameGenerator *const _town_name_generators[] = {
 	MakeTurkishTownName,
 	MakeItalianTownName,
 	MakeCatalanTownName,
+	MakeCandyTownName, // Candyland (Fork-Feature)
 };
 
 

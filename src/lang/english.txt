@@ -3465,7 +3465,7 @@ STR_MAPGEN_AI_SETTINGS_TOOLTIP                                  :{BLACK}Open AI 
 STR_MAPGEN_GS_SETTINGS                                          :{BLACK}Game Script Settings
 STR_MAPGEN_GS_SETTINGS_TOOLTIP                                  :{BLACK}Open game script settings
 
-###length 21
+###length 22
 STR_MAPGEN_TOWN_NAME_ORIGINAL_ENGLISH                           :English (Original)
 STR_MAPGEN_TOWN_NAME_FRENCH                                     :French
 STR_MAPGEN_TOWN_NAME_GERMAN                                     :German
@@ -3487,6 +3487,7 @@ STR_MAPGEN_TOWN_NAME_DANISH                                     :Danish
 STR_MAPGEN_TOWN_NAME_TURKISH                                    :Turkish
 STR_MAPGEN_TOWN_NAME_ITALIAN                                    :Italian
 STR_MAPGEN_TOWN_NAME_CATALAN                                    :Catalan
+STR_MAPGEN_TOWN_NAME_CANDY                                      :Candyland
 
 # Strings for map borders at game generation
 STR_MAPGEN_BORDER_TYPE                                          :{BLACK}Map edges:

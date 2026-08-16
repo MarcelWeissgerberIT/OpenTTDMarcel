@@ -175,14 +175,17 @@ static void LoadSpriteTables()
 
 	/* Candyland-Theme (Fork-Feature): vollständig umgefärbte Basisgrafik
 	 * laden, wenn die Datei im Baseset-Verzeichnis vorhanden ist. Fällt
-	 * andernfalls stillschweigend auf die normale Basisgrafik zurück. */
+	 * andernfalls stillschweigend auf die normale Basisgrafik zurück.
+	 * Candyland basiert auf dem Spielzeugland (Süßwaren-Wirtschaft). */
+	bool candy = _settings_game.game_creation.landscape == LandscapeType::Toyland && _settings_game.game_creation.landscape_theme == 1;
 	std::string base_grf = used_set->files[to_underlying(GraphicsFileType::Base)].filename;
-	if (_settings_game.game_creation.landscape == LandscapeType::Temperate && _settings_game.game_creation.landscape_theme == 1) {
+	if (candy) {
 		std::string candy_grf = FioFindFullPath(Subdirectory::Baseset, "ogfxc2_candy.grf");
 		if (!candy_grf.empty()) {
 			base_grf = candy_grf;
 			Debug(sprite, 1, "Candyland theme active: using {}", candy_grf);
 		} else {
+			candy = false;
 			Debug(sprite, 1, "Candyland theme requested but ogfxc2_candy.grf not found; using normal base graphics");
 		}
 	}
@@ -202,8 +205,14 @@ static void LoadSpriteTables()
 	 * and the ground sprites.
 	 */
 	if (_settings_game.game_creation.landscape != LandscapeType::Temperate) {
+		std::string landscape_grf = used_set->files[to_underlying(GraphicsFileType::Arctic) + to_underlying(_settings_game.game_creation.landscape) - 1].filename;
+		if (candy) {
+			/* Candyland: umgefärbtes Spielzeugland-Override verwenden, wenn vorhanden. */
+			std::string candy_toyland = FioFindFullPath(Subdirectory::Baseset, "ogfxc2_candy_toyland.grf");
+			if (!candy_toyland.empty()) landscape_grf = candy_toyland;
+		}
 		LoadGrfFileIndexed(
-			used_set->files[to_underlying(GraphicsFileType::Arctic) + to_underlying(_settings_game.game_creation.landscape) - 1].filename,
+			landscape_grf,
 			_landscape_spriteindexes[to_underlying(_settings_game.game_creation.landscape) - 1],
 			PaletteType::DOS != used_set->palette
 		);

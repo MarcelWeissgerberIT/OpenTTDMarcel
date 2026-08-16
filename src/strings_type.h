@@ -58,7 +58,7 @@ static const uint TAB_SIZE_GAMESCRIPT = TAB_SIZE * 32;
 static const uint TAB_SIZE_NEWGRF     = TAB_SIZE * 256;
 
 /** The number of builtin generators for town names. */
-static constexpr uint16_t BUILTIN_TOWNNAME_GENERATOR_COUNT = 21;
+static constexpr uint16_t BUILTIN_TOWNNAME_GENERATOR_COUNT = 22; // 21 upstream + Candyland (Fork-Feature)
 
 /** Special strings for town names. The town name is generated dynamically on request. */
 static constexpr uint16_t SPECSTR_TOWNNAME_START = 0x20C0;

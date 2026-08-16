@@ -413,7 +413,7 @@ struct GenerateLandscapeWindow : public Window {
 	{
 		this->InitNested(number);
 
-		if (_settings_newgame.game_creation.landscape == LandscapeType::Temperate && _settings_newgame.game_creation.landscape_theme == 1) {
+		if (_settings_newgame.game_creation.landscape == LandscapeType::Toyland && _settings_newgame.game_creation.landscape_theme == 1) {
 			this->LowerWidget(WID_GL_CANDYLAND);
 		} else {
 			this->LowerWidget(to_underlying(_settings_newgame.game_creation.landscape) + WID_GL_TEMPERATE);
@@ -518,11 +518,11 @@ struct GenerateLandscapeWindow : public Window {
 	{
 		if (!gui_scope) return;
 		/* Update the climate buttons */
-		this->SetWidgetLoweredState(WID_GL_TEMPERATE, _settings_newgame.game_creation.landscape == LandscapeType::Temperate && _settings_newgame.game_creation.landscape_theme == 0);
+		this->SetWidgetLoweredState(WID_GL_TEMPERATE, _settings_newgame.game_creation.landscape == LandscapeType::Temperate);
 		this->SetWidgetLoweredState(WID_GL_ARCTIC,    _settings_newgame.game_creation.landscape == LandscapeType::Arctic);
 		this->SetWidgetLoweredState(WID_GL_TROPICAL,  _settings_newgame.game_creation.landscape == LandscapeType::Tropic);
-		this->SetWidgetLoweredState(WID_GL_TOYLAND,   _settings_newgame.game_creation.landscape == LandscapeType::Toyland);
-		this->SetWidgetLoweredState(WID_GL_CANDYLAND, _settings_newgame.game_creation.landscape == LandscapeType::Temperate && _settings_newgame.game_creation.landscape_theme == 1);
+		this->SetWidgetLoweredState(WID_GL_TOYLAND,   _settings_newgame.game_creation.landscape == LandscapeType::Toyland && _settings_newgame.game_creation.landscape_theme == 0);
+		this->SetWidgetLoweredState(WID_GL_CANDYLAND, _settings_newgame.game_creation.landscape == LandscapeType::Toyland && _settings_newgame.game_creation.landscape_theme == 1);
 
 		/* You can't select smoothness / non-water borders if not terragenesis */
 		if (mode == GLWM_GENERATE) {
@@ -677,9 +677,11 @@ struct GenerateLandscapeWindow : public Window {
 				break;
 
 			case WID_GL_CANDYLAND:
-				/* Candyland: gemäßigte Spielregeln mit Zuckerwelt-Grafik. */
+				/* Candyland: Spielzeugland-Basis (Süßwaren-Wirtschaft) mit
+				 * Zuckerwelt-Grafik und Candy-Stadtnamen. */
 				_settings_newgame.game_creation.landscape_theme = 1;
-				SetNewLandscapeType(LandscapeType::Temperate);
+				_settings_newgame.game_creation.town_name = BUILTIN_TOWNNAME_GENERATOR_COUNT - 1;
+				SetNewLandscapeType(LandscapeType::Toyland);
 				SndClickBeep();
 				break;
 
