@@ -1,0 +1,62 @@
+name: Web-Build und Deploy (WASM zu GitHub Pages)
+
+# Baut die Browser-Version (Emscripten/WASM) aus diesem Branch und
+# veröffentlicht sie direkt auf GitHub Pages. Die Basisgrafiken
+# (OpenGFX-Detail + Candyland) liegen unter web/baseset/ im Repo.
+
+on:
+  push:
+    branches: [claude/candyland-scrolling]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: emsdk-Image bauen (gepinnte Version aus os/emscripten)
+        run: docker build -t emsdk-openttd os/emscripten
+
+      - name: Host-Tools bauen
+        run: |
+          mkdir build-host
+          docker run --rm -v "$(pwd):$(pwd)" -u "$(id -u):$(id -g)" --workdir "$(pwd)/build-host" emsdk-openttd cmake .. -DOPTION_TOOLS_ONLY=ON
+          docker run --rm -v "$(pwd):$(pwd)" -u "$(id -u):$(id -g)" --workdir "$(pwd)/build-host" emsdk-openttd make -j"$(nproc)" tools
+
+      - name: WASM bauen (inkl. gebündelter Basisgrafiken)
+        run: |
+          mkdir -p build/baseset
+          cp web/baseset/* build/baseset/
+          docker run --rm -v "$(pwd):$(pwd)" -u "$(id -u):$(id -g)" --workdir "$(pwd)/build" emsdk-openttd emcmake cmake .. -DHOST_BINARY_DIR=../build-host -DCMAKE_BUILD_TYPE=Release -DOPTION_USE_ASSERTS=OFF
+          docker run --rm -v "$(pwd):$(pwd)" -u "$(id -u):$(id -g)" --workdir "$(pwd)/build" emsdk-openttd emmake make -j"$(nproc)"
+
+      - name: Seite zusammenstellen
+        run: |
+          mkdir site
+          cp build/openttd.html site/index.html
+          cp build/openttd.html build/openttd.js build/openttd.wasm build/openttd.data site/
+          touch site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
