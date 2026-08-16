@@ -2252,6 +2252,7 @@ STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landscha
 STR_INTRO_TOOLTIP_SUB_ARCTIC_LANDSCAPE                          :{BLACK}Landschaft mit subarktischem Klima auswählen
 STR_INTRO_TOOLTIP_SUB_TROPICAL_LANDSCAPE                        :{BLACK}Landschaft mit subtropischem Klima auswählen
 STR_INTRO_TOOLTIP_TOYLAND_LANDSCAPE                             :{BLACK}Spielzeugland auswählen
+STR_INTRO_TOOLTIP_CANDYLAND_LANDSCAPE                           :{BLACK}Candyland auswählen (gemäßigte Spielregeln mit Zuckerwelt-Grafik)
 
 STR_INTRO_TOOLTIP_GAME_OPTIONS                                  :{BLACK}Spieleinstellungen öffnen
 STR_INTRO_TOOLTIP_HIGHSCORE                                     :{BLACK}Bestenliste öffnen

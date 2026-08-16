@@ -448,6 +448,10 @@ bool VideoDriver_SDL_Base::PollEvent()
 				_cursor.wheel++;
 			}
 
+			/* Ctrl+Rad zoomt (Browser-/Karten-Konvention): wheel_moved nicht
+			 * setzen, damit trotz aktivem Kartenscrollen der Zoom-Pfad greift. */
+			if ((SDL_GetModState() & KMOD_CTRL) != 0) break;
+
 			/* Handle 2D scrolling. */
 			const float SCROLL_BUILTIN_MULTIPLIER = 14.0f;
 #if SDL_VERSION_ATLEAST(2, 18, 0)

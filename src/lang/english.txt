@@ -2283,6 +2283,7 @@ STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select '
 STR_INTRO_TOOLTIP_SUB_ARCTIC_LANDSCAPE                          :{BLACK}Select 'sub-arctic' landscape style
 STR_INTRO_TOOLTIP_SUB_TROPICAL_LANDSCAPE                        :{BLACK}Select 'sub-tropical' landscape style
 STR_INTRO_TOOLTIP_TOYLAND_LANDSCAPE                             :{BLACK}Select 'toyland' landscape style
+STR_INTRO_TOOLTIP_CANDYLAND_LANDSCAPE                           :{BLACK}Select 'Candyland' landscape style (temperate gameplay with candy scenery)
 
 STR_INTRO_TOOLTIP_GAME_OPTIONS                                  :{BLACK}Open game options
 STR_INTRO_TOOLTIP_HIGHSCORE                                     :{BLACK}Open highscore table

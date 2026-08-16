@@ -88,6 +88,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_generate_landscape_w
 				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_ARCTIC), SetSpriteTip(SPR_SELECT_SUB_ARCTIC, STR_INTRO_TOOLTIP_SUB_ARCTIC_LANDSCAPE),
 				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_TROPICAL), SetSpriteTip(SPR_SELECT_SUB_TROPICAL, STR_INTRO_TOOLTIP_SUB_TROPICAL_LANDSCAPE),
 				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_TOYLAND), SetSpriteTip(SPR_SELECT_TOYLAND, STR_INTRO_TOOLTIP_TOYLAND_LANDSCAPE),
+				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_CANDYLAND), SetSpriteTip(SPR_SELECT_CANDYLAND, STR_INTRO_TOOLTIP_CANDYLAND_LANDSCAPE),
 			EndContainer(),
 
 			/* Generation options. */
@@ -219,6 +220,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_heightmap_load_widge
 				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_ARCTIC), SetSpriteTip(SPR_SELECT_SUB_ARCTIC, STR_INTRO_TOOLTIP_SUB_ARCTIC_LANDSCAPE),
 				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_TROPICAL), SetSpriteTip(SPR_SELECT_SUB_TROPICAL, STR_INTRO_TOOLTIP_SUB_TROPICAL_LANDSCAPE),
 				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_TOYLAND), SetSpriteTip(SPR_SELECT_TOYLAND, STR_INTRO_TOOLTIP_TOYLAND_LANDSCAPE),
+				NWidget(WWT_IMGBTN_2, Colours::Orange, WID_GL_CANDYLAND), SetSpriteTip(SPR_SELECT_CANDYLAND, STR_INTRO_TOOLTIP_CANDYLAND_LANDSCAPE),
 			EndContainer(),
 
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
@@ -411,7 +413,11 @@ struct GenerateLandscapeWindow : public Window {
 	{
 		this->InitNested(number);
 
-		this->LowerWidget(to_underlying(_settings_newgame.game_creation.landscape) + WID_GL_TEMPERATE);
+		if (_settings_newgame.game_creation.landscape == LandscapeType::Temperate && _settings_newgame.game_creation.landscape_theme == 1) {
+			this->LowerWidget(WID_GL_CANDYLAND);
+		} else {
+			this->LowerWidget(to_underlying(_settings_newgame.game_creation.landscape) + WID_GL_TEMPERATE);
+		}
 
 		this->mode = this->window_number;
 
@@ -512,10 +518,11 @@ struct GenerateLandscapeWindow : public Window {
 	{
 		if (!gui_scope) return;
 		/* Update the climate buttons */
-		this->SetWidgetLoweredState(WID_GL_TEMPERATE, _settings_newgame.game_creation.landscape == LandscapeType::Temperate);
+		this->SetWidgetLoweredState(WID_GL_TEMPERATE, _settings_newgame.game_creation.landscape == LandscapeType::Temperate && _settings_newgame.game_creation.landscape_theme == 0);
 		this->SetWidgetLoweredState(WID_GL_ARCTIC,    _settings_newgame.game_creation.landscape == LandscapeType::Arctic);
 		this->SetWidgetLoweredState(WID_GL_TROPICAL,  _settings_newgame.game_creation.landscape == LandscapeType::Tropic);
 		this->SetWidgetLoweredState(WID_GL_TOYLAND,   _settings_newgame.game_creation.landscape == LandscapeType::Toyland);
+		this->SetWidgetLoweredState(WID_GL_CANDYLAND, _settings_newgame.game_creation.landscape == LandscapeType::Temperate && _settings_newgame.game_creation.landscape_theme == 1);
 
 		/* You can't select smoothness / non-water borders if not terragenesis */
 		if (mode == GLWM_GENERATE) {
@@ -581,6 +588,7 @@ struct GenerateLandscapeWindow : public Window {
 		switch (widget) {
 			case WID_GL_TEMPERATE: case WID_GL_ARCTIC:
 			case WID_GL_TROPICAL: case WID_GL_TOYLAND:
+			case WID_GL_CANDYLAND:
 				size.width += WidgetDimensions::scaled.fullbevel.Horizontal();
 				size.height += WidgetDimensions::scaled.fullbevel.Vertical();
 				break;
@@ -663,7 +671,15 @@ struct GenerateLandscapeWindow : public Window {
 			case WID_GL_ARCTIC:
 			case WID_GL_TROPICAL:
 			case WID_GL_TOYLAND:
+				_settings_newgame.game_creation.landscape_theme = 0;
 				SetNewLandscapeType(LandscapeType(widget - WID_GL_TEMPERATE));
+				SndClickBeep();
+				break;
+
+			case WID_GL_CANDYLAND:
+				/* Candyland: gemäßigte Spielregeln mit Zuckerwelt-Grafik. */
+				_settings_newgame.game_creation.landscape_theme = 1;
+				SetNewLandscapeType(LandscapeType::Temperate);
 				SndClickBeep();
 				break;
 

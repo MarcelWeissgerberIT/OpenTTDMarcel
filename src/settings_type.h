@@ -460,6 +460,7 @@ struct GameCreationSettings {
 	uint8_t se_flat_world_height; ///< land height a flat world gets in SE
 	uint8_t town_name; ///< the town name generator used for town names
 	LandscapeType landscape; ///< the landscape we're currently in
+	uint8_t landscape_theme; ///< visual theme for the temperate landscape: 0 = normal, 1 = Candyland
 	BorderFlags water_borders; ///< bitset of the borders that are water
 	BorderFlagPresets water_border_presets; ///< presets for map border options
 	uint16_t custom_town_number; ///< manually entered number of towns

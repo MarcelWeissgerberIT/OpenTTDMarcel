@@ -16,6 +16,7 @@ enum GenerateLandscapeWidgets : WidgetID {
 	WID_GL_ARCTIC,                      ///< Button with icon "Arctic".
 	WID_GL_TROPICAL,                    ///< Button with icon "Tropical".
 	WID_GL_TOYLAND,                     ///< Button with icon "Toyland".
+	WID_GL_CANDYLAND,                   ///< Button with icon "Candyland" (temperate rules, candy scenery).
 
 	WID_GL_MAPSIZE_X_PULLDOWN,          ///< Dropdown 'map X size'.
 	WID_GL_MAPSIZE_Y_PULLDOWN,          ///< Dropdown 'map Y size'.

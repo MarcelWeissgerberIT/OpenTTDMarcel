@@ -8,6 +8,7 @@
 /** @file gfxinit.cpp Initializing of the (GRF) graphics. */
 
 #include "stdafx.h"
+#include "fileio_func.h"
 #include "fios.h"
 #include "newgrf.h"
 #include "3rdparty/md5/md5.h"
@@ -172,7 +173,20 @@ static void LoadSpriteTables()
 {
 	const GraphicsSet *used_set = BaseGraphics::GetUsedSet();
 
-	LoadGrfFile(used_set->files[to_underlying(GraphicsFileType::Base)].filename, 0, PaletteType::DOS != used_set->palette);
+	/* Candyland-Theme (Fork-Feature): vollständig umgefärbte Basisgrafik
+	 * laden, wenn die Datei im Baseset-Verzeichnis vorhanden ist. Fällt
+	 * andernfalls stillschweigend auf die normale Basisgrafik zurück. */
+	std::string base_grf = used_set->files[to_underlying(GraphicsFileType::Base)].filename;
+	if (_settings_game.game_creation.landscape == LandscapeType::Temperate && _settings_game.game_creation.landscape_theme == 1) {
+		std::string candy_grf = FioFindFullPath(Subdirectory::Baseset, "ogfxc2_candy.grf");
+		if (!candy_grf.empty()) {
+			base_grf = candy_grf;
+			Debug(sprite, 1, "Candyland theme active: using {}", candy_grf);
+		} else {
+			Debug(sprite, 1, "Candyland theme requested but ogfxc2_candy.grf not found; using normal base graphics");
+		}
+	}
+	LoadGrfFile(base_grf, 0, PaletteType::DOS != used_set->palette);
 
 	/*
 	 * The second basic file always starts at the given location and does
