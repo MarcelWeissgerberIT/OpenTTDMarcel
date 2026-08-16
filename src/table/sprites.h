@@ -1558,8 +1558,9 @@ static const SpriteID SPR_SELECT_SUB_TROPICAL        = 4886;
 static const SpriteID SPR_SELECT_SUB_TROPICAL_PUSHED = 4887;
 static const SpriteID SPR_SELECT_TOYLAND             = 4888;
 static const SpriteID SPR_SELECT_TOYLAND_PUSHED      = 4889;
-/* Candyland (Fork-Feature) nutzt das Toyland-Icon als Auswahlknopf. */
-static const SpriteID SPR_SELECT_CANDYLAND           = SPR_SELECT_TOYLAND;
+/* Candyland (Fork-Feature): eigenes Icon in den freien Logos-Slots 97/98. */
+static const SpriteID SPR_SELECT_CANDYLAND           = 4890;
+static const SpriteID SPR_SELECT_CANDYLAND_PUSHED    = 4891;
 /** @} */
 
 /** @defgroup cursor_sprites Cursor sprite numbers.

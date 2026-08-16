@@ -21,6 +21,11 @@ Module['websocket'] = { url: function(host, port, proto) {
 } };
 
 Module.preRun.push(function() {
+    /* Sprache des Browsers an OpenTTD durchreichen (de-DE -> de_DE.UTF-8);
+     * fehlt die passende .lng im Bundle, faellt das Spiel auf Englisch zurueck. */
+    if (typeof ENV !== 'undefined' && typeof navigator !== 'undefined' && navigator.language) {
+        ENV.LANG = navigator.language.replace('-', '_') + '.UTF-8';
+    }
     personal_dir = '/home/web_user/.openttd';
     content_download_dir = personal_dir + '/content_download'
 
