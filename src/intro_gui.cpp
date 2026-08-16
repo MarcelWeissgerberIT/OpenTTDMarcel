@@ -278,6 +278,15 @@ struct SelectGameWindow : public Window {
 		if (changed) this->ReInit(0, 0, this->flags.Test(WindowFlag::Centred));
 	}
 
+	void OnPaint() override
+	{
+		this->SetWidgetLoweredState(WID_SGI_SCALE_100, _gui_scale == 100);
+		this->SetWidgetLoweredState(WID_SGI_SCALE_150, _gui_scale == 150);
+		this->SetWidgetLoweredState(WID_SGI_SCALE_200, _gui_scale == 200);
+		this->SetWidgetLoweredState(WID_SGI_SCALE_250, _gui_scale == 250);
+		this->DrawWidgets();
+	}
+
 	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override
 	{
 		switch (widget) {
@@ -324,6 +333,17 @@ struct SelectGameWindow : public Window {
 					ShowNetworkContentListWindow();
 				}
 				break;
+			case WID_SGI_SCALE_100:
+			case WID_SGI_SCALE_150:
+			case WID_SGI_SCALE_200:
+			case WID_SGI_SCALE_250: {
+				static const int scales[] = {100, 150, 200, 250};
+				_gui_scale_cfg = scales[widget - WID_SGI_SCALE_100];
+				if (AdjustGUIZoom(false)) ReInitAllWindows(true);
+				this->SetDirty();
+				break;
+			}
+
 			case WID_SGI_EXIT:            HandleExitGameRequest(); break;
 		}
 	}
@@ -368,6 +388,13 @@ static constexpr std::initializer_list<NWidgetPart> _nested_select_game_widgets 
 				NWidget(WWT_PUSHIMGTEXTBTN, Colours::Orange, WID_SGI_HELP), SetToolbarMinimalSize(1), SetSpriteStringTip(SPR_IMG_QUERY, STR_INTRO_HELP, STR_INTRO_TOOLTIP_HELP), SetAlignment({AlignmentH::Start, AlignmentV::Middle}), SetFill(1, 0),
 			EndContainer(),
 
+			/* Interface-Skalierung (Fork-Feature): 1x / 1,5x / 2x / 2,5x */
+			NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
+				NWidget(WWT_TEXTBTN, Colours::Orange, WID_SGI_SCALE_100), SetStringTip(STR_INTRO_SCALE_100, STR_INTRO_TOOLTIP_SCALE), SetFill(1, 0),
+				NWidget(WWT_TEXTBTN, Colours::Orange, WID_SGI_SCALE_150), SetStringTip(STR_INTRO_SCALE_150, STR_INTRO_TOOLTIP_SCALE), SetFill(1, 0),
+				NWidget(WWT_TEXTBTN, Colours::Orange, WID_SGI_SCALE_200), SetStringTip(STR_INTRO_SCALE_200, STR_INTRO_TOOLTIP_SCALE), SetFill(1, 0),
+				NWidget(WWT_TEXTBTN, Colours::Orange, WID_SGI_SCALE_250), SetStringTip(STR_INTRO_SCALE_250, STR_INTRO_TOOLTIP_SCALE), SetFill(1, 0),
+			EndContainer(),
 			NWidget(NWID_VERTICAL),
 				NWidget(WWT_PUSHTXTBTN, Colours::Orange, WID_SGI_EXIT), SetToolbarMinimalSize(1), SetStringTip(STR_INTRO_QUIT, STR_INTRO_TOOLTIP_QUIT),
 			EndContainer(),

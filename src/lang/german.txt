@@ -2259,6 +2259,11 @@ STR_INTRO_TOOLTIP_HIGHSCORE                                     :{BLACK}Bestenli
 STR_INTRO_TOOLTIP_HELP                                          :{BLACK}Zugriff auf Dokumentation und Onlinehilfsmittel erhalten
 STR_INTRO_TOOLTIP_ONLINE_CONTENT                                :{BLACK}Prüfe, ob neue oder aktualisierte Erweiterungen zum Herunterladen bereitstehen
 STR_INTRO_TOOLTIP_QUIT                                          :{BLACK}OpenTTD beenden
+STR_INTRO_SCALE_100                                             :1×
+STR_INTRO_SCALE_150                                             :1,5×
+STR_INTRO_SCALE_200                                             :2×
+STR_INTRO_SCALE_250                                             :2,5×
+STR_INTRO_TOOLTIP_SCALE                                         :{BLACK}Oberflächengröße einstellen (Fenster, Schrift, Knöpfe). Die Karte selbst mit Strg+Scrollen zoomen
 
 STR_INTRO_BASESET                                               :{BLACK}Den momentan ausgewählten Basisgrafiken fehl{P 0 "t" "en"} {NUM} Sprite{P 0 "" "s"}. Bitte überprüfen, ob es Updates für die Basisgrafiken gibt.
 STR_INTRO_TRANSLATION                                           :{BLACK}Dieser Übersetzung fehl{P 0 t en} {NUM} String{P "" s}. Bitte helfen Sie, OpenTTD zu verbessern und melden Sie sich als Übersetzer an. Siehe readme.txt für weitere Details.
