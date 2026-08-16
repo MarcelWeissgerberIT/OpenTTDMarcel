@@ -2074,11 +2074,12 @@ static void EnsureVisibleCaption(Window *w, int nx, int ny)
 	if (caption != nullptr) {
 		const Rect caption_rect = caption->GetCurrentRect();
 
-		const int min_visible = caption_rect.Height();
-
-		/* Make sure the window doesn't leave the screen */
-		nx = Clamp(nx, min_visible - caption_rect.right, _screen.width - min_visible - caption_rect.left);
-		ny = Clamp(ny, 0, _screen.height - min_visible);
+		/* Fenster bleiben vollständig im Bildschirm (Fork-Feature): auf
+		 * Touch-Geräten wären halb verschobene Fenster kaum zurückzuholen.
+		 * Ist ein Fenster größer als der Bildschirm, bleibt die linke obere
+		 * Ecke sichtbar. */
+		nx = Clamp(nx, 0, std::max(0, _screen.width - w->width));
+		ny = Clamp(ny, 0, std::max(0, _screen.height - w->height));
 
 		/* Make sure the title bar isn't hidden behind the main tool bar or the status bar. */
 		PreventHiding(&nx, &ny, caption_rect, FindWindowById(WindowClass::MainToolbar, 0), w->left, PreventHideDirection::Down);

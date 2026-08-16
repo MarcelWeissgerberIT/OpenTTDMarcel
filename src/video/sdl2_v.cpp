@@ -414,6 +414,15 @@ static uint ConvertSdlKeycodeIntoMy(SDL_Keycode kc)
 	return key;
 }
 
+/* Touch-Gesten (Fork-Feature): Zwei-Finger-Pan, Pinch-Zoom, Langdruck.
+ * Ein Finger verhält sich wie Maus (SDL-Synthese), zwei Finger scrollen die
+ * Karte über den 2D-Wheel-Pfad, Pinch zoomt, Langdruck ist Rechtsklick. */
+static int _touch_fingers = 0;
+static float _touch_pinch_accum = 0.0f;
+static uint32_t _touch_press_start = 0;
+static bool _touch_long_press_fired = false;
+static float _touch_press_travel = 0.0f;
+
 bool VideoDriver_SDL_Base::PollEvent()
 {
 	SDL_Event ev;
@@ -440,6 +449,57 @@ bool VideoDriver_SDL_Base::PollEvent()
 			HandleMouseEvents();
 			break;
 		}
+
+		case SDL_FINGERDOWN:
+			_touch_fingers++;
+			if (_touch_fingers == 1) {
+				_touch_press_start = SDL_GetTicks();
+				_touch_long_press_fired = false;
+				_touch_press_travel = 0.0f;
+			} else {
+				/* Zweiter Finger: eventuell begonnenen Links-Drag abbrechen. */
+				_touch_press_start = 0;
+				_left_button_down = false;
+				_left_button_clicked = false;
+			}
+			break;
+
+		case SDL_FINGERUP:
+			_touch_fingers = std::max(0, _touch_fingers - 1);
+			if (_touch_long_press_fired) {
+				_right_button_down = false;
+				_touch_long_press_fired = false;
+			}
+			_touch_press_start = 0;
+			if (_touch_fingers < 2) _touch_pinch_accum = 0.0f;
+			break;
+
+		case SDL_FINGERMOTION:
+			if (_touch_fingers >= 2) {
+				/* Zwei-Finger-Pan: Kartenausschnitt folgt den Fingern.
+				 * Jeder Finger trägt die Hälfte bei. */
+				_cursor.h_wheel -= ev.tfinger.dx * _screen.width / 2.0f;
+				_cursor.v_wheel -= ev.tfinger.dy * _screen.height / 2.0f;
+				_cursor.wheel_moved = true;
+			} else {
+				_touch_press_travel += std::abs(ev.tfinger.dx) + std::abs(ev.tfinger.dy);
+			}
+			break;
+
+		case SDL_MULTIGESTURE:
+			if (ev.mgesture.numFingers == 2) {
+				_touch_pinch_accum += ev.mgesture.dDist;
+				const float PINCH_STEP = 0.05f;
+				while (_touch_pinch_accum > PINCH_STEP) {
+					_cursor.wheel--;  /* auseinanderziehen = reinzoomen */
+					_touch_pinch_accum -= PINCH_STEP;
+				}
+				while (_touch_pinch_accum < -PINCH_STEP) {
+					_cursor.wheel++;
+					_touch_pinch_accum += PINCH_STEP;
+				}
+			}
+			break;
 
 		case SDL_MOUSEWHEEL: {
 			if (ev.wheel.y > 0) {
@@ -677,6 +737,14 @@ void VideoDriver_SDL_Base::InputLoop()
 	_dirkeys.Set(DirectionKey::Down, keys[SDL_SCANCODE_DOWN]);
 
 	if (old_ctrl_pressed != _ctrl_pressed) HandleCtrlChanged();
+
+	/* Langdruck (Touch) als Rechtsklick: ein ruhender Finger > 500 ms. */
+	if (_touch_fingers == 1 && !_touch_long_press_fired && _touch_press_start != 0 &&
+			_touch_press_travel < 0.02f && SDL_GetTicks() - _touch_press_start > 500) {
+		_right_button_down = true;
+		_right_button_clicked = true;
+		_touch_long_press_fired = true;
+	}
 }
 
 /** Run a single tick of the game/main loop. */
