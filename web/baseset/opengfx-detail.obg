@@ -68,10 +68,10 @@ logos = ogfxi_logos.grf
 extra = ogfxe_extra.grf
 
 [md5s]
-ogfx1_base.grf     = 1aed86ecb265ab1206e2f11f837764c2
-ogfxc_arctic.grf   = 3641e9f53c892fced9590af6bf8b765e
-ogfxh_tropical.grf = 4b65a1739cbaa2d175d91623c140a1ba
-ogfxt_toyland.grf  = 2664e968c1f002578a62cc5d49fad7b5
+ogfx1_base.grf     = 448f12926435d318eeab39e292d61998
+ogfxc_arctic.grf   = 9126545a10bb338cb335b8324ff8054e
+ogfxh_tropical.grf = bdc9abf28bce854a1866981ff5761425
+ogfxt_toyland.grf  = 426fd537a3a04386ec55bcc3b6d8147f
 ogfxi_logos.grf    = 6195c10c74560c6183a5514c88c67936
 ogfxe_extra.grf    = d6f28e388f2ad5aeb536be3de89c2d0c
 
