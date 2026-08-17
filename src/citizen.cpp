@@ -37,11 +37,16 @@
 #include "table/strings.h"
 
 #include <map>
+#include <set>
+#include <unordered_map>
 #include <queue>
 
 #include "safeguards.h"
 
 std::vector<Citizen> _citizens;
+/* Beschleunigung fuers Zeichnen: Kachel -> Buerger-Indizes, je Tick neu. */
+static std::unordered_multimap<uint32_t, uint32_t> _citizens_by_tile;
+static std::set<TileIndex> _cars_away;
 static uint32_t _citizen_next_id = 1;
 static uint32_t _citizen_rng = 0x2A5F1E3Bu;
 
@@ -175,7 +180,7 @@ static bool IsParkingSpotTile(TileIndex tile)
 
 /* ---------- Spawnen ---------- */
 
-static const uint MAX_CITIZENS = 800;
+static const uint MAX_CITIZENS = 1600;
 static const uint NETWORK_LIMIT = 90;
 
 /** Zufaellige Strassenkachel mit Haus daneben im Umkreis der Stadt. */
@@ -259,10 +264,7 @@ static void SpawnCitizen(Town *t)
 
 bool IsParkedCarAway(TileIndex tile)
 {
-	for (const Citizen &c : _citizens) {
-		if (c.kind == CitizenKind::Car && c.home == tile) return true;
-	}
-	return false;
+	return _cars_away.count(tile) != 0;
 }
 
 static void CitizenStep(Citizen &c)
@@ -296,9 +298,19 @@ void RunCitizensTick()
 		}
 	}
 
-		/* Nachschub: alle 6 Ticks eine zufaellige Stadt betrachten, damit sich
-	 * die Welt nach Spielstart/Laden zuegig fuellt. */
-	if (tick % 2 != 0 || _citizens.size() >= MAX_CITIZENS) return;
+		/* Zeichen-Indexe neu aufbauen (Kachel -> Figuren, unterwegs befindliche
+	 * Autos), damit das Rendern nicht ueber alle Buerger iterieren muss. */
+	_citizens_by_tile.clear();
+	_cars_away.clear();
+	for (uint32_t i = 0; i < _citizens.size(); i++) {
+		const Citizen &c = _citizens[i];
+		_citizens_by_tile.emplace(c.path[c.pos].base(), i);
+		if (c.kind == CitizenKind::Car) _cars_away.insert(c.home);
+	}
+
+	/* Nachschub: jeden Tick eine zufaellige Stadt betrachten, damit die
+	 * Strassen wirklich belebt wirken. */
+	if (_citizens.size() >= MAX_CITIZENS) return;
 	uint town_count = 0;
 	for ([[maybe_unused]] const Town *t : Town::Iterate()) town_count++;
 	if (town_count == 0) return;
@@ -309,8 +321,9 @@ void RunCitizensTick()
 		for (const Citizen &c : _citizens) {
 			if (c.town == t->index) here++;
 		}
-		uint want = ClampU(t->cache.population / 25, 4, 60);
+		uint want = ClampU(t->cache.population / 12, 6, 90);
 		if (here < want) SpawnCitizen(t);
+		if (here + 10 < want) SpawnCitizen(t);
 		break;
 	}
 }
@@ -362,8 +375,9 @@ static SpriteID CitizenSprite(const Citizen &c, DiagDirection dir)
 
 void DrawCitizensOnTile(const TileInfo *ti)
 {
-	for (const Citizen &c : _citizens) {
-		if (c.path[c.pos] != ti->tile) continue;
+	auto range = _citizens_by_tile.equal_range(ti->tile.base());
+	for (auto it = range.first; it != range.second; ++it) {
+		const Citizen &c = _citizens[it->second];
 		int px, py;
 		DiagDirection dir;
 		CitizenTilePos(c, px, py, dir);

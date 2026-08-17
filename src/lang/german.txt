@@ -2311,7 +2311,7 @@ STR_AUTOCONNECT_CHECK_RESULT                                    :{BLACK}Probleme
 STR_AUTOCONNECT_STATUS_EXTENDED                                 :{BLACK}Bestehende Verbindung erweitert: {NUM} Fahrzeug(e) ergänzt, Kosten {CURRENCY_LONG}
 STR_AUTOCONNECT_SUGGEST                                         :{BLACK}Güter-Vorschlag
 STR_AUTOCONNECT_SUGGEST_TOOLTIP                                 :{BLACK}Findet die vielversprechendste unbediente Industrie-Verbindung. Nochmal klicken baut sie als Bahnstrecke
-STR_AUTOCONNECT_SUGGEST_RESULT                                  :{BLACK}Vorschlag: {INDUSTRY} → {INDUSTRY}. Nochmal klicken zum Bauen!
+STR_AUTOCONNECT_SUGGEST_RESULT                                  :{BLACK}Vorschlag: {INDUSTRY} {RIGHT_ARROW} {INDUSTRY}. Nochmal klicken zum Bauen!
 STR_AUTOCONNECT_SUGGEST_NONE                                    :{BLACK}Kein lohnender Güter-Vorschlag gefunden
 
 # Citizen info window (fork feature, city life 3.0)
