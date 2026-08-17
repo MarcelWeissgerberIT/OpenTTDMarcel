@@ -50,6 +50,8 @@
 #include "station_base.h"
 #include "station_map.h"
 #include "roadstop_base.h"
+#include "depot_base.h"
+#include "water_map.h"
 #include "station_cmd.h"
 #include "strings_func.h"
 #include "tilearea_type.h"
@@ -1247,6 +1249,58 @@ static AutoConnectResult BuildShipConnection(Town *town_a, Town *town_b, uint co
 }
 
 /**
+ * Bestehende Verbindung zwischen zwei Städten finden: ein eigenes
+ * Fahrzeug des Typs, dessen Aufträge Stationen nahe beider Städte
+ * anfahren.
+ */
+static const Vehicle *FindExistingLink(const Town *a, const Town *b, VehicleType type)
+{
+	for (const Vehicle *v : Vehicle::Iterate()) {
+		if (v->owner != _local_company || !v->IsPrimaryVehicle() || v->type != type) continue;
+		bool near_a = false, near_b = false;
+		for (const Order &o : v->Orders()) {
+			if (!o.IsType(OT_GOTO_STATION)) continue;
+			const Station *st = Station::GetIfValid(o.GetDestination().ToStationID());
+			if (st == nullptr) continue;
+			if (DistanceManhattan(st->xy, a->xy) < 25) near_a = true;
+			if (DistanceManhattan(st->xy, b->xy) < 25) near_b = true;
+		}
+		if (near_a && near_b) return v;
+	}
+	return nullptr;
+}
+
+/** Passendes Depot (bzw. Hangar) zum Klonen eines Fahrzeugs finden. */
+static TileIndex FindCloneDepot(const Vehicle *v)
+{
+	if (v->type == VehicleType::Aircraft) {
+		for (const Order &o : v->Orders()) {
+			if (!o.IsType(OT_GOTO_STATION)) continue;
+			const Station *st = Station::GetIfValid(o.GetDestination().ToStationID());
+			if (st != nullptr && st->facilities.Test(StationFacility::Airport) && st->airport.HasHangar()) {
+				return st->airport.GetHangarTile(0);
+			}
+		}
+		return INVALID_TILE;
+	}
+	TileIndex best = INVALID_TILE;
+	uint best_dist = UINT32_MAX;
+	for (const Depot *d : Depot::Iterate()) {
+		if (d->xy == INVALID_TILE || GetTileOwner(d->xy) != _local_company) continue;
+		bool fits = (v->type == VehicleType::Train && IsRailDepotTile(d->xy)) ||
+				(v->type == VehicleType::Road && IsRoadDepotTile(d->xy)) ||
+				(v->type == VehicleType::Ship && IsShipDepotTile(d->xy));
+		if (!fits) continue;
+		uint dist = DistanceManhattan(d->xy, v->tile);
+		if (dist < best_dist) {
+			best_dist = dist;
+			best = d->xy;
+		}
+	}
+	return best;
+}
+
+/**
  * Netz-Diagnose: eigene Fahrzeuge und Stationen auf typische Probleme
  * prüfen. Liefert eine kompakte Statuszeile; das erste Problemfahrzeug
  * wird ins Blickfeld gescrollt.
@@ -1386,6 +1440,29 @@ struct AutoConnectWindow : Window {
 				};
 
 				if (!estimate) {
+					/* Gibt es die Verbindung schon? Dann nur Fahrzeuge ergaenzen. */
+					static const VehicleType kinds[] = {VehicleType::Aircraft, VehicleType::Road, VehicleType::Train, VehicleType::Ship};
+					const Vehicle *link = FindExistingLink(Town::Get(this->town_a), Town::Get(this->town_b), kinds[this->mode]);
+					if (link != nullptr) {
+						TileIndex depot = FindCloneDepot(link);
+						if (depot != INVALID_TILE) {
+							Backup<CompanyID> cur_company(_current_company, _local_company);
+							Money spent = 0;
+							uint added = 0;
+							for (uint i = 0; i < this->count; i++) {
+								auto [cc, new_id] = Command<Commands::CloneVehicle>::Do(DoCommandFlag::Execute, depot, link->index, true);
+								if (cc.Failed()) break;
+								spent += cc.GetCost();
+								added++;
+								Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, new_id, false);
+							}
+							cur_company.Restore();
+							this->status = GetString(STR_AUTOCONNECT_STATUS_EXTENDED, added, spent);
+							this->SetDirty();
+							break;
+						}
+					}
+
 					/* Vorab schaetzen: nicht anfangen, wenn das Geld (inkl.
 					 * Kreditrahmen) nicht reicht - halbe Bauten nutzen niemandem. */
 					AutoConnectResult est_res = run(true);

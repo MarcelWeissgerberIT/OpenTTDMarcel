@@ -2339,6 +2339,7 @@ STR_AUTOCONNECT_CHECK                                           :{BLACK}Check ne
 STR_AUTOCONNECT_CHECK_TOOLTIP                                   :{BLACK}Scans all your vehicles and stations for problems
 STR_AUTOCONNECT_CHECK_OK                                        :{BLACK}Network OK: {NUM} vehicles, no problems found
 STR_AUTOCONNECT_CHECK_RESULT                                    :{BLACK}Problems: {NUM} without orders, {NUM} stopped, {NUM} lost, {NUM} station(s) unserved
+STR_AUTOCONNECT_STATUS_EXTENDED                                 :{BLACK}Existing link extended: {NUM} vehicle(s) added, cost {CURRENCY_LONG}
 STR_INTRO_SCALE_100                                             :1x
 STR_INTRO_SCALE_150                                             :1.5x
 STR_INTRO_SCALE_200                                             :2x
