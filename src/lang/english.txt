@@ -2311,6 +2311,13 @@ STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Building
 STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}No suitable aircraft available yet
 STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Not enough money for aircraft
 STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}The towns are too close together - please pick two towns farther apart
+STR_AUTOCONNECT_MODE_AIR                                        :{BLACK}Mode: Aircraft
+STR_AUTOCONNECT_MODE_BUS                                        :{BLACK}Mode: Buses
+STR_AUTOCONNECT_MODE_TOOLTIP                                    :{BLACK}Switch between aircraft and bus connections
+STR_AUTOCONNECT_COUNT_BUS                                       :{BLACK}Buses: {NUM}
+STR_AUTOCONNECT_ERR_NO_STOP_SITE                                :{BLACK}No suitable road for a bus stop near one of the towns
+STR_AUTOCONNECT_ERR_NO_ROAD_PATH                                :{BLACK}No road route found between the towns (water in the way?)
+STR_AUTOCONNECT_ERR_NO_DEPOT                                    :{BLACK}No space for a depot along the route
 STR_INTRO_SCALE_100                                             :1x
 STR_INTRO_SCALE_150                                             :1.5x
 STR_INTRO_SCALE_200                                             :2x

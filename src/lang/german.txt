@@ -2280,6 +2280,13 @@ STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Flughafe
 STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}Noch kein passendes Flugzeug verfügbar
 STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Nicht genug Geld für Flugzeuge
 STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}Die Städte liegen zu nah beieinander - bitte zwei weiter entfernte Städte wählen
+STR_AUTOCONNECT_MODE_AIR                                        :{BLACK}Modus: Flugzeuge
+STR_AUTOCONNECT_MODE_BUS                                        :{BLACK}Modus: Busse
+STR_AUTOCONNECT_MODE_TOOLTIP                                    :{BLACK}Zwischen Flugzeug- und Busverbindung umschalten
+STR_AUTOCONNECT_COUNT_BUS                                       :{BLACK}Busse: {NUM}
+STR_AUTOCONNECT_ERR_NO_STOP_SITE                                :{BLACK}Keine geeignete Straße für eine Haltestelle nahe einer der Städte
+STR_AUTOCONNECT_ERR_NO_ROAD_PATH                                :{BLACK}Keine Straßenroute zwischen den Städten gefunden (Wasser im Weg?)
+STR_AUTOCONNECT_ERR_NO_DEPOT                                    :{BLACK}Kein Platz für ein Depot entlang der Route
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×

@@ -14,6 +14,7 @@
 enum AutoConnectWidgets : WidgetID {
 	WID_AC_TOWN_A,     ///< Button: pick town A.
 	WID_AC_TOWN_B,     ///< Button: pick town B.
+	WID_AC_MODE,       ///< Toggle transport mode.
 	WID_AC_COUNT_DOWN, ///< Decrease vehicle count.
 	WID_AC_COUNT,      ///< Vehicle count display.
 	WID_AC_COUNT_UP,   ///< Increase vehicle count.
