@@ -63,3 +63,23 @@ jobs:
         run: |
           sleep 5
           curl -sS --fail -o /dev/null -w "Pages HTTP %{http_code}\n" https://openttd-web-ene.pages.dev/
+
+      - name: Verify auth flow end-to-end
+        run: |
+          API=https://openttd-api.marcelweissgerber81.workers.dev
+          EMAIL="citest+${GITHUB_RUN_ID}@example.com"
+          PW="ci-test-passwort-123"
+          JAR=$(mktemp)
+          echo "Register..."
+          curl -sS --fail -c "$JAR" -H 'Content-Type: application/json'             -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" "$API/api/register"
+          echo; echo "Me..."
+          curl -sS --fail -b "$JAR" "$API/api/me" | grep -q "$EMAIL"
+          echo "Logout..."
+          curl -sS --fail -b "$JAR" -X POST "$API/api/logout" > /dev/null
+          echo "Login..."
+          curl -sS --fail -c "$JAR" -H 'Content-Type: application/json'             -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" "$API/api/login"
+          echo; echo "Me again..."
+          curl -sS --fail -b "$JAR" "$API/api/me" | grep -q "$EMAIL"
+          echo "Cleanup test user..."
+          npx wrangler d1 execute openttd-web --remote --command "DELETE FROM users WHERE email = '$EMAIL'"
+          echo "Auth flow OK"

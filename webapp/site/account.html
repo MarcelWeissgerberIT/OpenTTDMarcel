@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mein Konto – OpenTTD Marcel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="panel">
+	<h1>Mein Konto</h1>
+	<p id="who">Lade…</p>
+	<p id="prem"></p>
+	<a class="btn" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt spielen</a>
+	<button class="btn" id="logout" style="background:#c9c9c9; border-color:#6e6e6e; box-shadow:0 4px 0 #6e6e6e;">Abmelden</button>
+	<div class="msg" id="msg"></div>
+	<div class="links"><a href="index.html">Zur&uuml;ck zur Startseite</a></div>
+</div>
+<script>
+const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
+(async () => {
+	try {
+		const r = await fetch(API + '/api/me', { credentials: 'include' });
+		const d = await r.json();
+		if (!d.ok) { location.href = 'login.html'; return; }
+		document.getElementById('who').textContent = 'Angemeldet als ' + d.email;
+		document.getElementById('prem').textContent = d.entitlements.length
+			? 'Premium: ' + d.entitlements.join(', ') : 'Premium: noch nicht freigeschaltet';
+	} catch { document.getElementById('msg').textContent = 'Netzwerkfehler.'; }
+})();
+document.getElementById('logout').addEventListener('click', async () => {
+	await fetch(API + '/api/logout', { method: 'POST', credentials: 'include' });
+	location.href = 'index.html';
+});
+</script>
+</body>
+</html>

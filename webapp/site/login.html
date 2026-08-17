@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anmelden – OpenTTD Marcel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="panel">
+	<h1>Anmelden</h1>
+	<form id="f">
+		<label for="email">E-Mail</label>
+		<input id="email" type="email" required autocomplete="email">
+		<label for="pw">Passwort</label>
+		<input id="pw" type="password" required autocomplete="current-password">
+		<button class="btn" type="submit">Anmelden</button>
+	</form>
+	<div class="msg" id="msg"></div>
+	<div class="links">Noch kein Konto? <a href="register.html">Registrieren</a> &middot; <a href="index.html">Zur&uuml;ck</a></div>
+</div>
+<script>
+const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
+document.getElementById('f').addEventListener('submit', async (e) => {
+	e.preventDefault();
+	const msg = document.getElementById('msg');
+	msg.textContent = 'Anmelden…';
+	try {
+		const r = await fetch(API + '/api/login', {
+			method: 'POST', credentials: 'include',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: email.value, password: pw.value }),
+		});
+		const d = await r.json();
+		if (d.ok) { location.href = 'account.html'; } else { msg.textContent = d.message || 'Fehler.'; }
+	} catch { msg.textContent = 'Netzwerkfehler.'; }
+});
+</script>
+</body>
+</html>
