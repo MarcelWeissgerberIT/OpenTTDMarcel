@@ -5,7 +5,10 @@
 
 const SESSION_COOKIE = 'ottd_session';
 const SESSION_DAYS = 30;
-const PBKDF2_ITERATIONS = 100000;
+/* Workers-Free-Tier erlaubt nur ~10 ms CPU pro Request; die Iterationszahl
+ * steckt im Hash-Format und kann bei einem spaeteren Tarifwechsel pro Login
+ * transparent erhoeht werden (Rehash bei erfolgreicher Anmeldung). */
+const PBKDF2_ITERATIONS = 20000;
 
 const ALLOWED_ORIGINS = [
 	'https://marcelweissgerberit.github.io',
