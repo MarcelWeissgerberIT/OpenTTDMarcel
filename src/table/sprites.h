@@ -1561,6 +1561,7 @@ static const SpriteID SPR_SELECT_TOYLAND_PUSHED      = 4889;
 /* Candyland (Fork-Feature): eigenes Icon in den freien Logos-Slots 97/98. */
 static const SpriteID SPR_SELECT_CANDYLAND           = 4890;
 static const SpriteID SPR_SELECT_CANDYLAND_PUSHED    = 4891;
+static const SpriteID SPR_IMG_AUTOCONNECT            = 4892;
 /** @} */
 
 /** @defgroup cursor_sprites Cursor sprite numbers.

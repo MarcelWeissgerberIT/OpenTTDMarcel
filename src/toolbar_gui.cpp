@@ -979,7 +979,7 @@ static CallBackFunction ToolbarBuildAirClick(Window *w)
 {
 	DropDownList list;
 	list.push_back(MakeDropDownListIconItem(SPR_IMG_AIRPORT, PAL_NONE, STR_AIRCRAFT_MENU_AIRPORT_CONSTRUCTION, 0));
-	list.push_back(MakeDropDownListIconItem(SPR_IMG_GOAL, PAL_NONE, STR_AUTOCONNECT_MENU, 1));
+	list.push_back(MakeDropDownListIconItem(SPR_IMG_AUTOCONNECT, PAL_NONE, STR_AUTOCONNECT_MENU, 1));
 	ShowDropDownList(w, std::move(list), 0, WID_TN_AIR, 140, GetToolbarDropDownOptions());
 	return CallBackFunction::None;
 }
