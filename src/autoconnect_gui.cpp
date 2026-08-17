@@ -115,9 +115,10 @@ static EngineID FindBestAircraft()
 /**
  * Flugverbindung bauen: zwei Flughäfen, N Flugzeuge, Pendel-Aufträge.
  */
-static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint count)
+static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint count, bool estimate)
 {
 	AutoConnectResult result;
+	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 
 	/* Sind die Städte weit genug auseinander für zwei getrennte Flughäfen? */
 	if (DistanceManhattan(town_a->xy, town_b->xy) < 24) {
@@ -135,7 +136,7 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 		cur_company.Restore();
 		return result;
 	}
-	CommandCost cost_a = Command<Commands::BuildAirport>::Do(DoCommandFlag::Execute, site_a, AT_SMALL, 0, NEW_STATION, false);
+	CommandCost cost_a = Command<Commands::BuildAirport>::Do(do_flags, site_a, AT_SMALL, 0, NEW_STATION, false);
 	if (cost_a.Failed()) {
 		result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 		result.error_detail = cost_a.GetErrorMessage().base();
@@ -149,7 +150,7 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 		cur_company.Restore();
 		return result;
 	}
-	CommandCost cost_b = Command<Commands::BuildAirport>::Do(DoCommandFlag::Execute, site_b, AT_SMALL, 0, NEW_STATION, false);
+	CommandCost cost_b = Command<Commands::BuildAirport>::Do(do_flags, site_b, AT_SMALL, 0, NEW_STATION, false);
 	if (cost_b.Failed()) {
 		result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 		cur_company.Restore();
@@ -157,16 +158,23 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 	}
 	result.cost += cost_a.GetCost() + cost_b.GetCost();
 
-	Station *st_a = Station::GetByTile(site_a);
-	Station *st_b = Station::GetByTile(site_b);
-	TileIndex hangar = st_a->airport.GetHangarTile(0);
-
 	EngineID engine = FindBestAircraft();
 	if (engine == EngineID::Invalid()) {
 		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
 		cur_company.Restore();
 		return result;
 	}
+
+	if (estimate) {
+		result.cost += Engine::Get(engine)->GetCost() * count;
+		cur_company.Restore();
+		result.ok = true;
+		return result;
+	}
+
+	Station *st_a = Station::GetByTile(site_a);
+	Station *st_b = Station::GetByTile(site_b);
+	TileIndex hangar = st_a->airport.GetHangarTile(0);
 
 	/* Flugzeuge kaufen, Aufträge geben, starten. */
 	for (uint i = 0; i < count; i++) {
@@ -281,14 +289,14 @@ static std::vector<TileIndex> FindRoadPath(TileIndex from, TileIndex to)
 }
 
 /** Bestes verfügbares Passagier-Straßenfahrzeug wählen. */
-static EngineID FindBestBus()
+static EngineID FindBestBus(CargoClasses cargo_class)
 {
 	EngineID best = EngineID::Invalid();
 	uint best_capacity = 0;
 	for (const Engine *e : Engine::IterateType(VehicleType::Road)) {
 		if (!e->company_avail.Test(_local_company)) continue;
 		if (e->VehInfo<RoadVehicleInfo>().roadtype != ROADTYPE_ROAD) continue;
-		if (!IsCargoInClass(e->GetDefaultCargoType(), CargoClass::Passengers)) continue;
+		if (!IsCargoInClass(e->GetDefaultCargoType(), cargo_class)) continue;
 		uint cap = e->GetDisplayDefaultCapacity();
 		if (cap > best_capacity) {
 			best_capacity = cap;
@@ -299,9 +307,10 @@ static EngineID FindBestBus()
 }
 
 /** Busverbindung bauen: Straße, zwei Haltestellen, Depot, N Busse. */
-static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint count)
+static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint count, CargoClasses cargo_class, bool estimate)
 {
 	AutoConnectResult result;
+	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 	Backup<CompanyID> cur_company(_current_company, _local_company);
 
 	Axis axis_a, axis_b;
@@ -332,13 +341,13 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		RoadBits missing = bits;
 		missing.Reset(have);
 		if (missing.None()) continue;
-		CommandCost c = Command<Commands::BuildRoad>::Do(DoCommandFlag::Execute, tile, missing, ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
+		CommandCost c = Command<Commands::BuildRoad>::Do(do_flags, tile, missing, ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
 		if (c.Succeeded()) result.cost += c.GetCost();
 	}
 
 	/* Haltestellen bauen. */
 	for (auto [stop, axis] : {std::pair{stop_a, axis_a}, std::pair{stop_b, axis_b}}) {
-		CommandCost c = Command<Commands::BuildRoadStop>::Do(DoCommandFlag::Execute, stop, 1, 1,
+		CommandCost c = Command<Commands::BuildRoadStop>::Do(do_flags, stop, 1, 1,
 				RoadStopType::Bus, true, AxisToDiagDir(axis), ROADTYPE_ROAD,
 				ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
 		if (c.Failed()) {
@@ -350,21 +359,41 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		result.cost += c.GetCost();
 	}
 
-	/* Depot neben dem Weg nahe Haltestelle A. */
+	EngineID engine = FindBestBus(cargo_class);
+	if (engine == EngineID::Invalid()) {
+		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
+		cur_company.Restore();
+		return result;
+	}
+
+	if (estimate) {
+		result.cost += Engine::Get(engine)->GetCost() * count;
+		cur_company.Restore();
+		result.ok = true;
+		return result;
+	}
+
+	/* Depot neben dem Weg nahe Haltestelle A. Anschluss wird vor dem Bau
+	 * getestet, damit kein Depot ohne Ausfahrt entsteht. */
 	TileIndex depot = INVALID_TILE;
 	for (size_t i = 0; i < std::min<size_t>(path.size(), 20) && depot == INVALID_TILE; i++) {
+		if (!IsNormalRoadTile(path[i])) continue; /* Haltestellen usw. überspringen */
 		for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
 			TileIndex cand = AddTileIndexDiffCWrap(path[i], TileIndexDiffCByDiagDir(d));
 			if (cand == INVALID_TILE || want.count(cand) != 0) continue;
+			bool need_bit = !(GetRoadBits(path[i], RoadTramType::Road) & DiagDirToRoadBits(d)).Any();
+			if (Command<Commands::BuildRoadDepot>::Do({}, cand, ROADTYPE_ROAD, ReverseDiagDir(d)).Failed()) continue;
+			if (need_bit && Command<Commands::BuildRoad>::Do({}, path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid()).Failed()) continue;
 			CommandCost c = Command<Commands::BuildRoadDepot>::Do(DoCommandFlag::Execute, cand, ROADTYPE_ROAD, ReverseDiagDir(d));
-			if (c.Succeeded()) {
-				result.cost += c.GetCost();
-				/* Anschlussstück vom Weg zum Depot. */
+			if (c.Failed()) continue;
+			result.cost += c.GetCost();
+			if (need_bit) {
 				CommandCost c2 = Command<Commands::BuildRoad>::Do(DoCommandFlag::Execute, path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
-				if (c2.Succeeded()) result.cost += c2.GetCost();
-				depot = cand;
-				break;
+				if (c2.Failed()) continue; /* Depot bleibt verwaist - naechster Kandidat */
+				result.cost += c2.GetCost();
 			}
+			depot = cand;
+			break;
 		}
 	}
 	if (depot == INVALID_TILE) {
@@ -375,13 +404,6 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 
 	Station *st_a = Station::GetByTile(stop_a);
 	Station *st_b = Station::GetByTile(stop_b);
-
-	EngineID engine = FindBestBus();
-	if (engine == EngineID::Invalid()) {
-		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
-		cur_company.Restore();
-		return result;
-	}
 
 	for (uint i = 0; i < count; i++) {
 		auto [cost_v, veh_id, refit_capacity, refit_mail, cargo_capacities] =
@@ -600,8 +622,8 @@ static EngineID FindBestTrainEngine()
 	return best;
 }
 
-/** Passagierwaggon mit größter Kapazität wählen. */
-static EngineID FindBestPassengerWagon()
+/** Waggon der gewünschten Frachtklasse mit größter Kapazität wählen. */
+static EngineID FindBestWagon(CargoClasses cargo_class)
 {
 	EngineID best = EngineID::Invalid();
 	uint best_capacity = 0;
@@ -610,7 +632,7 @@ static EngineID FindBestPassengerWagon()
 		const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
 		if (rvi.railveh_type != RailVehicleType::Wagon) continue;
 		if (!rvi.railtypes.Test(RAILTYPE_RAIL)) continue;
-		if (!IsCargoInClass(e->GetDefaultCargoType(), CargoClass::Passengers)) continue;
+		if (!IsCargoInClass(e->GetDefaultCargoType(), cargo_class)) continue;
 		uint cap = e->GetDisplayDefaultCapacity();
 		if (cap > best_capacity) {
 			best_capacity = cap;
@@ -638,7 +660,7 @@ static void BuildLoopSignal(TileIndex tile, DiagDirection d)
  * @param signals Einseitige Pfadsignale in Fahrtrichtung setzen (Ringbetrieb).
  * @return false bei Baufehler (result.error ist dann gesetzt).
  */
-static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>> &path, DiagDirection final_exit_edge, bool signals, AutoConnectResult &result)
+static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>> &path, DiagDirection final_exit_edge, bool signals, DoCommandFlags do_flags, AutoConnectResult &result)
 {
 	/* Brückenkacheln: aufeinanderfolgende Zustände mit Abstand > 1. */
 	std::set<size_t> bridge_heads;
@@ -658,7 +680,7 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 			for (; bt < MAX_BRIDGES; bt++) {
 				if (CheckBridgeAvailability(bt, len).Succeeded()) break;
 			}
-			CommandCost c = Command<Commands::BuildBridge>::Do(DoCommandFlag::Execute, path[i + 1].first, path[i].first,
+			CommandCost c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
 					TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
 			if (c.Failed()) {
 				result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
@@ -672,7 +694,7 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 		DiagDirection entry_edge = ReverseDiagDir(path[i].second);
 		DiagDirection exit_edge = (i + 1 < path.size()) ? path[i + 1].second : final_exit_edge;
 		Track track = TrackFromEdges(entry_edge, exit_edge);
-		CommandCost c = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, path[i].first, RAILTYPE_RAIL, track, true);
+		CommandCost c = Command<Commands::BuildRail>::Do(do_flags, path[i].first, RAILTYPE_RAIL, track, true);
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 			result.error_detail = c.GetErrorMessage().base();
@@ -700,10 +722,11 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
  * Zugverbindung bauen. Ein Zug: einfache Pendelstrecke. Mehrere Züge:
  * Einbahn-Ring über beide Bahnhöfe mit einseitigen Pfadsignalen.
  */
-static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint train_count)
+static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint train_count, CargoClasses cargo_class, bool estimate)
 {
 	static const uint TRAIN_WAGONS = 3; ///< Waggons je Zug.
 	AutoConnectResult result;
+	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 	Backup<CompanyID> cur_company(_current_company, _local_company);
 	bool loop = train_count > 1;
 
@@ -717,7 +740,7 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 
 	/* Bahnhöfe zuerst bauen, damit die Wegsuche sie als Hindernis kennt. */
 	for (const RailSite *s : {&site_a, &site_b}) {
-		CommandCost c = Command<Commands::BuildRailStation>::Do(DoCommandFlag::Execute, s->tile,
+		CommandCost c = Command<Commands::BuildRailStation>::Do(do_flags, s->tile,
 				RAILTYPE_RAIL, s->axis, 1, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
@@ -735,7 +758,7 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 		cur_company.Restore();
 		return result;
 	}
-	if (!BuildRailLine(path, ReverseDiagDir(site_b.exit_dir), loop, result)) {
+	if (!BuildRailLine(path, ReverseDiagDir(site_b.exit_dir), loop && !estimate, do_flags, result)) {
 		cur_company.Restore();
 		return result;
 	}
@@ -753,10 +776,27 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 			cur_company.Restore();
 			return result;
 		}
-		if (!BuildRailLine(path2, ReverseDiagDir(site_a.exit2_dir), true, result)) {
+		if (!BuildRailLine(path2, ReverseDiagDir(site_a.exit2_dir), !estimate, do_flags, result)) {
 			cur_company.Restore();
 			return result;
 		}
+	}
+
+	EngineID engine = FindBestTrainEngine();
+	if (engine == EngineID::Invalid()) {
+		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
+		cur_company.Restore();
+		return result;
+	}
+	EngineID wagon = FindBestWagon(cargo_class);
+
+	if (estimate) {
+		Money per_train = Engine::Get(engine)->GetCost();
+		if (wagon != EngineID::Invalid()) per_train += Engine::Get(wagon)->GetCost() * TRAIN_WAGONS;
+		result.cost += per_train * train_count;
+		cur_company.Restore();
+		result.ok = true;
+		return result;
 	}
 
 	/* Depot an einer geraden Streckenkachel nahe Bahnhof A. */
@@ -791,14 +831,6 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 	Station *st_a = Station::GetByTile(site_a.tile);
 	Station *st_b = Station::GetByTile(site_b.tile);
 
-	EngineID engine = FindBestTrainEngine();
-	if (engine == EngineID::Invalid()) {
-		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
-		cur_company.Restore();
-		return result;
-	}
-
-	EngineID wagon = FindBestPassengerWagon();
 	for (uint t = 0; t < train_count; t++) {
 		auto [cost_v, veh_id, refit_capacity, refit_mail, cargo_capacities] =
 				Command<Commands::BuildVehicle>::Do(DoCommandFlag::Execute, depot, engine, true, INVALID_CARGO, ClientID::Invalid);
@@ -845,14 +877,14 @@ static TileIndex FindDockSite(const Town *t)
 	return INVALID_TILE;
 }
 
-/** Bestes verfügbares Passagierschiff wählen. */
-static EngineID FindBestShip()
+/** Bestes verfügbares Schiff der Frachtklasse wählen. */
+static EngineID FindBestShip(CargoClasses cargo_class)
 {
 	EngineID best = EngineID::Invalid();
 	uint best_capacity = 0;
 	for (const Engine *e : Engine::IterateType(VehicleType::Ship)) {
 		if (!e->company_avail.Test(_local_company)) continue;
-		if (!IsCargoInClass(e->GetDefaultCargoType(), CargoClass::Passengers)) continue;
+		if (!IsCargoInClass(e->GetDefaultCargoType(), cargo_class)) continue;
 		uint cap = e->GetDisplayDefaultCapacity();
 		if (cap > best_capacity) {
 			best_capacity = cap;
@@ -866,19 +898,20 @@ static EngineID FindBestShip()
  * Schiffsverbindung bauen: zwei Häfen, Schiffsdepot, N Schiffe.
  * Den Wasserweg finden die Schiffe selbst.
  */
-static AutoConnectResult BuildShipConnection(Town *town_a, Town *town_b, uint count)
+static AutoConnectResult BuildShipConnection(Town *town_a, Town *town_b, uint count, CargoClasses cargo_class, bool estimate)
 {
 	AutoConnectResult result;
+	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 	Backup<CompanyID> cur_company(_current_company, _local_company);
 
 	TileIndex dock_a = FindDockSite(town_a);
 	if (dock_a != INVALID_TILE) {
-		CommandCost c = Command<Commands::BuildDock>::Do(DoCommandFlag::Execute, dock_a, NEW_STATION, false);
+		CommandCost c = Command<Commands::BuildDock>::Do(do_flags, dock_a, NEW_STATION, false);
 		if (c.Failed()) dock_a = INVALID_TILE; else result.cost += c.GetCost();
 	}
 	TileIndex dock_b = dock_a == INVALID_TILE ? INVALID_TILE : FindDockSite(town_b);
 	if (dock_b != INVALID_TILE) {
-		CommandCost c = Command<Commands::BuildDock>::Do(DoCommandFlag::Execute, dock_b, NEW_STATION, false);
+		CommandCost c = Command<Commands::BuildDock>::Do(do_flags, dock_b, NEW_STATION, false);
 		if (c.Failed()) dock_b = INVALID_TILE; else result.cost += c.GetCost();
 	}
 	if (dock_a == INVALID_TILE || dock_b == INVALID_TILE) {
@@ -887,11 +920,18 @@ static AutoConnectResult BuildShipConnection(Town *town_a, Town *town_b, uint co
 		return result;
 	}
 
+	EngineID engine = FindBestShip(cargo_class);
+	if (engine == EngineID::Invalid()) {
+		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
+		cur_company.Restore();
+		return result;
+	}
+
 	/* Schiffsdepot auf Wasser nahe Hafen A. */
 	TileIndex depot = INVALID_TILE;
 	for (TileIndex tile : SpiralTileSequence(dock_a, 12)) {
 		for (Axis axis : {Axis::X, Axis::Y}) {
-			CommandCost c = Command<Commands::BuildShipDepot>::Do(DoCommandFlag::Execute, tile, axis);
+			CommandCost c = Command<Commands::BuildShipDepot>::Do(do_flags, tile, axis);
 			if (c.Succeeded()) {
 				result.cost += c.GetCost();
 				depot = tile;
@@ -906,15 +946,15 @@ static AutoConnectResult BuildShipConnection(Town *town_a, Town *town_b, uint co
 		return result;
 	}
 
-	Station *st_a = Station::GetByTile(dock_a);
-	Station *st_b = Station::GetByTile(dock_b);
-
-	EngineID engine = FindBestShip();
-	if (engine == EngineID::Invalid()) {
-		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
+	if (estimate) {
+		result.cost += Engine::Get(engine)->GetCost() * count;
 		cur_company.Restore();
+		result.ok = true;
 		return result;
 	}
+
+	Station *st_a = Station::GetByTile(dock_a);
+	Station *st_b = Station::GetByTile(dock_b);
 
 	for (uint i = 0; i < count; i++) {
 		auto [cost_v, veh_id, refit_capacity, refit_mail, cargo_capacities] =
@@ -946,6 +986,7 @@ struct AutoConnectWindow : Window {
 	TownID town_b = TownID::Invalid();
 	uint count = 2;
 	uint8_t mode = 0; ///< 0 = Flugzeuge, 1 = Busse, 2 = Zug, 3 = Schiffe.
+	uint8_t cargo = 0; ///< 0 = Passagiere, 1 = Post.
 	WidgetID picking_for = 0; ///< Widget, für das gerade eine Stadt gewählt wird (0 = keins).
 	std::string status;
 
@@ -976,6 +1017,8 @@ struct AutoConnectWindow : Window {
 				static const StringID modes[] = {STR_AUTOCONNECT_MODE_AIR, STR_AUTOCONNECT_MODE_BUS, STR_AUTOCONNECT_MODE_TRAIN, STR_AUTOCONNECT_MODE_SHIP};
 				return GetString(modes[this->mode]);
 			}
+			case WID_AC_CARGO:
+				return GetString(this->cargo == 0 ? STR_AUTOCONNECT_CARGO_PAX : STR_AUTOCONNECT_CARGO_MAIL);
 			case WID_AC_STATUS:
 				return this->status;
 			default:
@@ -999,6 +1042,11 @@ struct AutoConnectWindow : Window {
 				this->SetDirty();
 				break;
 
+			case WID_AC_CARGO:
+				this->cargo ^= 1;
+				this->SetDirty();
+				break;
+
 			case WID_AC_COUNT_DOWN:
 				if (this->count > 1) this->count--;
 				this->SetDirty();
@@ -1009,7 +1057,9 @@ struct AutoConnectWindow : Window {
 				this->SetDirty();
 				break;
 
+			case WID_AC_ESTIMATE:
 			case WID_AC_BUILD: {
+				bool estimate = widget == WID_AC_ESTIMATE;
 				if (_networking) {
 					ShowErrorMessage(GetEncodedString(STR_AUTOCONNECT_ERR_SINGLEPLAYER), {}, WarningLevel::Info);
 					break;
@@ -1019,15 +1069,16 @@ struct AutoConnectWindow : Window {
 					this->SetDirty();
 					break;
 				}
+				CargoClasses cc{this->cargo == 0 ? CargoClass::Passengers : CargoClass::Mail};
 				AutoConnectResult res;
 				switch (this->mode) {
-					case 1: res = BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count); break;
-					case 2: res = BuildRailConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count); break;
-					case 3: res = BuildShipConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count); break;
-					default: res = BuildAirConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count); break;
+					case 1: res = BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, cc, estimate); break;
+					case 2: res = BuildRailConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, cc, estimate); break;
+					case 3: res = BuildShipConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, cc, estimate); break;
+					default: res = BuildAirConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, estimate); break;
 				}
 				if (res.ok) {
-					this->status = GetString(STR_AUTOCONNECT_STATUS_DONE, res.cost);
+					this->status = GetString(estimate ? STR_AUTOCONNECT_STATUS_ESTIMATE : STR_AUTOCONNECT_STATUS_DONE, res.cost);
 					if (res.error_detail != 0) this->status += fmt::format(" [#{}]", res.error_detail);
 				} else {
 					this->status = GetString(res.error);
@@ -1068,12 +1119,16 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TOWN_A), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_PICK_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TOWN_B), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_PICK_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_MODE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_MODE_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CARGO), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_CARGO_TOOLTIP),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_DOWN), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_MINUS),
 				NWidget(WWT_TEXT, Colours::Invalid, WID_AC_COUNT), SetFill(1, 0), SetAlignment({AlignmentH::Centre, AlignmentV::Middle}),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_UP), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_PLUS),
 			EndContainer(),
-			NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_AC_BUILD), SetFill(1, 0), SetMinimalSize(220, 16), SetStringTip(STR_AUTOCONNECT_BUILD, STR_AUTOCONNECT_BUILD_TOOLTIP),
+			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
+				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_ESTIMATE), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_ESTIMATE, STR_AUTOCONNECT_ESTIMATE_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_AC_BUILD), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_BUILD, STR_AUTOCONNECT_BUILD_TOOLTIP),
+			EndContainer(),
 			NWidget(WWT_TEXT, Colours::Invalid, WID_AC_STATUS), SetFill(1, 0), SetMinimalSize(220, 28),
 		EndContainer(),
 	EndContainer(),

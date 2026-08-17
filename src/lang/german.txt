@@ -2295,6 +2295,12 @@ STR_AUTOCONNECT_MODE_SHIP                                       :{BLACK}Modus: S
 STR_AUTOCONNECT_COUNT_SHIP                                      :{BLACK}Schiffe: {NUM}
 STR_AUTOCONNECT_ERR_NO_DOCK_SITE                                :{BLACK}Keine Küste für einen Hafen in der Nähe einer der Städte
 STR_AUTOCONNECT_ERR_NO_SHIP_DEPOT                               :{BLACK}Kein Platz für ein Schiffsdepot beim Hafen
+STR_AUTOCONNECT_CARGO_PAX                                       :{BLACK}Fracht: Passagiere
+STR_AUTOCONNECT_CARGO_MAIL                                      :{BLACK}Fracht: Post
+STR_AUTOCONNECT_CARGO_TOOLTIP                                   :{BLACK}Umschalten, welche Fracht die Fahrzeuge befördern
+STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Kosten schätzen
+STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Berechnet die ungefähren Kosten, ohne etwas zu bauen
+STR_AUTOCONNECT_STATUS_ESTIMATE                                 :{BLACK}Geschätzt: ca. {CURRENCY_LONG}
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×
