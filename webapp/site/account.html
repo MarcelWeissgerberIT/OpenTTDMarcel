@@ -19,7 +19,8 @@
 const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
 (async () => {
 	try {
-		const r = await fetch(API + '/api/me', { credentials: 'include' });
+		const t = localStorage.getItem('ottd_token');
+		const r = await fetch(API + '/api/me', { credentials: 'include', headers: t ? { 'Authorization': 'Bearer ' + t } : {} });
 		const d = await r.json();
 		if (!d.ok) { location.href = 'login.html'; return; }
 		document.getElementById('who').textContent = 'Angemeldet als ' + d.email;
@@ -28,7 +29,9 @@ const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
 	} catch { document.getElementById('msg').textContent = 'Netzwerkfehler.'; }
 })();
 document.getElementById('logout').addEventListener('click', async () => {
-	await fetch(API + '/api/logout', { method: 'POST', credentials: 'include' });
+	const t = localStorage.getItem('ottd_token');
+	await fetch(API + '/api/logout', { method: 'POST', credentials: 'include', headers: t ? { 'Authorization': 'Bearer ' + t } : {} });
+	localStorage.removeItem('ottd_token');
 	location.href = 'index.html';
 });
 </script>

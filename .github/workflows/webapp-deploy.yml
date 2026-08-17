@@ -80,6 +80,10 @@ jobs:
           curl -sS --fail -c "$JAR" -H 'Content-Type: application/json'             -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" "$API/api/login"
           echo; echo "Me again..."
           curl -sS --fail -b "$JAR" "$API/api/me" | grep -q "$EMAIL"
+          echo "Token auth..."
+          TOKEN=$(curl -sS --fail -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" "$API/api/login" | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+          curl -sS --fail -H "Authorization: Bearer $TOKEN" "$API/api/me" | grep -q "$EMAIL"
           echo "Cleanup test user..."
           npx wrangler d1 execute openttd-web --remote --command "DELETE FROM users WHERE email = '$EMAIL'"
           echo "Auth flow OK"

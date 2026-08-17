@@ -82,13 +82,19 @@ async function createSession(env, userId) {
 }
 
 async function getSessionUser(env, request) {
-	const cookie = request.headers.get('Cookie') || '';
-	const m = cookie.match(new RegExp(`${SESSION_COOKIE}=([\\w-]+)`));
-	if (!m) return null;
+	let token = null;
+	const auth = request.headers.get('Authorization') || '';
+	if (auth.startsWith('Bearer ')) token = auth.slice(7).trim();
+	if (token === null) {
+		const cookie = request.headers.get('Cookie') || '';
+		const m = cookie.match(new RegExp(`${SESSION_COOKIE}=([\\w-]+)`));
+		if (m) token = m[1];
+	}
+	if (token === null) return null;
 	const row = await env.DB.prepare(
 		`SELECT u.id, u.email, u.verified_at, s.id AS session_id, s.expires_at
 		 FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?`)
-		.bind(m[1]).first();
+		.bind(token).first();
 	if (!row) return null;
 	if (row.expires_at < Date.now()) {
 		await env.DB.prepare('DELETE FROM sessions WHERE id = ?').bind(row.session_id).run();
@@ -115,7 +121,7 @@ async function handleRegister(request, env, cors) {
 		.bind(email, pwHash, Date.now()).run();
 	const userId = res.meta.last_row_id;
 	const token = await createSession(env, userId);
-	return json({ ok: true, email }, 201, cors, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
+	return json({ ok: true, email, token }, 201, cors, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
 }
 
 async function handleLogin(request, env, cors) {
@@ -127,7 +133,7 @@ async function handleLogin(request, env, cors) {
 		return json({ error: 'bad_credentials', message: 'E-Mail oder Passwort falsch.' }, 401, cors);
 	}
 	const token = await createSession(env, user.id);
-	return json({ ok: true, email: user.email }, 200, cors, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
+	return json({ ok: true, email: user.email, token }, 200, cors, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
 }
 
 async function handleLogout(request, env, cors) {

@@ -31,7 +31,7 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 			body: JSON.stringify({ email: email.value, password: pw.value }),
 		});
 		const d = await r.json();
-		if (d.ok) { location.href = 'account.html'; } else { msg.textContent = d.message || 'Fehler.'; }
+		if (d.ok) { if (d.token) localStorage.setItem('ottd_token', d.token); location.href = 'account.html'; } else { msg.textContent = d.message || 'Fehler.'; }
 	} catch { msg.textContent = 'Netzwerkfehler.'; }
 });
 </script>
