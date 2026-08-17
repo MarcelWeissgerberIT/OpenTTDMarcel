@@ -1722,9 +1722,19 @@ static void DrawTile_Road(TileInfo *ti)
 			if (GetRoadOwner(ti->tile, RoadTramType::Road) == OWNER_TOWN && ti->tileh == SLOPE_FLAT && !IsBridgeAbove(ti->tile)) {
 				uint32_t h = TileX(ti->tile) * 7919u ^ TileY(ti->tile) * 104729u;
 				RoadBits bits = GetRoadBits(ti->tile, RoadTramType::Road);
+				/* Neben Stationen ist mehr los (Bahnhofsvorplatz-Effekt). */
+				bool near_station = false;
+				for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
+					TileIndex n = AddTileIndexDiffCWrap(ti->tile, TileIndexDiffCByDiagDir(d));
+					if (n != INVALID_TILE && IsTileType(n, TileType::Station)) {
+						near_station = true;
+						break;
+					}
+				}
+				uint chance_mask = near_station ? 1 : 7;
 				if (bits == ROAD_X && (h & 7) == 0) {
 					AddSortableSpriteToDraw(SPR_PARKED_CAR, PAL_NONE, *ti, {{5, 11, 0}, {6, 3, 4}, {}});
-				} else if ((h & 7) == 1 || (h & 7) == 5) {
+				} else if ((h & chance_mask) == 1 || (h & 7) == 5) {
 					AddSortableSpriteToDraw((h & 8) != 0 ? SPR_WAITING_PASSENGERS_1 : SPR_WAITING_PASSENGERS_2, PAL_NONE, *ti, {{3, 2, 0}, {5, 4, 5}, {}});
 				}
 			}
