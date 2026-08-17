@@ -410,6 +410,7 @@ STR_TOOLBAR_TOOLTIP_BUILD_ROADS                                 :{BLACK}Straßen
 STR_TOOLBAR_TOOLTIP_BUILD_TRAMWAYS                              :{BLACK}Straßenbahninfrastruktur bauen
 STR_TOOLBAR_TOOLTIP_BUILD_SHIP_DOCKS                            :{BLACK}Wasserstraßeninfrastruktur bauen
 STR_TOOLBAR_TOOLTIP_BUILD_AIRPORTS                              :{BLACK}Flughäfen bauen
+STR_TOOLBAR_TOOLTIP_AUTOCONNECT                                 :{BLACK}Auto-Verbindung: zwei Städte automatisch verbinden
 STR_TOOLBAR_TOOLTIP_LANDSCAPING                                 :{BLACK}Landschaftsbaumenü oder Baummenü öffnen, oder ein Schild platzieren
 STR_TOOLBAR_TOOLTIP_SHOW_SOUND_MUSIC_WINDOW                     :{BLACK}Sound-/Musikfenster öffnen
 STR_TOOLBAR_TOOLTIP_SHOW_LAST_MESSAGE_NEWS                      :{BLACK}Letzte Mitteilung/Nachricht oder Nachrichtenhistorie öffnen, oder alle Mitteilungen löschen

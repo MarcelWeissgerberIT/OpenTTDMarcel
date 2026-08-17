@@ -40,6 +40,7 @@ enum ToolbarNormalWidgets : WidgetID {
 	WID_TN_TRAMS,         ///< Tram building menu.
 	WID_TN_WATER,         ///< Water building toolbar.
 	WID_TN_AIR,           ///< Airport building toolbar.
+	WID_TN_AUTOCONNECT,   ///< Auto-connect window (fork feature).
 	WID_TN_LANDSCAPE,     ///< Landscaping toolbar.
 	WID_TN_MUSIC_SOUND,   ///< Music/sound configuration menu.
 	WID_TN_MESSAGES,      ///< Messages menu.

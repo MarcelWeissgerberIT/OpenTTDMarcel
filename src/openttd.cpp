@@ -1160,14 +1160,8 @@ void SwitchToMode(SwitchMode new_mode)
 				ShowErrorMessage(GetEncodedString(STR_WARNING_FALLBACK_SOUNDSET), {}, WarningLevel::Critical);
 				BaseSounds::ini_set = BaseSounds::GetUsedSet()->name;
 			}
-			if (_settings_client.network.participate_survey == ParticipateSurvey::Ask) {
-				/* No matter how often you go back to the main menu, only ask the first time. */
-				static bool asked_once = false;
-				if (!asked_once) {
-					asked_once = true;
-					ShowNetworkAskSurvey();
-				}
-			}
+			/* Fork: Umfrage-Dialog beim Start nicht anzeigen (in den
+			 * Einstellungen weiterhin aktivierbar). */
 
 			UpdateSocialIntegration(GameMode::Menu);
 			break;

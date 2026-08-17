@@ -975,11 +975,17 @@ static CallBackFunction MenuClickBuildWater(int)
 
 /* --- Airport button menu --- */
 
+static CallBackFunction ToolbarAutoConnectClick(Window *)
+{
+	extern void ShowAutoConnectWindow();
+	ShowAutoConnectWindow();
+	return CallBackFunction::None;
+}
+
 static CallBackFunction ToolbarBuildAirClick(Window *w)
 {
 	DropDownList list;
 	list.push_back(MakeDropDownListIconItem(SPR_IMG_AIRPORT, PAL_NONE, STR_AIRCRAFT_MENU_AIRPORT_CONSTRUCTION, 0));
-	list.push_back(MakeDropDownListIconItem(SPR_IMG_AUTOCONNECT, PAL_NONE, STR_AUTOCONNECT_MENU, 1));
 	ShowDropDownList(w, std::move(list), 0, WID_TN_AIR, 140, GetToolbarDropDownOptions());
 	return CallBackFunction::None;
 }
@@ -989,13 +995,9 @@ static CallBackFunction ToolbarBuildAirClick(Window *w)
  *
  * @return #CallBackFunction::None
  */
-static CallBackFunction MenuClickBuildAir(int index)
+static CallBackFunction MenuClickBuildAir(int)
 {
-	extern void ShowAutoConnectWindow();
-	switch (index) {
-		case 1: ShowAutoConnectWindow(); break;
-		default: ShowBuildAirToolbar(); break;
-	}
+	ShowBuildAirToolbar();
 	return CallBackFunction::None;
 }
 
@@ -1373,10 +1375,11 @@ static MenuClickedProc * const _menu_clicked_procs[] = {
 	MenuClickBuildTram,   // 23
 	MenuClickBuildWater,  // 24
 	MenuClickBuildAir,    // 25
-	MenuClickForest,      // 26
-	MenuClickMusicWindow, // 27
-	MenuClickNewspaper,   // 28
-	MenuClickHelp,        // 29
+	nullptr,              // 26 Auto-Verbindung (kein Dropdown)
+	MenuClickForest,      // 27
+	MenuClickMusicWindow, // 28
+	MenuClickNewspaper,   // 29
+	MenuClickHelp,        // 30
 };
 
 /** Full blown container to make it behave exactly as we want :) */
@@ -1558,7 +1561,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_SAVE,
 			WID_TN_SMALL_MAP,
 			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_STATIONS,
 			WID_TN_FINANCES,
 			WID_TN_COMPANIES,
@@ -1591,7 +1594,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_SMALL_MAP,
 			WID_TN_SAVE,
 			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_STATIONS,
 			WID_TN_FINANCES,
 			WID_TN_COMPANIES,
@@ -1624,7 +1627,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_FAST_FORWARD,
 			WID_TN_SAVE,
 			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_STATIONS,
 			WID_TN_FINANCES,
 			WID_TN_COMPANIES,
@@ -1642,7 +1645,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_FAST_FORWARD,
 			WID_TN_SETTINGS,
 			WID_TN_SMALL_MAP,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_TRAINS,
 			WID_TN_ROADVEHS,
 			WID_TN_SHIPS,
@@ -1660,7 +1663,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_FAST_FORWARD,
 			WID_TN_SAVE,
 			WID_TN_SMALL_MAP,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_TOWNS,
 			WID_TN_STATIONS,
 			WID_TN_FINANCES,
@@ -1680,7 +1683,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_SETTINGS,
 			WID_TN_SMALL_MAP,
 			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_STATIONS,
 			WID_TN_FINANCES,
 			WID_TN_COMPANIES,
@@ -1699,7 +1702,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_SAVE,
 			WID_TN_SMALL_MAP,
 			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_STATIONS,
 			WID_TN_GRAPHS,
 			WID_TN_TRAINS,
@@ -1719,7 +1722,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_SETTINGS,
 			WID_TN_SMALL_MAP,
 			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_TRAINS,
 			WID_TN_ROADVEHS,
 			WID_TN_SHIPS,
@@ -1760,7 +1763,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_SETTINGS,
 			WID_TN_SMALL_MAP,
 			WID_TN_TOWNS,
-			WID_TN_SUBSIDIES,
+			WID_TN_AUTOCONNECT,
 			WID_TN_TRAINS,
 			WID_TN_ROADVEHS,
 			WID_TN_SHIPS,
@@ -1824,6 +1827,7 @@ class NWidgetMainToolbarContainer : public NWidgetToolbarContainer {
 			WID_TN_TRAMS,
 			WID_TN_WATER,
 			WID_TN_AIR,
+			WID_TN_AUTOCONNECT,
 			WID_TN_LANDSCAPE,
 			WID_TN_MUSIC_SOUND,
 			WID_TN_MESSAGES,
@@ -2002,6 +2006,7 @@ static ToolbarButtonProc * const _toolbar_button_procs[] = {
 	ToolbarBuildTramClick,
 	ToolbarBuildWaterClick,
 	ToolbarBuildAirClick,
+	ToolbarAutoConnectClick,
 	ToolbarForestClick,
 	ToolbarMusicClick,
 	ToolbarNewspaperClick,
@@ -2034,7 +2039,7 @@ struct MainToolbarWindow : Window {
 		/* If spectator, disable all construction buttons
 		 * ie : Build road, rail, ships, airports and landscaping
 		 * Since enabled state is the default, just disable when needed */
-		this->SetWidgetsDisabledState(_local_company == COMPANY_SPECTATOR, WID_TN_RAILS, WID_TN_ROADS, WID_TN_TRAMS, WID_TN_WATER, WID_TN_AIR, WID_TN_LANDSCAPE);
+		this->SetWidgetsDisabledState(_local_company == COMPANY_SPECTATOR, WID_TN_RAILS, WID_TN_ROADS, WID_TN_TRAMS, WID_TN_WATER, WID_TN_AIR, WID_TN_AUTOCONNECT, WID_TN_LANDSCAPE);
 		/* disable company list drop downs, if there are no companies */
 		this->SetWidgetsDisabledState(Company::GetNumItems() == 0, WID_TN_STATIONS, WID_TN_FINANCES, WID_TN_TRAINS, WID_TN_ROADVEHS, WID_TN_SHIPS, WID_TN_AIRCRAFT);
 
@@ -2221,6 +2226,7 @@ static constexpr std::tuple<WidgetID, WidgetType, SpriteID> _toolbar_button_spri
 	{WID_TN_TRAMS,        WWT_IMGBTN,     SPR_IMG_BUILDTRAMS},
 	{WID_TN_WATER,        WWT_IMGBTN,     SPR_IMG_BUILDWATER},
 	{WID_TN_AIR,          WWT_IMGBTN,     SPR_IMG_BUILDAIR},
+	{WID_TN_AUTOCONNECT,  WWT_IMGBTN,     SPR_IMG_AUTOCONNECT},
 	{WID_TN_LANDSCAPE,    WWT_IMGBTN,     SPR_IMG_LANDSCAPING},
 	{WID_TN_MUSIC_SOUND,  WWT_IMGBTN,     SPR_IMG_MUSIC},
 	{WID_TN_MESSAGES,     WWT_IMGBTN,     SPR_IMG_MESSAGES},
