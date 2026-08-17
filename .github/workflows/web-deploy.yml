@@ -7,6 +7,7 @@ name: Web-Build und Deploy (WASM zu GitHub Pages)
 on:
   push:
     branches: [claude/candyland-scrolling]
+    paths-ignore: ['webapp/**']
   workflow_dispatch:
 
 permissions:
