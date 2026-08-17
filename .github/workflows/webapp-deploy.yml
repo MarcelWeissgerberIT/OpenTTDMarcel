@@ -47,8 +47,19 @@ jobs:
       - name: Deploy worker
         run: npx wrangler deploy
 
+      - name: Verify API health
+        run: |
+          sleep 5
+          curl -sS --fail https://openttd-api.marcelweissgerber81.workers.dev/api/health
+          echo
+
       - name: Ensure Pages project exists
         run: npx wrangler pages project create openttd-web --production-branch=main || true
 
       - name: Deploy site to Pages
-        run: npx wrangler pages deploy site --project-name=openttd-web --branch=main
+        run: npx wrangler pages deploy site --project-name=openttd-web --branch=main --commit-dirty=true
+
+      - name: Verify Pages site
+        run: |
+          sleep 5
+          curl -sS --fail -o /dev/null -w "Pages HTTP %{http_code}\n" https://openttd-web-ene.pages.dev/
