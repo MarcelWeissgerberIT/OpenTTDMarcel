@@ -2259,6 +2259,27 @@ STR_INTRO_TOOLTIP_HIGHSCORE                                     :{BLACK}Bestenli
 STR_INTRO_TOOLTIP_HELP                                          :{BLACK}Zugriff auf Dokumentation und Onlinehilfsmittel erhalten
 STR_INTRO_TOOLTIP_ONLINE_CONTENT                                :{BLACK}Prüfe, ob neue oder aktualisierte Erweiterungen zum Herunterladen bereitstehen
 STR_INTRO_TOOLTIP_QUIT                                          :{BLACK}OpenTTD beenden
+STR_AUTOCONNECT_MENU                                            :Auto-Verbindung
+STR_AUTOCONNECT_CAPTION                                         :{WHITE}Auto-Verbindung
+STR_AUTOCONNECT_PICK_TOWN_A                                     :{BLACK}Stadt A wählen...
+STR_AUTOCONNECT_PICK_TOWN_B                                     :{BLACK}Stadt B wählen...
+STR_AUTOCONNECT_TOWN_NAME                                       :{BLACK}{TOWN}
+STR_AUTOCONNECT_PICK_TOOLTIP                                    :{BLACK}Klicken, dann eine Stadt auf der Karte anklicken
+STR_AUTOCONNECT_COUNT                                           :{BLACK}Flugzeuge: {NUM}
+STR_AUTOCONNECT_MINUS                                           :{BLACK}-
+STR_AUTOCONNECT_PLUS                                            :{BLACK}+
+STR_AUTOCONNECT_BUILD                                           :{BLACK}Verbindung bauen!
+STR_AUTOCONNECT_BUILD_TOOLTIP                                   :{BLACK}Baut zwei Flughäfen, kauft die Flugzeuge und richtet die Route automatisch ein
+STR_AUTOCONNECT_STATUS_PICK                                     :{BLACK}Zwei Städte wählen, dann bauen
+STR_AUTOCONNECT_STATUS_CLICK_MAP                                :{BLACK}Jetzt eine Stadt auf der Karte anklicken
+STR_AUTOCONNECT_STATUS_NEED_TOWNS                               :{BLACK}Bitte erst zwei verschiedene Städte wählen
+STR_AUTOCONNECT_STATUS_DONE                                     :{BLACK}Fertig! Gesamtkosten: {CURRENCY_LONG}
+STR_AUTOCONNECT_ERR_SINGLEPLAYER                                :{WHITE}Auto-Verbindung gibt es vorerst nur im Einzelspieler
+STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE                             :{BLACK}Kein Platz für einen Flughafen nahe einer der Städte
+STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Flughafenbau fehlgeschlagen (Geld?)
+STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}Noch kein passendes Flugzeug verfügbar
+STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Nicht genug Geld für Flugzeuge
+STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}Die Städte liegen zu nah beieinander - bitte zwei weiter entfernte Städte wählen
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×

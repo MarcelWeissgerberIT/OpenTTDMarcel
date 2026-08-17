@@ -412,6 +412,12 @@ enum class WindowClass : uint16_t {
 	BuildBridge,
 
 	/**
+	 * Auto-Verbindung (Fork-Feature); %Window numbers:
+	 *   - 0 = #AutoConnectWidgets
+	 */
+	AutoConnect,
+
+	/**
 	 * Build station; %Window numbers:
 	 *   - #TransportType::Air = #AirportPickerWidgets
 	 *   - #TransportType::Water = #DockToolbarWidgets
