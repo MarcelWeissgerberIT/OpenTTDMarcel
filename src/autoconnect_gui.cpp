@@ -1246,6 +1246,40 @@ static AutoConnectResult BuildShipConnection(Town *town_a, Town *town_b, uint co
 	return result;
 }
 
+/**
+ * Netz-Diagnose: eigene Fahrzeuge und Stationen auf typische Probleme
+ * prüfen. Liefert eine kompakte Statuszeile; das erste Problemfahrzeug
+ * wird ins Blickfeld gescrollt.
+ */
+static std::string RunNetworkCheck()
+{
+	uint total = 0, no_orders = 0, stopped = 0, lost = 0, unused_st = 0;
+	TileIndex focus = INVALID_TILE;
+	std::set<StationID> served;
+	for (const Vehicle *v : Vehicle::Iterate()) {
+		if (v->owner != _local_company || !v->IsPrimaryVehicle()) continue;
+		total++;
+		bool bad = false;
+		if (v->GetNumOrders() < 2) { no_orders++; bad = true; }
+		if (v->vehstatus.Test(VehState::Stopped)) { stopped++; bad = true; }
+		if (v->vehicle_flags.Test(VehicleFlag::PathfinderLost)) { lost++; bad = true; }
+		if (bad && focus == INVALID_TILE) focus = v->tile;
+		for (const Order &o : v->Orders()) {
+			if (o.IsType(OT_GOTO_STATION)) served.insert(o.GetDestination().ToStationID());
+		}
+	}
+	for (const Station *st : Station::Iterate()) {
+		if (st->owner != _local_company) continue;
+		if (served.count(st->index) == 0) {
+			unused_st++;
+			if (focus == INVALID_TILE) focus = st->xy;
+		}
+	}
+	if (no_orders + stopped + lost + unused_st == 0) return GetString(STR_AUTOCONNECT_CHECK_OK, total);
+	if (focus != INVALID_TILE) ScrollMainWindowToTile(focus);
+	return GetString(STR_AUTOCONNECT_CHECK_RESULT, no_orders, stopped, lost, unused_st);
+}
+
 /** Fenster der Auto-Verbindung. */
 struct AutoConnectWindow : Window {
 	TownID town_a = TownID::Invalid();
@@ -1312,6 +1346,11 @@ struct AutoConnectWindow : Window {
 
 			case WID_AC_CARGO:
 				this->cargo = (this->cargo + 1) % 3;
+				this->SetDirty();
+				break;
+
+			case WID_AC_CHECK:
+				this->status = RunNetworkCheck();
 				this->SetDirty();
 				break;
 
@@ -1420,6 +1459,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_ESTIMATE), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_ESTIMATE, STR_AUTOCONNECT_ESTIMATE_TOOLTIP),
 				NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_AC_BUILD), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_BUILD, STR_AUTOCONNECT_BUILD_TOOLTIP),
 			EndContainer(),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CHECK), SetFill(1, 0), SetMinimalSize(220, 14), SetStringTip(STR_AUTOCONNECT_CHECK, STR_AUTOCONNECT_CHECK_TOOLTIP),
 			NWidget(WWT_TEXT, Colours::Invalid, WID_AC_STATUS), SetFill(1, 0), SetMinimalSize(220, 28),
 		EndContainer(),
 	EndContainer(),

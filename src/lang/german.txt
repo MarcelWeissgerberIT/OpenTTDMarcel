@@ -2304,6 +2304,10 @@ STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Kosten s
 STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Berechnet die ungefähren Kosten, ohne etwas zu bauen
 STR_AUTOCONNECT_STATUS_ESTIMATE                                 :{BLACK}Geschätzt: ca. {CURRENCY_LONG}
 STR_AUTOCONNECT_ERR_TOO_EXPENSIVE                               :{BLACK}Nicht genug Geld: benötigt ca. {CURRENCY_LONG} (inkl. Kredit)
+STR_AUTOCONNECT_CHECK                                           :{BLACK}Netz prüfen
+STR_AUTOCONNECT_CHECK_TOOLTIP                                   :{BLACK}Durchsucht alle eigenen Fahrzeuge und Stationen nach Problemen
+STR_AUTOCONNECT_CHECK_OK                                        :{BLACK}Netz OK: {NUM} Fahrzeuge, keine Probleme gefunden
+STR_AUTOCONNECT_CHECK_RESULT                                    :{BLACK}Probleme: {NUM} ohne Auftrag, {NUM} gestoppt, {NUM} verirrt, {NUM} Station(en) unbedient
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×
