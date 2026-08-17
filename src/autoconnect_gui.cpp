@@ -121,6 +121,33 @@ static TileIndex FindAirportSite(const Town *t)
 	return INVALID_TILE;
 }
 
+/**
+ * Notfall-Flughafenbau mit Landanpassung: Fläche (4x3 für AT_SMALL)
+ * nahe der Stadt planieren und dort bauen. Nur im Execute-Modus.
+ * @return Bauplatz oder INVALID_TILE.
+ */
+static TileIndex BuildAirportWithTerraform(const Town *t, AutoConnectResult &result)
+{
+	uint attempts = 0;
+	for (TileIndex tile : SpiralTileSequence(t->xy, 40)) {
+		TileIndex end = AddTileIndexDiffCWrap(tile, TileIndexDiffC{3, 2});
+		if (end == INVALID_TILE) continue;
+		/* Erst testen, ob die Fläche überhaupt planierbar ist. */
+		auto [tc, tmoney, ttile] = Command<Commands::LevelLand>::Do({}, end, tile, false, LevelMode::Level);
+		if (tc.Failed()) continue;
+		if (++attempts > 25) break; /* Kosten begrenzen */
+		auto [lc, lmoney, ltile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, end, tile, false, LevelMode::Level);
+		if (lc.Failed()) continue;
+		result.cost += lc.GetCost();
+		CommandCost c = Command<Commands::BuildAirport>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating, DoCommandFlag::Execute}, tile, AT_SMALL, 0, NEW_STATION, false);
+		if (c.Succeeded()) {
+			result.cost += c.GetCost();
+			return tile;
+		}
+	}
+	return INVALID_TILE;
+}
+
 /** Bestes verfügbares Passagierflugzeug wählen. */
 static EngineID FindBestAircraft()
 {
@@ -163,12 +190,14 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 		/* Flughafen A: Platz suchen und sofort bauen — erst danach für B
 		 * suchen, damit die Platzsuche für B den neuen Flughafen A kennt. */
 		site_a = FindAirportSite(town_a);
+		if (site_a == INVALID_TILE && !estimate) site_a = BuildAirportWithTerraform(town_a, result);
 		if (site_a == INVALID_TILE) {
 			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
 			cur_company.Restore();
 			return result;
 		}
-		CommandCost cost_a = Command<Commands::BuildAirport>::Do(do_flags, site_a, AT_SMALL, 0, NEW_STATION, false);
+		bool built_a = !estimate && IsTileType(site_a, TileType::Station);
+		CommandCost cost_a = built_a ? CommandCost{} : Command<Commands::BuildAirport>::Do(do_flags, site_a, AT_SMALL, 0, NEW_STATION, false);
 		if (cost_a.Failed()) {
 			Debug(misc, 0, "AC: airport A failed at 0x{:X} err {}", site_a.base(), cost_a.GetErrorMessage().base());
 			/* Stadtbewertung blockiert? Der Spieler hat den Bau angewiesen. */
@@ -186,12 +215,14 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 	TileIndex site_b = INVALID_TILE;
 	if (re_b == nullptr) {
 		site_b = FindAirportSite(town_b);
+		if (site_b == INVALID_TILE && !estimate) site_b = BuildAirportWithTerraform(town_b, result);
 		if (site_b == INVALID_TILE) {
 			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
 			cur_company.Restore();
 			return result;
 		}
-		CommandCost cost_b = Command<Commands::BuildAirport>::Do(do_flags, site_b, AT_SMALL, 0, NEW_STATION, false);
+		bool built_b = !estimate && IsTileType(site_b, TileType::Station);
+		CommandCost cost_b = built_b ? CommandCost{} : Command<Commands::BuildAirport>::Do(do_flags, site_b, AT_SMALL, 0, NEW_STATION, false);
 		if (cost_b.Failed()) {
 			Debug(misc, 0, "AC: airport B failed at 0x{:X} err {}", site_b.base(), cost_b.GetErrorMessage().base());
 			cost_b = Command<Commands::BuildAirport>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, site_b, AT_SMALL, 0, NEW_STATION, false);
@@ -685,7 +716,8 @@ static std::vector<std::pair<TileIndex, DiagDirection>> FindRailPath(const RailS
 			uint step;
 			if (IsRailBuildableTile(next)) {
 				step = IsTileFlat(next) ? 8 : 14;
-				if (d != n.dir && !flat_here) step += 16; /* Kurve auf Hang: riskant, stark verteuern */
+				if (d != n.dir) step += 6; /* Kurven generell verteuern: glattere Strecken */
+				if (d != n.dir && !flat_here) step += 16; /* Kurve auf Hang: riskant */
 			} else if (IsNormalRoadTile(next)) {
 				/* Bahnübergang nur senkrecht über gerade Straßen. */
 				RoadBits bits = GetRoadBits(next, RoadTramType::Road);
@@ -821,7 +853,11 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 			 * Pfadkachel planieren und erneut versuchen. */
 			auto [lc, lmoney, ltile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i].first, path[i - 1].first, false, LevelMode::Level);
 			if (lc.Succeeded()) result.cost += lc.GetCost();
-			c = Command<Commands::BuildRail>::Do(do_flags, path[i].first, RAILTYPE_RAIL, track, true);
+			CommandCost c2 = Command<Commands::BuildRail>::Do(do_flags, path[i].first, RAILTYPE_RAIL, track, true);
+			Debug(misc, 0, "AC: rail retry at 0x{:X} err {} level {} retry {}",
+					path[i].first.base(), c.GetErrorMessage().base(),
+					lc.Succeeded() ? 1 : 0, c2.Succeeded() ? 1 : 0);
+			c = c2;
 		}
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
