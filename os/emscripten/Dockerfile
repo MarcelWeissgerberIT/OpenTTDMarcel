@@ -13,3 +13,6 @@ COPY ports/liblzma.py /emsdk/upstream/emscripten/tools/ports/contrib/liblzma.py
 # antwortete am 2026-08-17 stundenlang mit HTTP 503). Gleiche Dateinamen
 # und Versionen wie der 6.0.1-Cache erwartet.
 COPY ports-cache/ /emsdk/upstream/emscripten/cache/ports/
+# Der Build laeuft im Container nicht als root - Cache muss beschreibbar sein
+# (emcc entpackt die Archive beim ersten Kompilieren dorthin).
+RUN chmod -R a+rwX /emsdk/upstream/emscripten/cache
