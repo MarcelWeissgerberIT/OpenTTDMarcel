@@ -5,7 +5,7 @@
 
 const SESSION_COOKIE = 'ottd_session';
 const SESSION_DAYS = 30;
-const PBKDF2_ITERATIONS = 200000;
+const PBKDF2_ITERATIONS = 100000;
 
 const ALLOWED_ORIGINS = [
 	'https://marcelweissgerberit.github.io',
@@ -166,7 +166,8 @@ export default {
 			if (url.pathname === '/api/logout' && request.method === 'POST') return await handleLogout(request, env, cors);
 			if (url.pathname === '/api/me' && request.method === 'GET') return await handleMe(request, env, cors);
 		} catch (e) {
-			return json({ error: 'server_error' }, 500, cors);
+			/* Diagnose-Detail, solange Phase 2 stabilisiert wird. */
+			return json({ error: 'server_error', detail: String(e && e.message || e).slice(0, 200) }, 500, cors);
 		}
 
 		return json({ error: 'not_found' }, 404, cors);
