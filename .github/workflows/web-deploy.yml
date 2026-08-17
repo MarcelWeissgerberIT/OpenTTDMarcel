@@ -46,6 +46,14 @@ jobs:
           cp build/openttd.html build/openttd.js build/openttd.wasm build/openttd.data site/
           touch site/.nojekyll
 
+      - name: Cache-Busting (Browser laedt nach jedem Deploy frische Dateien)
+        run: |
+          V="${GITHUB_SHA::8}"
+          sed -i "s|openttd\.js|openttd.js?v=${V}|g" site/index.html site/openttd.html
+          sed -i "s|\"openttd\.data\"|\"openttd.data?v=${V}\"|g" site/openttd.js
+          sed -i "s|\"openttd\.wasm\"|\"openttd.wasm?v=${V}\"|g" site/openttd.js
+          grep -o "openttd.js?v=${V}" site/index.html | head -1
+
       - name: Auf gh-pages veröffentlichen (Branch-Deployment übernimmt)
         run: |
           cd site
