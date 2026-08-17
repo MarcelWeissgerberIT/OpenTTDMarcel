@@ -1562,6 +1562,8 @@ static const SpriteID SPR_SELECT_TOYLAND_PUSHED      = 4889;
 static const SpriteID SPR_SELECT_CANDYLAND           = 4890;
 static const SpriteID SPR_SELECT_CANDYLAND_PUSHED    = 4891;
 static const SpriteID SPR_IMG_AUTOCONNECT            = 4892;
+static const SpriteID SPR_WAITING_PASSENGERS_1       = 4893;
+static const SpriteID SPR_WAITING_PASSENGERS_2       = 4894;
 /** @} */
 
 /** @defgroup cursor_sprites Cursor sprite numbers.

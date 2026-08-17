@@ -3515,6 +3515,22 @@ static void DrawTile_Station(TileInfo *ti)
 	}
 
 	DrawRailTileSeq(ti, t, TransparencyOption::Buildings, total_offset, relocation, palette);
+
+	/* Fork: Wartende Passagiere auf dem Bahnsteig sichtbar machen. */
+	if (IsRailStation(ti->tile) && !IsStationTileBlocked(ti->tile) && st != nullptr && Station::IsExpected(st)) {
+		const Station *stn = Station::From(st);
+		uint waiting = 0;
+		for (const CargoSpec *cs : CargoSpec::Iterate()) {
+			if (cs->classes.Test(CargoClass::Passengers)) waiting += stn->goods[cs->Index()].TotalCount();
+		}
+		if (waiting > 10) {
+			AddSortableSpriteToDraw(SPR_WAITING_PASSENGERS_1, PAL_NONE, *ti, {{4, 4, 0}, {6, 6, 6}, {}});
+		}
+		if (waiting > 60) {
+			AddSortableSpriteToDraw(SPR_WAITING_PASSENGERS_2, PAL_NONE, *ti, {{9, 8, 0}, {6, 6, 6}, {}});
+		}
+	}
+
 	DrawBridgeMiddle(ti, GetStationBlockedPillars(bridgeable_info, GetStationGfx(ti->tile)));
 }
 
