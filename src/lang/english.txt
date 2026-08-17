@@ -2344,6 +2344,17 @@ STR_AUTOCONNECT_SUGGEST                                         :{BLACK}Cargo su
 STR_AUTOCONNECT_SUGGEST_TOOLTIP                                 :{BLACK}Finds the most promising unserved industry link. Click again to build it as a rail line
 STR_AUTOCONNECT_SUGGEST_RESULT                                  :{BLACK}Suggestion: {INDUSTRY} → {INDUSTRY}. Click again to build!
 STR_AUTOCONNECT_SUGGEST_NONE                                    :{BLACK}No promising cargo link found
+
+# Citizen info window (fork feature, city life 3.0)
+STR_CITIZEN_CAPTION                                             :{WHITE}{RAW_STRING}
+STR_CITIZEN_AGE                                                 :{BLACK}Age: {NUM} years
+STR_CITIZEN_INTEREST                                            :{BLACK}Interest: {RAW_STRING}
+STR_CITIZEN_HOME                                                :{BLACK}Lives in: {TOWN}
+STR_CITIZEN_GOAL_STATION                                        :{BLACK}Plans: walking to the station
+STR_CITIZEN_GOAL_VISIT                                          :{BLACK}Plans: visiting friends
+STR_CITIZEN_GOAL_HOME                                           :{BLACK}Plans: heading home
+STR_CITIZEN_GOAL_SHOPPING                                       :{BLACK}Plans: going shopping
+STR_CITIZEN_GOAL_DRIVE                                          :{BLACK}Plans: taking the car for a spin
 STR_INTRO_SCALE_100                                             :1x
 STR_INTRO_SCALE_150                                             :1.5x
 STR_INTRO_SCALE_200                                             :2x

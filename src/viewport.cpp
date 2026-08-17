@@ -99,6 +99,8 @@
 #include "table/strings.h"
 #include "table/string_colours.h"
 
+#include "citizen.h"
+
 #include "safeguards.h"
 
 Point _tile_fract_coords;
@@ -2511,6 +2513,13 @@ bool HandleViewportClicked(const Viewport &vp, int x, int y)
 	}
 
 	if (CheckClickOnViewportSign(vp, x, y)) return true;
+
+	/* Fork Stadtleben 3.0: Klick auf einen Buerger oeffnet dessen Info. */
+	{
+		Point pt = TranslateXYToTileCoord(vp, x, y);
+		if (pt.x != -1 && CheckClickOnCitizen(pt.x, pt.y)) return true;
+	}
+
 	bool result = CheckClickOnLandscape(vp, x, y);
 
 	if (v != nullptr) {

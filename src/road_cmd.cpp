@@ -38,6 +38,7 @@
 #include "timer/timer_game_calendar.h"
 #include "timer/timer_game_tick.h"
 #include "animated_tile_func.h"
+#include "citizen.h"
 #include "genworld.h"
 #include "company_gui.h"
 #include "road_func.h"
@@ -1711,33 +1712,6 @@ static void DrawRoadBits(TileInfo *ti)
 	}
 }
 
-/**
- * Fork: Stadtleben - liegt auf dieser Stadtstrasse ein laufender Passant?
- * Nur gerade Stuecke (X/Y) kommen in die Animationsliste; auf Kreuzungen
- * und Kurven stehen die Figuren weiterhin still.
- */
-static bool HasStreetLifePedestrian(TileIndex tile)
-{
-	if (!IsNormalRoadTile(tile)) return false;
-	if (GetRoadOwner(tile, RoadTramType::Road) != OWNER_TOWN) return false;
-	if (GetTileSlope(tile) != SLOPE_FLAT) return false;
-	if (IsBridgeAbove(tile)) return false;
-	RoadBits bits = GetRoadBits(tile, RoadTramType::Road);
-	if (bits != ROAD_X && bits != ROAD_Y) return false;
-	uint32_t h = TileX(tile) * 7919u ^ TileY(tile) * 104729u;
-	if (bits == ROAD_X && (h & 7) == 0) return false; /* Dort parkt ein Auto. */
-	bool near_station = false;
-	for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
-		TileIndex n = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(d));
-		if (n != INVALID_TILE && IsTileType(n, TileType::Station)) {
-			near_station = true;
-			break;
-		}
-	}
-	uint chance_mask = near_station ? 1 : 7;
-	return (h & chance_mask) == 1 || (h & 7) == 5;
-}
-
 /** @copydoc DrawTileProc */
 static void DrawTile_Road(TileInfo *ti)
 {
@@ -1746,43 +1720,16 @@ static void DrawTile_Road(TileInfo *ti)
 		case RoadTileType::Normal:
 			DrawRoadBits(ti);
 
-			/* Fork: Stadtleben - geparkte Autos und Passanten auf flachen
-			 * Stadtstrassen, deterministisch aus der Kachelposition. */
+			/* Fork Stadtleben 3.0: geparkte Autos (Deko) und echte Buerger.
+			 * Die Parkluecke bleibt leer, solange "ihr" Auto unterwegs ist. */
 			if (GetRoadOwner(ti->tile, RoadTramType::Road) == OWNER_TOWN && ti->tileh == SLOPE_FLAT && !IsBridgeAbove(ti->tile)) {
 				uint32_t h = TileX(ti->tile) * 7919u ^ TileY(ti->tile) * 104729u;
 				RoadBits bits = GetRoadBits(ti->tile, RoadTramType::Road);
-				/* Neben Stationen ist mehr los (Bahnhofsvorplatz-Effekt). */
-				bool near_station = false;
-				for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
-					TileIndex n = AddTileIndexDiffCWrap(ti->tile, TileIndexDiffCByDiagDir(d));
-					if (n != INVALID_TILE && IsTileType(n, TileType::Station)) {
-						near_station = true;
-						break;
-					}
-				}
-				uint chance_mask = near_station ? 1 : 7;
-				if (bits == ROAD_X && (h & 7) == 0) {
+				if (bits == ROAD_X && (h & 7) == 0 && !IsParkedCarAway(ti->tile)) {
 					AddSortableSpriteToDraw(SPR_PARKED_CAR, PAL_NONE, *ti, {{5, 11, 0}, {6, 3, 4}, {}});
-				} else if ((h & chance_mask) == 1 || (h & 7) == 5) {
-					/* Auf geraden Stuecken pendelt der Passant die Strasse
-					 * entlang; der TileLoop haelt die Kachel dafuer in der
-					 * Animationsliste, damit sie regelmaessig neu gezeichnet
-					 * wird. Auf Kreuzungen/Kurven bleibt er stehen. */
-					int8_t px = 3, py = 2;
-					if (bits == ROAD_X || bits == ROAD_Y) {
-						uint step = static_cast<uint>(TimerGameTick::counter / 4 + h) % 22;
-						int8_t walk = static_cast<int8_t>(1 + (step < 11 ? step : 21 - step));
-						if (bits == ROAD_X) {
-							px = walk;
-							py = (h & 16) != 0 ? 2 : 10;
-						} else {
-							py = walk;
-							px = (h & 16) != 0 ? 2 : 10;
-						}
-					}
-					AddSortableSpriteToDraw((h & 8) != 0 ? SPR_WAITING_PASSENGERS_1 : SPR_WAITING_PASSENGERS_2, PAL_NONE, *ti, {{px, py, 0}, {5, 4, 5}, {}});
 				}
 			}
+			DrawCitizensOnTile(ti);
 
 			if (IsBridgeAbove(ti->tile)) {
 				RoadBits bits = GetAllRoadBits(ti->tile);
@@ -2077,25 +2024,18 @@ static_assert(lengthof(_town_road_types_2) == NUM_HOUSE_ZONES);
 
 
 /**
- * Fork: Stadtleben - laesst Passanten-Kacheln regelmaessig neu zeichnen,
- * damit die Figuren sichtbar die Strasse entlanglaufen.
+ * Fork: Altlast aus Stadtleben 2.0 - Strassenkacheln aus alten Spielstaenden
+ * koennen noch in der Animationsliste stehen; nur austragen.
  * @copydoc AnimateTileProc
  */
 static void AnimateTile_Road(TileIndex tile)
 {
-	if (!HasStreetLifePedestrian(tile)) {
-		DeleteAnimatedTile(tile);
-		return;
-	}
-	if (TimerGameTick::counter % 4 == 0) MarkTileDirtyByTile(tile);
+	DeleteAnimatedTile(tile);
 }
 
 /** @copydoc TileLoopProc */
 static void TileLoop_Road(TileIndex tile)
 {
-	/* Fork: Stadtleben - Kacheln mit laufenden Passanten animieren. */
-	if (HasStreetLifePedestrian(tile)) AddAnimatedTile(tile, false);
-
 	switch (_settings_game.game_creation.landscape) {
 		case LandscapeType::Arctic: {
 			/* Roads use the snow level of their maximum height minus one, unless flat. */

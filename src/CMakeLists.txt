@@ -65,6 +65,8 @@ add_files(
     airport_cmd.h
     airport_gui.cpp
     autoconnect_gui.cpp
+    citizen.cpp
+    citizen.h
     animated_tile.cpp
     animated_tile_func.h
     animated_tile_map.h

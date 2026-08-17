@@ -418,6 +418,12 @@ enum class WindowClass : uint16_t {
 	AutoConnect,
 
 	/**
+	 * Buerger-Info (Fork-Feature Stadtleben 3.0); %Window numbers:
+	 *   - Buerger-ID
+	 */
+	Citizen,
+
+	/**
 	 * Build station; %Window numbers:
 	 *   - #TransportType::Air = #AirportPickerWidgets
 	 *   - #TransportType::Water = #DockToolbarWidgets

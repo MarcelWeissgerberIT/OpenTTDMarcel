@@ -93,6 +93,8 @@
 #	include <emscripten/html5.h>
 #endif
 
+#include "citizen.h"
+
 #include "safeguards.h"
 
 void CallLandscapeTick();
@@ -1249,6 +1251,7 @@ void StateGameLoop()
 
 		BasePersistentStorageArray::SwitchMode(PSM_ENTER_GAMELOOP);
 		AnimateAnimatedTiles();
+		RunCitizensTick(); /* Fork: Stadtleben 3.0 */
 		if (TimerManager<TimerGameCalendar>::Elapsed({})) {
 			RunVehicleCalendarDayProc();
 		}

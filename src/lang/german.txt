@@ -2313,6 +2313,17 @@ STR_AUTOCONNECT_SUGGEST                                         :{BLACK}Güter-V
 STR_AUTOCONNECT_SUGGEST_TOOLTIP                                 :{BLACK}Findet die vielversprechendste unbediente Industrie-Verbindung. Nochmal klicken baut sie als Bahnstrecke
 STR_AUTOCONNECT_SUGGEST_RESULT                                  :{BLACK}Vorschlag: {INDUSTRY} → {INDUSTRY}. Nochmal klicken zum Bauen!
 STR_AUTOCONNECT_SUGGEST_NONE                                    :{BLACK}Kein lohnender Güter-Vorschlag gefunden
+
+# Citizen info window (fork feature, city life 3.0)
+STR_CITIZEN_CAPTION                                             :{WHITE}{RAW_STRING}
+STR_CITIZEN_AGE                                                 :{BLACK}Alter: {NUM} Jahre
+STR_CITIZEN_INTEREST                                            :{BLACK}Interesse: {RAW_STRING}
+STR_CITIZEN_HOME                                                :{BLACK}Wohnt in: {TOWN}
+STR_CITIZEN_GOAL_STATION                                        :{BLACK}Vorhaben: geht zum Bahnhof
+STR_CITIZEN_GOAL_VISIT                                          :{BLACK}Vorhaben: besucht Freunde
+STR_CITIZEN_GOAL_HOME                                           :{BLACK}Vorhaben: geht nach Hause
+STR_CITIZEN_GOAL_SHOPPING                                       :{BLACK}Vorhaben: geht einkaufen
+STR_CITIZEN_GOAL_DRIVE                                          :{BLACK}Vorhaben: fährt eine Runde
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×

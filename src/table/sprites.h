@@ -57,7 +57,7 @@ static const SpriteID SPR_LARGE_SMALL_WINDOW = 682;
 
 /** @{
  * Extra graphic spritenumbers */
-static const SpriteID SPR_OPENTTD_BASE   = 4896;
+static const SpriteID SPR_OPENTTD_BASE   = 4902; /* Fork: +6 Buerger-Sprites in den Logos-Slots 103-108. */
 static const uint16_t OPENTTD_SPRITE_COUNT = 192;
 /** @} */
 
@@ -1565,6 +1565,13 @@ static const SpriteID SPR_IMG_AUTOCONNECT            = 4892;
 static const SpriteID SPR_WAITING_PASSENGERS_1       = 4893;
 static const SpriteID SPR_WAITING_PASSENGERS_2       = 4894;
 static const SpriteID SPR_PARKED_CAR                 = 4895;
+/* Stadtleben 3.0 (Fork): Buerger und Zivilverkehr, Logos-Slots 103-108. */
+static const SpriteID SPR_CIV_CAR_Y                  = 4896;
+static const SpriteID SPR_CITIZEN_CHILD              = 4897;
+static const SpriteID SPR_CITIZEN_STROLLER           = 4898;
+static const SpriteID SPR_CITIZEN_FAMILY             = 4899;
+static const SpriteID SPR_CITIZEN_WALK_1             = 4900;
+static const SpriteID SPR_CITIZEN_WALK_2             = 4901;
 /** @} */
 
 /** @defgroup cursor_sprites Cursor sprite numbers.
