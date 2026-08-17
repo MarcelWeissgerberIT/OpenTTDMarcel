@@ -51,6 +51,7 @@
 #include "station_map.h"
 #include "roadstop_base.h"
 #include "depot_base.h"
+#include "industry.h"
 #include "water_map.h"
 #include "station_cmd.h"
 #include "strings_func.h"
@@ -85,14 +86,14 @@ static Order MakeStationOrder(StationID station)
  * Nächstgelegene eigene Station mit gewünschter Einrichtung nahe der
  * Stadt suchen (Wiederverwendung statt Neubau).
  */
-static Station *FindNearbyOwnStation(const Town *t, StationFacility fac, uint radius)
+static Station *FindNearbyOwnStation(TileIndex center, StationFacility fac, uint radius)
 {
 	Station *best = nullptr;
 	uint best_dist = radius + 1;
 	for (Station *st : Station::Iterate()) {
 		if (st->owner != _local_company) continue;
 		if (!st->facilities.Test(fac)) continue;
-		uint d = DistanceManhattan(st->xy, t->xy);
+		uint d = DistanceManhattan(st->xy, center);
 		if (d < best_dist) {
 			best_dist = d;
 			best = st;
@@ -183,8 +184,8 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 	Backup<CompanyID> cur_company(_current_company, _local_company);
 
 	/* Bestehende eigene Flughäfen in Stadtnähe wiederverwenden. */
-	Station *re_a = FindNearbyOwnStation(town_a, StationFacility::Airport, 25);
-	Station *re_b = FindNearbyOwnStation(town_b, StationFacility::Airport, 25);
+	Station *re_a = FindNearbyOwnStation(town_a->xy, StationFacility::Airport, 25);
+	Station *re_b = FindNearbyOwnStation(town_b->xy, StationFacility::Airport, 25);
 	if (re_a != nullptr && re_a == re_b) re_b = nullptr;
 
 	TileIndex site_a = INVALID_TILE;
@@ -400,8 +401,8 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 	Backup<CompanyID> cur_company(_current_company, _local_company);
 
 	/* Bestehende eigene Haltestellen in Stadtnähe wiederverwenden. */
-	Station *re_a = FindNearbyOwnStation(town_a, StationFacility::BusStop, 20);
-	Station *re_b = FindNearbyOwnStation(town_b, StationFacility::BusStop, 20);
+	Station *re_a = FindNearbyOwnStation(town_a->xy, StationFacility::BusStop, 20);
+	Station *re_b = FindNearbyOwnStation(town_b->xy, StationFacility::BusStop, 20);
 	if (re_a != nullptr && re_a == re_b) re_b = nullptr;
 	bool build_a = re_a == nullptr || re_a->bus_stops == nullptr;
 	bool build_b = re_b == nullptr || re_b->bus_stops == nullptr;
@@ -569,6 +570,22 @@ static bool IsRailBuildableTile(TileIndex tile)
 }
 
 /**
+ * Taugt die Kachel als Streckenausfahrt? Sie braucht neben der
+ * Bahnhofsseite mindestens einen weiteren bebaubaren Nachbarn, sonst
+ * beginnt die Wegsuche in einer Sackgasse.
+ */
+static bool IsUsableExit(TileIndex exit, DiagDirection exit_dir)
+{
+	if (exit == INVALID_TILE || !IsRailBuildableTile(exit)) return false;
+	for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
+		if (d == ReverseDiagDir(exit_dir)) continue; /* zurück zum Bahnhof */
+		TileIndex n = AddTileIndexDiffCWrap(exit, TileIndexDiffCByDiagDir(d));
+		if (n != INVALID_TILE && (IsRailBuildableTile(n) || IsTileType(n, TileType::Water))) return true;
+	}
+	return false;
+}
+
+/**
  * RailSite aus einem bestehenden eigenen Bahnhof ableiten. Liefert
  * false, wenn die nötigen Anschlusskacheln nicht frei sind.
  */
@@ -589,8 +606,8 @@ static bool RailSiteFromStation(const Station *st, TileIndex toward, bool need_b
 
 	TileIndex exit_near = AddTileIndexDiffCWrap(ta.tile, TileIndexDiffCByDiagDir(ReverseDiagDir(far_dir)));
 	TileIndex exit_far = AddTileIndexDiffCWrap(far_end, TileIndexDiffCByDiagDir(far_dir));
-	bool near_ok = exit_near != INVALID_TILE && IsRailBuildableTile(exit_near);
-	bool far_ok = exit_far != INVALID_TILE && IsRailBuildableTile(exit_far);
+	bool near_ok = IsUsableExit(exit_near, ReverseDiagDir(far_dir));
+	bool far_ok = IsUsableExit(exit_far, far_dir);
 	if (need_both ? (!near_ok || !far_ok) : (!near_ok && !far_ok)) return false;
 
 	bool use_far = far_ok && (!near_ok || DistanceManhattan(exit_far, toward) < DistanceManhattan(exit_near, toward));
@@ -615,10 +632,10 @@ static bool RailSiteFromStation(const Station *st, TileIndex toward, bool need_b
  * Stadt suchen. Das Anschluss-Ende wird Richtung \a toward gewählt.
  * @param need_both Ringbetrieb: beide Bahnsteig-Enden brauchen Anschluss.
  */
-static RailSite FindRailStationSite(const Town *t, TileIndex toward, bool need_both, uint8_t numtracks)
+static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool need_both, uint8_t numtracks)
 {
 	RailSite site;
-	for (TileIndex tile : SpiralTileSequence(t->xy, 30)) {
+	for (TileIndex tile : SpiralTileSequence(center, 30)) {
 		for (Axis axis : {Axis::X, Axis::Y}) {
 			CommandCost res = Command<Commands::BuildRailStation>::Do({}, tile, RAILTYPE_RAIL,
 					axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
@@ -634,8 +651,8 @@ static RailSite FindRailStationSite(const Town *t, TileIndex toward, bool need_b
 
 			TileIndex exit_near = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(ReverseDiagDir(far_dir)));
 			TileIndex exit_far = AddTileIndexDiffCWrap(far_end, TileIndexDiffCByDiagDir(far_dir));
-			bool near_ok = exit_near != INVALID_TILE && IsRailBuildableTile(exit_near);
-			bool far_ok = exit_far != INVALID_TILE && IsRailBuildableTile(exit_far);
+			bool near_ok = IsUsableExit(exit_near, ReverseDiagDir(far_dir));
+			bool far_ok = IsUsableExit(exit_far, far_dir);
 			if (need_both ? (!near_ok || !far_ok) : (!near_ok && !far_ok)) continue;
 
 			/* Primäranschluss Richtung Ziel wählen. */
@@ -834,7 +851,7 @@ static void BuildLoopSignal(TileIndex tile, DiagDirection entry_edge, DiagDirect
  * @param signals Einseitige Pfadsignale in Fahrtrichtung setzen (Ringbetrieb).
  * @return false bei Baufehler (result.error ist dann gesetzt).
  */
-static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>> &path, DiagDirection final_exit_edge, bool signals, DoCommandFlags do_flags, AutoConnectResult &result)
+static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>> &path, DiagDirection final_exit_edge, [[maybe_unused]] bool signals, DoCommandFlags do_flags, AutoConnectResult &result)
 {
 	/* Brückenkacheln: aufeinanderfolgende Zustände mit Abstand > 1. */
 	std::set<size_t> bridge_heads;
@@ -898,18 +915,22 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 		result.cost += c.GetCost();
 	}
 
-	/* Signale in Fahrtrichtung, alle paar Kacheln (auch auf Diagonalen). */
-	if (signals) {
-		uint since = 3;
-		for (size_t i = 1; i + 1 < path.size(); i++) {
-			since++;
-			if (since < 4) continue;
-			if (bridge_heads.count(i) != 0) continue;
-			BuildLoopSignal(path[i].first, ReverseDiagDir(path[i].second), path[i + 1].second); /* Fehlschlag ist ok */
-			since = 0;
-		}
-	}
 	return true;
+}
+
+/** Einbahn-Signale entlang eines gebauten Pfads setzen (alle 4 Kacheln). */
+static void SignalisePath(const std::vector<std::pair<TileIndex, DiagDirection>> &path, AutoConnectResult &result)
+{
+	uint since = 3;
+	for (size_t i = 1; i + 1 < path.size(); i++) {
+		since++;
+		if (since < 4) continue;
+		if (DistanceManhattan(path[i].first, path[i + 1].first) > 1) continue; /* Brücke */
+		if (i > 0 && DistanceManhattan(path[i - 1].first, path[i].first) > 1) continue; /* Brückenkopf */
+		BuildLoopSignal(path[i].first, ReverseDiagDir(path[i].second), path[i + 1].second); /* Fehlschlag ist ok */
+		since = 0;
+	}
+	(void)result;
 }
 
 /**
@@ -939,7 +960,7 @@ static void BuildStationFan(TileIndex exit_tile, DiagDirection exit_dir, DiagDir
  * Einbahn-Ring über beide Bahnhöfe (2 Gleise je Bahnhof, Weichen an
  * den Enden) mit einseitigen Pfadsignalen.
  */
-static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint train_count, uint8_t cargo_mode, bool estimate)
+static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex center_b, uint train_count, uint8_t cargo_mode, CargoType freight, bool estimate)
 {
 	static const uint TRAIN_WAGONS = 3; ///< Waggons je Zug.
 	AutoConnectResult result;
@@ -948,16 +969,16 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 	bool loop = train_count > 1;
 	uint8_t numtracks = loop ? 2 : 1;
 
-	/* Bestehende eigene Bahnhöfe in Stadtnähe wiederverwenden. */
-	Station *re_a = FindNearbyOwnStation(town_a, StationFacility::Train, 25);
-	Station *re_b = FindNearbyOwnStation(town_b, StationFacility::Train, 25);
+	/* Bestehende eigene Bahnhöfe in der Nähe wiederverwenden. */
+	Station *re_a = FindNearbyOwnStation(center_a, StationFacility::Train, 25);
+	Station *re_b = FindNearbyOwnStation(center_b, StationFacility::Train, 25);
 	if (re_a != nullptr && re_a == re_b) re_b = nullptr;
 
 	RailSite site_a, site_b;
-	bool build_st_a = re_a == nullptr || !RailSiteFromStation(re_a, town_b->xy, loop, site_a);
-	bool build_st_b = re_b == nullptr || !RailSiteFromStation(re_b, town_a->xy, loop, site_b);
-	if (build_st_a) site_a = FindRailStationSite(town_a, town_b->xy, loop, numtracks);
-	if (build_st_b) site_b = FindRailStationSite(town_b, town_a->xy, loop, numtracks);
+	bool build_st_a = re_a == nullptr || !RailSiteFromStation(re_a, center_b, loop, site_a);
+	bool build_st_b = re_b == nullptr || !RailSiteFromStation(re_b, center_a, loop, site_b);
+	if (build_st_a) site_a = FindRailStationSite(center_a, center_b, loop, numtracks);
+	if (build_st_b) site_b = FindRailStationSite(center_b, center_a, loop, numtracks);
 	if (site_a.tile == INVALID_TILE || site_b.tile == INVALID_TILE) {
 		result.error = STR_AUTOCONNECT_ERR_NO_RAIL_SITE;
 		cur_company.Restore();
@@ -999,6 +1020,7 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 		cur_company.Restore();
 		return result;
 	}
+	std::vector<std::pair<TileIndex, DiagDirection>> path2;
 	if (loop && !estimate) {
 		DiagDirection perp_a = (site_a.axis == Axis::X) ? DiagDirection::SE : DiagDirection::SW;
 		DiagDirection perp_b = (site_b.axis == Axis::X) ? DiagDirection::SE : DiagDirection::SW;
@@ -1014,7 +1036,7 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 		from2.exit_dir = site_b.exit2_dir;
 		to2.exit = site_a.exit2;
 		to2.exit_dir = site_a.exit2_dir;
-		auto path2 = FindRailPath(from2, to2);
+		path2 = FindRailPath(from2, to2);
 		if (path2.empty()) {
 			result.error = STR_AUTOCONNECT_ERR_NO_RAIL_PATH;
 			cur_company.Restore();
@@ -1039,10 +1061,28 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 		cur_company.Restore();
 		return result;
 	}
-	/* Waggonwahl: bei "beides" zwei Passagier- und ein Postwaggon. */
+	/* Waggonwahl: Güterzug nimmt refit-fähige Waggons der Frachtart,
+	 * sonst bei "beides" zwei Passagier- und ein Postwaggon. */
 	EngineID w_pax = FindBestWagon({CargoClass::Passengers});
 	EngineID w_mail = FindBestWagon({CargoClass::Mail});
+	EngineID w_freight = EngineID::Invalid();
+	if (freight != INVALID_CARGO) {
+		uint best_cap = 0;
+		for (const Engine *e : Engine::IterateType(VehicleType::Train)) {
+			if (!e->company_avail.Test(_local_company)) continue;
+			const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
+			if (rvi.railveh_type != RailVehicleType::Wagon) continue;
+			if (!rvi.railtypes.Test(RAILTYPE_RAIL)) continue;
+			if (e->GetDefaultCargoType() != freight && !e->info.refit_mask.Test(freight)) continue;
+			uint cap = e->GetDisplayDefaultCapacity();
+			if (cap >= best_cap) {
+				best_cap = cap;
+				w_freight = e->index;
+			}
+		}
+	}
 	auto pick_wagon = [&](uint j) {
+		if (freight != INVALID_CARGO) return w_freight;
 		bool want_mail = cargo_mode == 1 || (cargo_mode == 2 && j == TRAIN_WAGONS - 1);
 		EngineID e = want_mail ? w_mail : w_pax;
 		if (e == EngineID::Invalid()) e = want_mail ? w_pax : w_mail;
@@ -1060,12 +1100,12 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 		return result;
 	}
 
-	/* Depot an einer geraden Streckenkachel nahe Bahnhof A. */
+	/* Depot an einer Streckenkachel (gerade oder diagonal). */
 	TileIndex depot = INVALID_TILE;
-	for (size_t i = 1; i < std::min<size_t>(path.size(), 25) && depot == INVALID_TILE; i++) {
+	for (size_t i = 1; i + 1 < path.size() && depot == INVALID_TILE; i++) {
 		DiagDirection entry_edge = ReverseDiagDir(path[i].second);
 		DiagDirection exit_edge = (i + 1 < path.size()) ? path[i + 1].second : ReverseDiagDir(site_b.exit_dir);
-		if (exit_edge != path[i].second) continue; /* nur gerade Kacheln */
+		if (entry_edge == exit_edge) continue; /* degeneriert */
 		for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
 			if (d == entry_edge || d == exit_edge) continue;
 			TileIndex cand = AddTileIndexDiffCWrap(path[i].first, TileIndexDiffCByDiagDir(d));
@@ -1109,21 +1149,63 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 			EngineID wagon = pick_wagon(i);
 			if (wagon == EngineID::Invalid()) continue;
 			auto [cost_w, wagon_id, rw1, rw2, rw3] =
-					Command<Commands::BuildVehicle>::Do(DoCommandFlag::Execute, depot, wagon, true, INVALID_CARGO, ClientID::Invalid);
+					Command<Commands::BuildVehicle>::Do(DoCommandFlag::Execute, depot, wagon, true, freight, ClientID::Invalid);
 			if (cost_w.Failed()) break;
 			result.cost += cost_w.GetCost();
 			Command<Commands::MoveRailVehicle>::Do(DoCommandFlag::Execute, wagon_id, veh_id, false);
 		}
 
-		CommandCost co_a = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 0, MakeStationOrder(st_a->index));
+		Order oa = MakeStationOrder(st_a->index);
+		if (freight != INVALID_CARGO) oa.SetLoadType(OrderLoadType::FullLoadAny); /* an der Quelle volladen */
+		CommandCost co_a = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 0, oa);
 		if (co_a.Failed()) result.error_detail = co_a.GetErrorMessage().base();
 		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 1, MakeStationOrder(st_b->index));
 		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
 	}
 
+	/* Signale erst jetzt: eine abgebrochene Baustelle hinterlässt so
+	 * nie sinnlos besignalte Gleise ohne Züge. */
+	if (loop) {
+		SignalisePath(path, result);
+		if (!path2.empty()) SignalisePath(path2, result);
+	}
+
 	cur_company.Restore();
 	result.ok = true;
 	return result;
+}
+
+/**
+ * Lohnendste unbediente Industrie-Verbindung suchen.
+ * @return true bei Fund; Quelle, Ziel und Frachtart in den Out-Parametern.
+ */
+static bool FindFreightSuggestion(IndustryID &out_a, IndustryID &out_b, CargoType &out_cargo)
+{
+	uint best_score = 0;
+	for (const Industry *src : Industry::Iterate()) {
+		for (const auto &p : src->produced) {
+			if (p.cargo == INVALID_CARGO || p.rate == 0) continue;
+			/* Schon bedient? Eigene Station in Reichweite der Quelle. */
+			if (FindNearbyOwnStation(src->location.tile, StationFacility::Train, 8) != nullptr) continue;
+			for (const Industry *dst : Industry::Iterate()) {
+				if (dst == src) continue;
+				for (const auto &a : dst->accepted) {
+					if (a.cargo != p.cargo) continue;
+					uint dist = DistanceManhattan(src->location.tile, dst->location.tile);
+					if (dist < 16 || dist > 140) continue;
+					/* Hohe Produktion gut, mittlere Distanz ideal. */
+					uint score = uint(p.rate) * 1000 / (30 + (dist > 60 ? dist - 60 : 60 - dist));
+					if (score > best_score) {
+						best_score = score;
+						out_a = src->index;
+						out_b = dst->index;
+						out_cargo = p.cargo;
+					}
+				}
+			}
+		}
+	}
+	return best_score > 0;
 }
 
 /* ------------------------- Schiffsverbindung (Stufe 3) ---------------- */
@@ -1341,6 +1423,9 @@ struct AutoConnectWindow : Window {
 	uint count = 2;
 	uint8_t mode = 0; ///< 0 = Flugzeuge, 1 = Busse, 2 = Zug, 3 = Schiffe.
 	uint8_t cargo = 0; ///< 0 = Passagiere, 1 = Post, 2 = beides.
+	IndustryID sug_a = IndustryID::Invalid(); ///< Güter-Vorschlag: Quelle.
+	IndustryID sug_b = IndustryID::Invalid(); ///< Güter-Vorschlag: Ziel.
+	CargoType sug_cargo = INVALID_CARGO; ///< Güter-Vorschlag: Frachtart.
 	WidgetID picking_for = 0; ///< Widget, für das gerade eine Stadt gewählt wird (0 = keins).
 	std::string status;
 
@@ -1408,6 +1493,34 @@ struct AutoConnectWindow : Window {
 				this->SetDirty();
 				break;
 
+			case WID_AC_SUGGEST: {
+				if (_networking) break;
+				if (this->sug_cargo != INVALID_CARGO) {
+					/* Zweiter Klick: Vorschlag als Güterzug bauen. */
+					Industry *ia = Industry::GetIfValid(this->sug_a);
+					Industry *ib = Industry::GetIfValid(this->sug_b);
+					if (ia != nullptr && ib != nullptr) {
+						AutoConnectResult res = BuildRailConnection(ia->location.tile, ib->location.tile, 1, 0, this->sug_cargo, false);
+						if (res.ok) {
+							this->status = GetString(STR_AUTOCONNECT_STATUS_DONE, res.cost);
+						} else {
+							this->status = GetString(res.error);
+							if (res.error_detail != 0) this->status += fmt::format(" [#{}]", res.error_detail);
+						}
+					}
+					this->sug_cargo = INVALID_CARGO;
+					this->sug_a = IndustryID::Invalid();
+					this->sug_b = IndustryID::Invalid();
+				} else if (FindFreightSuggestion(this->sug_a, this->sug_b, this->sug_cargo)) {
+					ScrollMainWindowToTile(Industry::Get(this->sug_a)->location.tile);
+					this->status = GetString(STR_AUTOCONNECT_SUGGEST_RESULT, this->sug_a, this->sug_b);
+				} else {
+					this->status = GetString(STR_AUTOCONNECT_SUGGEST_NONE);
+				}
+				this->SetDirty();
+				break;
+			}
+
 			case WID_AC_COUNT_DOWN:
 				if (this->count > 1) this->count--;
 				this->SetDirty();
@@ -1433,7 +1546,7 @@ struct AutoConnectWindow : Window {
 				auto run = [&](bool est) {
 					switch (this->mode) {
 						case 1: return BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
-						case 2: return BuildRailConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
+						case 2: return BuildRailConnection(Town::Get(this->town_a)->xy, Town::Get(this->town_b)->xy, this->count, this->cargo, INVALID_CARGO, est);
 						case 3: return BuildShipConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
 						default: return BuildAirConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, est);
 					}
@@ -1536,7 +1649,10 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_ESTIMATE), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_ESTIMATE, STR_AUTOCONNECT_ESTIMATE_TOOLTIP),
 				NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_AC_BUILD), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_BUILD, STR_AUTOCONNECT_BUILD_TOOLTIP),
 			EndContainer(),
-			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CHECK), SetFill(1, 0), SetMinimalSize(220, 14), SetStringTip(STR_AUTOCONNECT_CHECK, STR_AUTOCONNECT_CHECK_TOOLTIP),
+			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
+				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CHECK), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_CHECK, STR_AUTOCONNECT_CHECK_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_SUGGEST), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_SUGGEST, STR_AUTOCONNECT_SUGGEST_TOOLTIP),
+			EndContainer(),
 			NWidget(WWT_TEXT, Colours::Invalid, WID_AC_STATUS), SetFill(1, 0), SetMinimalSize(220, 28),
 		EndContainer(),
 	EndContainer(),

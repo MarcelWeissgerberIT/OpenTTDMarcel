@@ -21,6 +21,7 @@ enum AutoConnectWidgets : WidgetID {
 	WID_AC_COUNT_UP,   ///< Increase vehicle count.
 	WID_AC_ESTIMATE,   ///< Estimate cost without building.
 	WID_AC_CHECK,      ///< Scan own network for problems.
+	WID_AC_SUGGEST,    ///< Suggest and build a freight link.
 	WID_AC_BUILD,      ///< Build the connection.
 	WID_AC_STATUS,     ///< Status line.
 };

@@ -2309,6 +2309,10 @@ STR_AUTOCONNECT_CHECK_TOOLTIP                                   :{BLACK}Durchsuc
 STR_AUTOCONNECT_CHECK_OK                                        :{BLACK}Netz OK: {NUM} Fahrzeuge, keine Probleme gefunden
 STR_AUTOCONNECT_CHECK_RESULT                                    :{BLACK}Probleme: {NUM} ohne Auftrag, {NUM} gestoppt, {NUM} verirrt, {NUM} Station(en) unbedient
 STR_AUTOCONNECT_STATUS_EXTENDED                                 :{BLACK}Bestehende Verbindung erweitert: {NUM} Fahrzeug(e) ergänzt, Kosten {CURRENCY_LONG}
+STR_AUTOCONNECT_SUGGEST                                         :{BLACK}Güter-Vorschlag
+STR_AUTOCONNECT_SUGGEST_TOOLTIP                                 :{BLACK}Findet die vielversprechendste unbediente Industrie-Verbindung. Nochmal klicken baut sie als Bahnstrecke
+STR_AUTOCONNECT_SUGGEST_RESULT                                  :{BLACK}Vorschlag: {INDUSTRY} → {INDUSTRY}. Nochmal klicken zum Bauen!
+STR_AUTOCONNECT_SUGGEST_NONE                                    :{BLACK}Kein lohnender Güter-Vorschlag gefunden
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×
