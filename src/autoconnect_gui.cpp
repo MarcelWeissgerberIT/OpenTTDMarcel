@@ -664,24 +664,27 @@ static RailSite FindRailStationSite(const Town *t, TileIndex toward, bool need_b
  */
 static std::vector<std::pair<TileIndex, DiagDirection>> FindRailPath(const RailSite &from, const RailSite &to)
 {
-	using State = std::pair<TileIndex, DiagDirection>;
-	struct Node { TileIndex tile; DiagDirection dir; uint cost; uint est; };
+	/* Zustand: Kachel, Einfahrtrichtung und die Richtung davor. Letztere
+	 * erlaubt es, alternierende Richtungswechsel (= glatte 45-Grad-
+	 * Diagonale im Spiel) billig zu machen, echte Kurven aber teuer. */
+	using State = std::tuple<TileIndex, DiagDirection, DiagDirection>;
+	struct Node { TileIndex tile; DiagDirection dir; DiagDirection prev; uint cost; uint est; };
 	auto cmp = [](const Node &a, const Node &b) { return a.cost + a.est > b.cost + b.est; };
 	std::priority_queue<Node, std::vector<Node>, decltype(cmp)> open(cmp);
 	std::map<State, State> came_from;
 	std::map<State, uint> best;
 
 	auto heuristic = [&](TileIndex t) { return DistanceManhattan(t, to.exit) * 4; };
-	State start{from.exit, from.exit_dir};
-	open.push({from.exit, from.exit_dir, 0, heuristic(from.exit)});
+	State start{from.exit, from.exit_dir, from.exit_dir};
+	open.push({from.exit, from.exit_dir, from.exit_dir, 0, heuristic(from.exit)});
 	best[start] = 0;
 	uint expanded = 0;
-	State goal{INVALID_TILE, DiagDirection::Invalid};
+	State goal{INVALID_TILE, DiagDirection::Invalid, DiagDirection::Invalid};
 
 	while (!open.empty()) {
 		Node n = open.top();
 		open.pop();
-		State cur{n.tile, n.dir};
+		State cur{n.tile, n.dir, n.prev};
 		if (n.tile == to.exit && n.dir != to.exit_dir) { goal = cur; break; }
 		if (n.cost > best[cur]) continue;
 		if (++expanded > 400000) return {};
@@ -704,20 +707,24 @@ static std::vector<std::pair<TileIndex, DiagDirection>> FindRailPath(const RailS
 				if (land == INVALID_TILE || span > 12) continue;
 				if (!IsRailBuildableTile(land) || land == to.exit) continue;
 				uint nc = n.cost + (span + 2) * 12;
-				State ns{land, d};
+				State ns{land, d, d};
 				auto it = best.find(ns);
 				if (it != best.end() && it->second <= nc) continue;
 				best[ns] = nc;
 				came_from[ns] = cur;
-				open.push({land, d, nc, heuristic(land)});
+				open.push({land, d, d, nc, heuristic(land)});
 				continue;
 			}
 
 			uint step;
 			if (IsRailBuildableTile(next)) {
 				step = IsTileFlat(next) ? 8 : 14;
-				if (d != n.dir) step += 6; /* Kurven generell verteuern: glattere Strecken */
-				if (d != n.dir && !flat_here) step += 16; /* Kurve auf Hang: riskant */
+				if (d != n.dir) {
+					/* Alternierender Wechsel setzt eine Diagonale fort (billig),
+					 * alles andere ist eine echte Kurve (teuer). */
+					step += (d == n.prev) ? 1 : 8;
+					if (!flat_here) step += 16; /* Richtungswechsel auf Hang: riskant */
+				}
 			} else if (IsNormalRoadTile(next)) {
 				/* Bahnübergang nur senkrecht über gerade Straßen. */
 				RoadBits bits = GetRoadBits(next, RoadTramType::Road);
@@ -736,22 +743,22 @@ static std::vector<std::pair<TileIndex, DiagDirection>> FindRailPath(const RailS
 			}
 
 			uint nc = n.cost + step;
-			State ns{next, d};
+			State ns{next, d, n.dir};
 			auto it = best.find(ns);
 			if (it != best.end() && it->second <= nc) continue;
 			best[ns] = nc;
 			came_from[ns] = cur;
-			open.push({next, d, nc, heuristic(next)});
+			open.push({next, d, n.dir, nc, heuristic(next)});
 		}
 	}
 
-	if (goal.first == INVALID_TILE) {
+	if (std::get<0>(goal) == INVALID_TILE) {
 		Debug(misc, 0, "AC: no rail path from 0x{:X} to 0x{:X} ({} expansions)", from.exit.base(), to.exit.base(), expanded);
 		return {};
 	}
-	std::vector<State> path;
-	for (State s = goal; !(s == start); s = came_from[s]) path.push_back(s);
-	path.push_back(start);
+	std::vector<std::pair<TileIndex, DiagDirection>> path;
+	for (State s = goal; !(s == start); s = came_from[s]) path.push_back({std::get<0>(s), std::get<1>(s)});
+	path.push_back({std::get<0>(start), std::get<1>(start)});
 	std::reverse(path.begin(), path.end());
 	return path;
 }
@@ -796,15 +803,27 @@ static EngineID FindBestWagon(CargoClasses cargo_class)
 }
 
 /**
- * Einseitiges Pfadsignal in Fahrtrichtung \a d auf gerader Gleiskachel
- * setzen (Zyklenzahl gemäß Signalseiten-Logik der Engine).
+ * Einseitiges Pfadsignal in Fahrtrichtung setzen — auch auf Kurven- und
+ * Diagonalkacheln. Zyklenzahl je (Herkunftskante, Gleisstück) gemäß der
+ * Trackdir-Tabelle der Script-API.
  */
-static void BuildLoopSignal(TileIndex tile, DiagDirection d)
+static void BuildLoopSignal(TileIndex tile, DiagDirection entry_edge, DiagDirection exit_edge)
 {
-	Track track = (DiagDirToAxis(d) == Axis::X) ? Track::X : Track::Y;
-	uint8_t cycles = (d == DiagDirection::SW || d == DiagDirection::NW) ? 1 : 0;
+	Track track = TrackFromEdges(entry_edge, exit_edge);
+	/* cycles[front][track]: front = Kante zur Herkunftskachel. -1 = ungueltig. */
+	auto cyc = [](DiagDirection front, Track t) -> int {
+		switch (front) {
+			case DiagDirection::NW: return t == Track::Upper ? 0 : t == Track::Y ? 0 : t == Track::Left ? 1 : -1;
+			case DiagDirection::NE: return t == Track::Right ? 1 : t == Track::X ? 1 : t == Track::Upper ? 1 : -1;
+			case DiagDirection::SW: return t == Track::Lower ? 0 : t == Track::X ? 0 : t == Track::Left ? 0 : -1;
+			case DiagDirection::SE: return t == Track::Right ? 0 : t == Track::Y ? 1 : t == Track::Lower ? 1 : -1;
+			default: return -1;
+		}
+	};
+	int cycles = cyc(entry_edge, track);
+	if (cycles < 0) return;
 	Command<Commands::BuildSignal>::Do(DoCommandFlag::Execute, tile, track, SignalType::PathOneWay,
-			SignalVariant::Electric, false, false, false, SignalType::Block, SignalType::Block, cycles, 0);
+			SignalVariant::Electric, false, false, false, SignalType::Block, SignalType::Block, static_cast<uint8_t>(cycles), 0);
 }
 
 /**
@@ -835,6 +854,16 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 			}
 			CommandCost c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
 					TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
+			if (c.Failed() && i > 0 && do_flags.Test(DoCommandFlag::Execute)) {
+				/* Rampen-Hang unpassend: beide Brueckenkoepfe planieren. */
+				auto [l1, m1, t1] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i].first, path[i - 1].first, false, LevelMode::Level);
+				if (l1.Succeeded()) result.cost += l1.GetCost();
+				auto [l2, m2, t2] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i + 1].first, path[i].first, false, LevelMode::Level);
+				if (l2.Succeeded()) result.cost += l2.GetCost();
+				c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
+						TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
+				Debug(misc, 0, "AC: bridge retry at 0x{:X} -> {}", path[i].first.base(), c.Succeeded() ? 1 : 0);
+			}
 			if (c.Failed()) {
 				result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 				result.error_detail = c.GetErrorMessage().base();
@@ -867,15 +896,14 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 		result.cost += c.GetCost();
 	}
 
-	/* Signale in Fahrtrichtung, alle paar Kacheln auf geraden Stücken. */
+	/* Signale in Fahrtrichtung, alle paar Kacheln (auch auf Diagonalen). */
 	if (signals) {
 		uint since = 3;
 		for (size_t i = 1; i + 1 < path.size(); i++) {
 			since++;
 			if (since < 4) continue;
 			if (bridge_heads.count(i) != 0) continue;
-			if (path[i].second != path[i + 1].second) continue; /* nur gerade Kacheln */
-			BuildLoopSignal(path[i].first, path[i].second); /* Fehlschlag (z. B. Bahnübergang) ist ok */
+			BuildLoopSignal(path[i].first, ReverseDiagDir(path[i].second), path[i + 1].second); /* Fehlschlag ist ok */
 			since = 0;
 		}
 	}
