@@ -1,0 +1,54 @@
+name: Webapp Deploy
+
+on:
+  push:
+    branches: [claude/candyland-scrolling]
+    paths: ['webapp/**', '.github/workflows/webapp-deploy.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: webapp-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure D1 database exists
+        run: npx wrangler d1 create openttd-web || true
+
+      - name: Inject D1 database id
+        run: |
+          DB_ID=$(npx wrangler d1 list --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);const db=j.find(x=>x.name==='openttd-web');if(!db){console.error('db not found');process.exit(1)};console.log(db.uuid)})")
+          sed -i "s/DATABASE_ID_PLACEHOLDER/$DB_ID/" wrangler.toml
+          grep database_id wrangler.toml
+
+      - name: Ensure R2 bucket exists
+        run: npx wrangler r2 bucket create openttd-saves || true
+
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply openttd-web --remote
+
+      - name: Deploy worker
+        run: npx wrangler deploy
+
+      - name: Ensure Pages project exists
+        run: npx wrangler pages project create openttd-web --production-branch=main || true
+
+      - name: Deploy site to Pages
+        run: npx wrangler pages deploy site --project-name=openttd-web --branch=main
