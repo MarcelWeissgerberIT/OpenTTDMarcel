@@ -2324,6 +2324,13 @@ STR_CITIZEN_GOAL_VISIT                                          :{BLACK}Vorhaben
 STR_CITIZEN_GOAL_HOME                                           :{BLACK}Vorhaben: geht nach Hause
 STR_CITIZEN_GOAL_SHOPPING                                       :{BLACK}Vorhaben: geht einkaufen
 STR_CITIZEN_GOAL_DRIVE                                          :{BLACK}Vorhaben: fährt eine Runde
+STR_CITIZEN_GOAL_STROLL                                         :{BLACK}Vorhaben: bummelt durch die Stadt
+STR_CITIZEN_NOW_HOME                                            :{BLACK}Gerade: zu Hause
+STR_CITIZEN_NOW_STATION                                         :{BLACK}Gerade: wartet am Bahnhof
+STR_CITIZEN_NOW_VISIT                                           :{BLACK}Gerade: zu Besuch bei Freunden
+STR_CITIZEN_NOW_SHOPPING                                        :{BLACK}Gerade: beim Einkaufen
+STR_CITIZEN_NOW_PARKED                                          :{BLACK}Gerade: Auto ist geparkt
+STR_CITIZEN_NOW_BREAK                                           :{BLACK}Gerade: macht kurz Pause
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×

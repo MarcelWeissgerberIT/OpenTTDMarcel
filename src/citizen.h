@@ -32,6 +32,13 @@ enum class CitizenGoal : uint8_t {
 	Home,     ///< Geht nach Hause.
 	Shopping, ///< Geht einkaufen.
 	Drive,    ///< Faehrt eine Runde mit dem Auto.
+	Stroll,   ///< Bummelt ohne festes Ziel durch die Stadt.
+};
+
+/** Lebenszustand: unterwegs oder gerade in einem Gebaeude/zu Hause. */
+enum class CitizenState : uint8_t {
+	Walking,  ///< Sichtbar auf der Strasse unterwegs.
+	Dwelling, ///< Unsichtbar am Ziel (Haus/Laden/Bahnhof), wartet auf den naechsten Ausflug.
 };
 
 /** Ein Bewohner (nicht im Spielstand gespeichert - reine Atmosphaere). */
@@ -44,6 +51,9 @@ struct Citizen {
 	uint8_t sub;                  ///< Fortschritt innerhalb der Kachel (0..15).
 	CitizenKind kind;
 	CitizenGoal goal;
+	CitizenState state;    ///< Unterwegs oder verweilend.
+	uint64_t dwell_until;  ///< Tick, ab dem der naechste Ausflug geplant wird.
+	uint8_t stroll_legs;   ///< Verbleibende Bummel-Etappen vor dem Heimweg.
 };
 
 void RunCitizensTick();

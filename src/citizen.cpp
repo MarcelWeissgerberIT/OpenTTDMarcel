@@ -180,7 +180,7 @@ static bool IsParkingSpotTile(TileIndex tile)
 
 /* ---------- Spawnen ---------- */
 
-static const uint MAX_CITIZENS = 1600;
+static const uint MAX_CITIZENS = 2500;
 static const uint NETWORK_LIMIT = 90;
 
 /** Zufaellige Strassenkachel mit Haus daneben im Umkreis der Stadt. */
@@ -200,6 +200,61 @@ static TileIndex FindSpawnRoad(const Town *t, bool parking)
 	return INVALID_TILE;
 }
 
+/**
+ * Plant den naechsten Fussweg ab @p from: Bahnhof, Besuch, Einkauf oder
+ * Bummel-Etappe. Setzt Pfad, Ziel und Bummel-Zaehler des Buergers.
+ * @return false, wenn ab hier kein Weg gefunden wurde.
+ */
+static bool PlanOuting(Citizen &c, TileIndex from)
+{
+	auto net = WalkNetwork(from, NETWORK_LIMIT);
+	if (net.size() < 4) return false;
+
+	TileIndex goal = INVALID_TILE;
+	uint roll = CitizenRandom() % 10;
+	if (roll < 3) {
+		for (const auto &[tile, prev] : net) {
+			if (DistanceManhattan(from, tile) >= 3 && HasAdjacentTileType(tile, TileType::Station)) { goal = tile; break; }
+		}
+		if (goal != INVALID_TILE) c.goal = CitizenGoal::Station;
+	}
+	if (goal == INVALID_TILE && roll >= 8) {
+		/* Bummeln: beliebige entferntere Kachel, mehrere Etappen. */
+		uint want = 6 + CitizenRandom() % 10;
+		for (const auto &[tile, prev] : net) {
+			if (DistanceManhattan(from, tile) >= want) { goal = tile; break; }
+		}
+		if (goal != INVALID_TILE) {
+			c.goal = CitizenGoal::Stroll;
+			if (c.stroll_legs == 0) c.stroll_legs = 2 + CitizenRandom() % 3;
+		}
+	}
+	if (goal == INVALID_TILE) {
+		uint want = 5 + CitizenRandom() % 12;
+		for (const auto &[tile, prev] : net) {
+			if (DistanceManhattan(from, tile) >= want && HasAdjacentTileType(tile, TileType::House)) { goal = tile; break; }
+		}
+		if (goal != INVALID_TILE) c.goal = (CitizenRandom() % 2 == 0) ? CitizenGoal::Visit : CitizenGoal::Shopping;
+	}
+	if (goal == INVALID_TILE) return false;
+	c.path = TracePath(net, goal);
+	c.pos = 0;
+	c.sub = 0;
+	return c.path.size() >= 2;
+}
+
+/** Heimweg planen. @return false, wenn das Zuhause nicht erreichbar ist. */
+static bool PlanHomeTrip(Citizen &c, TileIndex from)
+{
+	auto net = WalkNetwork(from, NETWORK_LIMIT);
+	if (net.count(c.home) == 0) return false;
+	c.path = TracePath(net, c.home);
+	c.pos = 0;
+	c.sub = 0;
+	c.goal = CitizenGoal::Home;
+	return c.path.size() >= 2;
+}
+
 static void SpawnCitizen(Town *t)
 {
 	bool car = (CitizenRandom() % 8) == 0;
@@ -215,6 +270,7 @@ static void SpawnCitizen(Town *t)
 	c.home = start;
 	c.pos = 0;
 	c.sub = 8; /* Startet mitten auf der Kachel ("kommt aus dem Haus"). */
+	c.stroll_legs = 0;
 
 	if (car) {
 		/* Rundfahrt: zum entferntesten erreichbaren Punkt und zurueck in
@@ -232,31 +288,14 @@ static void SpawnCitizen(Town *t)
 		c.kind = CitizenKind::Car;
 		c.goal = CitizenGoal::Drive;
 	} else {
-		/* Ziel: Kachel neben Station (Bahnhof/Haltestelle) oder neben einem
-		 * anderen Haus - dort verschwindet die Figur wieder ("geht hinein"). */
-		TileIndex goal = INVALID_TILE;
-		bool to_station = (CitizenRandom() % 5) < 2;
-		if (to_station) {
-			for (const auto &[tile, from] : net) {
-				if (DistanceManhattan(start, tile) >= 3 && HasAdjacentTileType(tile, TileType::Station)) { goal = tile; break; }
-			}
-		}
-		if (goal == INVALID_TILE) {
-			to_station = false;
-			uint want = 5 + CitizenRandom() % 12;
-			for (const auto &[tile, from] : net) {
-				if (DistanceManhattan(start, tile) >= want && HasAdjacentTileType(tile, TileType::House)) { goal = tile; break; }
-			}
-		}
-		if (goal == INVALID_TILE) return;
-		c.path = TracePath(net, goal);
+		if (!PlanOuting(c, start)) return;
 		uint k = CitizenRandom() % 10;
 		c.kind = k < 5 ? CitizenKind::Adult : k < 7 ? CitizenKind::Family : k < 9 ? CitizenKind::Child : CitizenKind::Stroller;
-		c.goal = to_station ? CitizenGoal::Station
-			: (CitizenRandom() % 3 == 0 ? CitizenGoal::Home : (CitizenRandom() % 2 == 0 ? CitizenGoal::Visit : CitizenGoal::Shopping));
 	}
 
 	if (c.path.size() < 2) return;
+	c.state = CitizenState::Walking;
+	c.dwell_until = 0;
 	_citizens.push_back(std::move(c));
 }
 
@@ -285,17 +324,73 @@ void RunCitizensTick()
 
 	/* Bewegung: Fussgaenger jeden 3. Tick, Autos jeden Tick. */
 	for (Citizen &c : _citizens) {
+		if (c.state != CitizenState::Walking) continue;
 		if (c.kind == CitizenKind::Car || tick % 3 == 0) CitizenStep(c);
 	}
 
-	/* Angekommene entfernen (Fenster dazu schliessen). */
+	/* Angekommene verweilen am Ziel (unsichtbar im Gebaeude) und planen
+	 * spaeter den naechsten Ausflug - niemand verschwindet endgueltig. */
 	for (auto it = _citizens.begin(); it != _citizens.end(); ) {
-		if (it->pos >= it->path.size() || (it->pos == it->path.size() - 1 && it->sub >= 8 && it->kind != CitizenKind::Car)) {
-			CloseWindowById(WindowClass::Citizen, it->id);
-			it = _citizens.erase(it);
-		} else {
+		Citizen &c = *it;
+		if (c.state == CitizenState::Walking &&
+				(c.pos >= c.path.size() || (c.pos == c.path.size() - 1 && c.sub >= 8))) {
+			MarkTileDirtyByTile(c.path[std::min<size_t>(c.pos, c.path.size() - 1)]);
+			c.pos = static_cast<uint16_t>(c.path.size() - 1);
+			c.state = CitizenState::Dwelling;
+			c.dwell_until = tick + 300 + CitizenRandom() % 1700;
+			if (c.goal == CitizenGoal::Stroll && c.stroll_legs > 0) {
+				c.stroll_legs--;
+				c.dwell_until = tick + 40 + CitizenRandom() % 120; /* Nur kurz verschnaufen. */
+			}
 			++it;
+			continue;
 		}
+		if (c.state == CitizenState::Dwelling && tick >= c.dwell_until) {
+			TileIndex from = c.path.empty() ? c.home : c.path.back();
+			bool ok;
+			if (c.kind == CitizenKind::Car) {
+				/* Autos starten immer eine neue Rundfahrt ab ihrer Parkluecke. */
+				ok = false;
+			} else if (c.stroll_legs > 0) {
+				ok = PlanOuting(c, from);
+			} else if (from == c.home) {
+				ok = PlanOuting(c, from);
+			} else {
+				ok = PlanHomeTrip(c, from);
+			}
+			if (c.kind == CitizenKind::Car) {
+				/* Rundfahrt neu wuerfeln wie beim Spawn: Pfad hin und zurueck. */
+				auto net = WalkNetwork(c.home, NETWORK_LIMIT);
+				TileIndex far = c.home;
+				uint best = 0;
+				for (const auto &[tile, prev] : net) {
+					uint d = DistanceManhattan(c.home, tile);
+					if (d > best) { best = d; far = tile; }
+				}
+				ok = best >= 6;
+				if (ok) {
+					std::vector<TileIndex> out = TracePath(net, far);
+					c.path = out;
+					for (size_t i = out.size() - 1; i-- > 0; ) c.path.push_back(out[i]);
+					c.pos = 0;
+					c.sub = 0;
+				}
+			}
+			if (ok) {
+				c.state = CitizenState::Walking;
+			} else if (from == c.home || c.kind == CitizenKind::Car) {
+				/* Zuhause abgeschnitten (Strasse weg): spaeter nochmal probieren. */
+				c.dwell_until = tick + 1000;
+			} else {
+				/* Weder weiter noch heim - dieser Buerger zieht weg. */
+				CloseWindowById(WindowClass::Citizen, c.id);
+				it = _citizens.erase(it);
+				continue;
+			}
+			++it;
+			continue;
+		}
+		++it;
 	}
 
 		/* Zeichen-Indexe neu aufbauen (Kachel -> Figuren, unterwegs befindliche
@@ -304,6 +399,7 @@ void RunCitizensTick()
 	_cars_away.clear();
 	for (uint32_t i = 0; i < _citizens.size(); i++) {
 		const Citizen &c = _citizens[i];
+		if (c.state != CitizenState::Walking) continue;
 		_citizens_by_tile.emplace(c.path[c.pos].base(), i);
 		if (c.kind == CitizenKind::Car) _cars_away.insert(c.home);
 	}
@@ -434,12 +530,24 @@ struct CitizenWindow : Window {
 		DrawString(tr.left, tr.right, y, GetString(STR_CITIZEN_HOME, c->town));
 		y += line;
 		StringID goal;
-		switch (c->goal) {
-			case CitizenGoal::Station: goal = STR_CITIZEN_GOAL_STATION; break;
-			case CitizenGoal::Visit: goal = STR_CITIZEN_GOAL_VISIT; break;
-			case CitizenGoal::Home: goal = STR_CITIZEN_GOAL_HOME; break;
-			case CitizenGoal::Shopping: goal = STR_CITIZEN_GOAL_SHOPPING; break;
-			default: goal = STR_CITIZEN_GOAL_DRIVE; break;
+		if (c->state == CitizenState::Dwelling) {
+			switch (c->goal) {
+				case CitizenGoal::Station: goal = STR_CITIZEN_NOW_STATION; break;
+				case CitizenGoal::Visit: goal = STR_CITIZEN_NOW_VISIT; break;
+				case CitizenGoal::Shopping: goal = STR_CITIZEN_NOW_SHOPPING; break;
+				case CitizenGoal::Drive: goal = STR_CITIZEN_NOW_PARKED; break;
+				case CitizenGoal::Stroll: goal = STR_CITIZEN_NOW_BREAK; break;
+				default: goal = STR_CITIZEN_NOW_HOME; break;
+			}
+		} else {
+			switch (c->goal) {
+				case CitizenGoal::Station: goal = STR_CITIZEN_GOAL_STATION; break;
+				case CitizenGoal::Visit: goal = STR_CITIZEN_GOAL_VISIT; break;
+				case CitizenGoal::Home: goal = STR_CITIZEN_GOAL_HOME; break;
+				case CitizenGoal::Shopping: goal = STR_CITIZEN_GOAL_SHOPPING; break;
+				case CitizenGoal::Stroll: goal = STR_CITIZEN_GOAL_STROLL; break;
+				default: goal = STR_CITIZEN_GOAL_DRIVE; break;
+			}
 		}
 		DrawString(tr.left, tr.right, y, GetString(goal));
 	}
@@ -484,6 +592,7 @@ bool CheckClickOnCitizen(int world_x, int world_y)
 	const Citizen *best = nullptr;
 	uint best_d = 11; /* Fangradius in Weltkoordinaten. */
 	for (const Citizen &c : _citizens) {
+		if (c.state != CitizenState::Walking) continue; /* Unsichtbare nicht anklickbar. */
 		TileIndex tile = c.path[c.pos];
 		int px, py;
 		DiagDirection dir;

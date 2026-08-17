@@ -2355,6 +2355,13 @@ STR_CITIZEN_GOAL_VISIT                                          :{BLACK}Plans: v
 STR_CITIZEN_GOAL_HOME                                           :{BLACK}Plans: heading home
 STR_CITIZEN_GOAL_SHOPPING                                       :{BLACK}Plans: going shopping
 STR_CITIZEN_GOAL_DRIVE                                          :{BLACK}Plans: taking the car for a spin
+STR_CITIZEN_GOAL_STROLL                                         :{BLACK}Plans: strolling around town
+STR_CITIZEN_NOW_HOME                                            :{BLACK}Currently: at home
+STR_CITIZEN_NOW_STATION                                         :{BLACK}Currently: waiting at the station
+STR_CITIZEN_NOW_VISIT                                           :{BLACK}Currently: visiting friends
+STR_CITIZEN_NOW_SHOPPING                                        :{BLACK}Currently: shopping
+STR_CITIZEN_NOW_PARKED                                          :{BLACK}Currently: car is parked
+STR_CITIZEN_NOW_BREAK                                           :{BLACK}Currently: taking a short break
 STR_INTRO_SCALE_100                                             :1x
 STR_INTRO_SCALE_150                                             :1.5x
 STR_INTRO_SCALE_200                                             :2x
