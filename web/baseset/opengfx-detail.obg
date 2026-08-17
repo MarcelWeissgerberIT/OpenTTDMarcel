@@ -72,7 +72,7 @@ ogfx1_base.grf     = 448f12926435d318eeab39e292d61998
 ogfxc_arctic.grf   = 9126545a10bb338cb335b8324ff8054e
 ogfxh_tropical.grf = bdc9abf28bce854a1866981ff5761425
 ogfxt_toyland.grf  = 426fd537a3a04386ec55bcc3b6d8147f
-ogfxi_logos.grf    = 701b0ce1256ce5e2a64ead9f86924b7a
+ogfxi_logos.grf    = 22ccdf2f25f0d67a5a23396cebc188fb
 ogfxe_extra.grf    = d6f28e388f2ad5aeb536be3de89c2d0c
 
 [origin]

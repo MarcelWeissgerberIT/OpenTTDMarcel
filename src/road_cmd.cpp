@@ -1717,6 +1717,18 @@ static void DrawTile_Road(TileInfo *ti)
 		case RoadTileType::Normal:
 			DrawRoadBits(ti);
 
+			/* Fork: Stadtleben - geparkte Autos und Passanten auf flachen
+			 * Stadtstrassen, deterministisch aus der Kachelposition. */
+			if (GetRoadOwner(ti->tile, RoadTramType::Road) == OWNER_TOWN && ti->tileh == SLOPE_FLAT && !IsBridgeAbove(ti->tile)) {
+				uint32_t h = TileX(ti->tile) * 7919u ^ TileY(ti->tile) * 104729u;
+				RoadBits bits = GetRoadBits(ti->tile, RoadTramType::Road);
+				if (bits == ROAD_X && (h & 7) == 0) {
+					AddSortableSpriteToDraw(SPR_PARKED_CAR, PAL_NONE, *ti, {{5, 11, 0}, {6, 3, 4}, {}});
+				} else if ((h & 7) == 1 || (h & 7) == 5) {
+					AddSortableSpriteToDraw((h & 8) != 0 ? SPR_WAITING_PASSENGERS_1 : SPR_WAITING_PASSENGERS_2, PAL_NONE, *ti, {{3, 2, 0}, {5, 4, 5}, {}});
+				}
+			}
+
 			if (IsBridgeAbove(ti->tile)) {
 				RoadBits bits = GetAllRoadBits(ti->tile);
 				if (bits.Test(RoadBit::NE)) blocked_pillars.Set(BridgePillarFlag::EdgeNE);
