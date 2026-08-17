@@ -32,12 +32,15 @@
 #include "train_cmd.h"
 #include "bridge.h"
 #include "tunnelbridge_cmd.h"
+#include "terraform_cmd.h"
 #include "water_cmd.h"
 #include "newgrf_station.h"
 #include "newgrf_roadstop.h"
 #include "vehicle_type.h"
 #include "command_func.h"
 #include "company_func.h"
+#include "company_base.h"
+#include "misc_cmd.h"
 #include "core/backup_type.hpp"
 #include "engine_base.h"
 #include "error.h"
@@ -408,6 +411,11 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		CommandCost c = Command<Commands::BuildRoadStop>::Do(do_flags, stop, 1, 1,
 				RoadStopType::Bus, true, AxisToDiagDir(axis), ROADTYPE_ROAD,
 				ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
+		if (c.Failed()) {
+			c = Command<Commands::BuildRoadStop>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, stop, 1, 1,
+					RoadStopType::Bus, true, AxisToDiagDir(axis), ROADTYPE_ROAD,
+					ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
+		}
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 			result.error_detail = c.GetErrorMessage().base();
@@ -808,6 +816,13 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 		DiagDirection exit_edge = (i + 1 < path.size()) ? path[i + 1].second : final_exit_edge;
 		Track track = TrackFromEdges(entry_edge, exit_edge);
 		CommandCost c = Command<Commands::BuildRail>::Do(do_flags, path[i].first, RAILTYPE_RAIL, track, true);
+		if (c.Failed() && i > 0 && do_flags.Test(DoCommandFlag::Execute)) {
+			/* Unpassender Hang: Kachel auf die Hoehe der vorherigen
+			 * Pfadkachel planieren und erneut versuchen. */
+			auto [lc, lmoney, ltile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i].first, path[i - 1].first, false, LevelMode::Level);
+			if (lc.Succeeded()) result.cost += lc.GetCost();
+			c = Command<Commands::BuildRail>::Do(do_flags, path[i].first, RAILTYPE_RAIL, track, true);
+		}
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 			result.error_detail = c.GetErrorMessage().base();
@@ -888,6 +903,16 @@ static AutoConnectResult BuildRailConnection(Town *town_a, Town *town_b, uint tr
 		if (!build) continue;
 		CommandCost c = Command<Commands::BuildRailStation>::Do(do_flags, site->tile,
 				RAILTYPE_RAIL, site->axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+		if (c.Failed()) {
+			Town *dbg = ClosestTownFromTile(site->tile, _settings_game.economy.dist_local_authority);
+			Debug(misc, 0, "AC: rail station refused at 0x{:X} err {} town {} rating {}",
+					site->tile.base(), c.GetErrorMessage().base(),
+					dbg != nullptr ? dbg->index.base() : 0xFFFF,
+					dbg != nullptr ? dbg->ratings[_local_company] : -9999);
+			/* Der Spieler hat den Bau angewiesen - Stadtbewertung nicht blockieren lassen. */
+			c = Command<Commands::BuildRailStation>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, site->tile,
+					RAILTYPE_RAIL, site->axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+		}
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 			result.error_detail = c.GetErrorMessage().base();
@@ -1248,13 +1273,37 @@ struct AutoConnectWindow : Window {
 					this->SetDirty();
 					break;
 				}
-				AutoConnectResult res;
-				switch (this->mode) {
-					case 1: res = BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, estimate); break;
-					case 2: res = BuildRailConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, estimate); break;
-					case 3: res = BuildShipConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, estimate); break;
-					default: res = BuildAirConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, estimate); break;
+				auto run = [&](bool est) {
+					switch (this->mode) {
+						case 1: return BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
+						case 2: return BuildRailConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
+						case 3: return BuildShipConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
+						default: return BuildAirConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, est);
+					}
+				};
+
+				if (!estimate) {
+					/* Vorab schaetzen: nicht anfangen, wenn das Geld (inkl.
+					 * Kreditrahmen) nicht reicht - halbe Bauten nutzen niemandem. */
+					AutoConnectResult est_res = run(true);
+					if (est_res.ok) {
+						Money needed = est_res.cost + est_res.cost / 4; /* +25 % Puffer */
+						const Company *c = Company::Get(_local_company);
+						Money avail = c->money + (c->GetMaxLoan() - c->current_loan);
+						if (avail < needed) {
+							this->status = GetString(STR_AUTOCONNECT_ERR_TOO_EXPENSIVE, needed);
+							this->SetDirty();
+							break;
+						}
+						if (c->money < needed) {
+							Backup<CompanyID> cur_company(_current_company, _local_company);
+							Command<Commands::IncreaseLoan>::Do(DoCommandFlag::Execute, LoanCommand::Amount, needed - c->money);
+							cur_company.Restore();
+						}
+					}
 				}
+
+				AutoConnectResult res = run(estimate);
 				if (res.ok) {
 					this->status = GetString(estimate ? STR_AUTOCONNECT_STATUS_ESTIMATE : STR_AUTOCONNECT_STATUS_DONE, res.cost);
 					if (res.error_detail != 0) this->status += fmt::format(" [#{}]", res.error_detail);
