@@ -2331,6 +2331,17 @@ STR_CITIZEN_NOW_VISIT                                           :{BLACK}Gerade: 
 STR_CITIZEN_NOW_SHOPPING                                        :{BLACK}Gerade: beim Einkaufen
 STR_CITIZEN_NOW_PARKED                                          :{BLACK}Gerade: Auto ist geparkt
 STR_CITIZEN_NOW_BREAK                                           :{BLACK}Gerade: macht kurz Pause
+STR_CITIZEN_GOAL_MOVE                                           :{BLACK}Vorhaben: zieht in ein neues Zuhause um
+STR_CITIZEN_MONTH_COMMUTE                                       :{BLACK}Diesen Monat: pendelt viel
+STR_CITIZEN_MONTH_SHOPPING                                      :{BLACK}Diesen Monat: großer Einkaufsmonat
+STR_CITIZEN_MONTH_SOCIAL                                        :{BLACK}Diesen Monat: besucht Freunde und Familie
+STR_CITIZEN_MONTH_OUTDOOR                                       :{BLACK}Diesen Monat: viel an der frischen Luft
+STR_CITIZEN_MONTH_HOMEBODY                                      :{BLACK}Diesen Monat: bleibt gern zu Hause
+STR_CITIZEN_YEAR_SPORT                                          :{BLACK}Dieses Jahr: will mehr Sport machen
+STR_CITIZEN_YEAR_EXPLORE                                        :{BLACK}Dieses Jahr: will die ganze Stadt erkunden
+STR_CITIZEN_YEAR_TRAVEL                                         :{BLACK}Dieses Jahr: will öfter verreisen
+STR_CITIZEN_YEAR_MOVE                                           :{BLACK}Dieses Jahr: plant einen Umzug
+STR_CITIZEN_YEAR_FRIENDS                                        :{BLACK}Dieses Jahr: mehr Zeit mit Freunden
 STR_INTRO_SCALE_100                                             :1×
 STR_INTRO_SCALE_150                                             :1,5×
 STR_INTRO_SCALE_200                                             :2×

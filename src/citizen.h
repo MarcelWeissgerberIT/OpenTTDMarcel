@@ -33,6 +33,7 @@ enum class CitizenGoal : uint8_t {
 	Shopping, ///< Geht einkaufen.
 	Drive,    ///< Faehrt eine Runde mit dem Auto.
 	Stroll,   ///< Bummelt ohne festes Ziel durch die Stadt.
+	Move,     ///< Zieht in ein anderes Haus um (Jahres-Vorsatz).
 };
 
 /** Lebenszustand: unterwegs oder gerade in einem Gebaeude/zu Hause. */

@@ -347,6 +347,16 @@
           panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
         });
 
+        /* Tastatur im Cloud-Panel nicht ans Spiel durchreichen - sonst
+         * loesen E-Mail/Passwort-Eingaben Spiel-Shortcuts aus. */
+        var cloudRoot = document.getElementById('cloud');
+        ['keydown', 'keyup', 'keypress'].forEach(function(ev) {
+          cloudRoot.addEventListener(ev, function(e) { e.stopPropagation(); });
+        });
+        document.getElementById('cloud-pw').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') document.getElementById('cloud-login').click();
+        });
+
         document.getElementById('cloud-login').addEventListener('click', function() {
           var mail = document.getElementById('cloud-email').value.trim();
           var pw = document.getElementById('cloud-pw').value;

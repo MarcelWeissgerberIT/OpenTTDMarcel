@@ -33,6 +33,7 @@
 #include "strings_func.h"
 #include "zoom_func.h"
 #include "timer/timer_game_tick.h"
+#include "timer/timer_game_calendar.h"
 #include "table/sprites.h"
 #include "table/strings.h"
 
@@ -102,6 +103,25 @@ static uint CitizenAge(const Citizen &c)
 static const char *CitizenInterest(const Citizen &c)
 {
 	return _citizen_interests[CitizenHash(c.id, 4) % lengthof(_citizen_interests)];
+}
+
+/* ---------- Monats- und Jahres-Intentionen ----------
+ * Tagesablaeufe waeren bei ~2 s Echtzeit pro Spieltag unsichtbar; darum
+ * bekommt jeder Bewohner deterministisch (ID + Kalender) einen
+ * Monats-Schwerpunkt und einen Jahres-Vorsatz, die sein Verhalten steuern. */
+
+enum class MonthIntention : uint8_t { Commute, Shopping, Social, Outdoor, Homebody };
+enum class YearIntention : uint8_t { Sport, Explore, Travel, Move, Friends };
+
+static MonthIntention GetMonthIntention(const Citizen &c)
+{
+	uint32_t stamp = (uint32_t)TimerGameCalendar::year.base() * 12u + TimerGameCalendar::month;
+	return (MonthIntention)(CitizenHash(c.id, 7000u + stamp) % 5);
+}
+
+static YearIntention GetYearIntention(const Citizen &c)
+{
+	return (YearIntention)(CitizenHash(c.id, 9000u + (uint32_t)TimerGameCalendar::year.base()) % 5);
 }
 
 /* ---------- Strassennetz ---------- */
@@ -210,15 +230,45 @@ static bool PlanOuting(Citizen &c, TileIndex from)
 	auto net = WalkNetwork(from, NETWORK_LIMIT);
 	if (net.size() < 4) return false;
 
+	/* Gewichte nach Monats-Schwerpunkt und Jahres-Vorsatz. */
+	MonthIntention mi = GetMonthIntention(c);
+	YearIntention yi = GetYearIntention(c);
+	uint p_station = 25, p_stroll = 20;
+	switch (mi) {
+		case MonthIntention::Commute: p_station = 55; break;
+		case MonthIntention::Shopping: p_station = 10; p_stroll = 10; break;
+		case MonthIntention::Social: p_station = 10; p_stroll = 10; break;
+		case MonthIntention::Outdoor: p_stroll = 55; break;
+		case MonthIntention::Homebody: p_station = 15; p_stroll = 10; break;
+	}
+	if (yi == YearIntention::Sport || yi == YearIntention::Explore) p_stroll += 15;
+	if (yi == YearIntention::Travel) p_station += 15;
+
+	/* Jahres-Vorsatz Umzug: gelegentlich wirklich das Zuhause wechseln. */
+	if (yi == YearIntention::Move && c.kind != CitizenKind::Car && from == c.home && CitizenRandom() % 6 == 0) {
+		TileIndex goal = INVALID_TILE;
+		uint want = 10 + CitizenRandom() % 15;
+		for (const auto &[tile, prev] : net) {
+			if (DistanceManhattan(from, tile) >= want && HasAdjacentTileType(tile, TileType::House)) { goal = tile; break; }
+		}
+		if (goal != INVALID_TILE) {
+			c.path = TracePath(net, goal);
+			c.pos = 0;
+			c.sub = 0;
+			c.goal = CitizenGoal::Move;
+			return c.path.size() >= 2;
+		}
+	}
+
 	TileIndex goal = INVALID_TILE;
-	uint roll = CitizenRandom() % 10;
-	if (roll < 3) {
+	uint roll = CitizenRandom() % 100;
+	if (roll < p_station) {
 		for (const auto &[tile, prev] : net) {
 			if (DistanceManhattan(from, tile) >= 3 && HasAdjacentTileType(tile, TileType::Station)) { goal = tile; break; }
 		}
 		if (goal != INVALID_TILE) c.goal = CitizenGoal::Station;
 	}
-	if (goal == INVALID_TILE && roll >= 8) {
+	if (goal == INVALID_TILE && roll >= 100 - p_stroll) {
 		/* Bummeln: beliebige entferntere Kachel, mehrere Etappen. */
 		uint want = 6 + CitizenRandom() % 10;
 		for (const auto &[tile, prev] : net) {
@@ -234,7 +284,11 @@ static bool PlanOuting(Citizen &c, TileIndex from)
 		for (const auto &[tile, prev] : net) {
 			if (DistanceManhattan(from, tile) >= want && HasAdjacentTileType(tile, TileType::House)) { goal = tile; break; }
 		}
-		if (goal != INVALID_TILE) c.goal = (CitizenRandom() % 2 == 0) ? CitizenGoal::Visit : CitizenGoal::Shopping;
+		if (goal != INVALID_TILE) {
+			if (mi == MonthIntention::Shopping) c.goal = CitizenGoal::Shopping;
+			else if (mi == MonthIntention::Social || yi == YearIntention::Friends) c.goal = CitizenGoal::Visit;
+			else c.goal = (CitizenRandom() % 2 == 0) ? CitizenGoal::Visit : CitizenGoal::Shopping;
+		}
 	}
 	if (goal == INVALID_TILE) return false;
 	c.path = TracePath(net, goal);
@@ -338,6 +392,14 @@ void RunCitizensTick()
 			c.pos = static_cast<uint16_t>(c.path.size() - 1);
 			c.state = CitizenState::Dwelling;
 			c.dwell_until = tick + 300 + CitizenRandom() % 1700;
+			if (c.goal == CitizenGoal::Move) {
+				/* Umzug vollzogen: neues Zuhause. */
+				c.home = c.path.back();
+				c.goal = CitizenGoal::Home;
+			}
+			if (c.path.back() == c.home && GetMonthIntention(c) == MonthIntention::Homebody) {
+				c.dwell_until = tick + 1500 + CitizenRandom() % 3000; /* Bleibt gern daheim. */
+			}
 			if (c.goal == CitizenGoal::Stroll && c.stroll_legs > 0) {
 				c.stroll_legs--;
 				c.dwell_until = tick + 40 + CitizenRandom() % 120; /* Nur kurz verschnaufen. */
@@ -546,17 +608,24 @@ struct CitizenWindow : Window {
 				case CitizenGoal::Home: goal = STR_CITIZEN_GOAL_HOME; break;
 				case CitizenGoal::Shopping: goal = STR_CITIZEN_GOAL_SHOPPING; break;
 				case CitizenGoal::Stroll: goal = STR_CITIZEN_GOAL_STROLL; break;
+				case CitizenGoal::Move: goal = STR_CITIZEN_GOAL_MOVE; break;
 				default: goal = STR_CITIZEN_GOAL_DRIVE; break;
 			}
 		}
 		DrawString(tr.left, tr.right, y, GetString(goal));
+		y += line;
+		static const StringID month_str[] = {STR_CITIZEN_MONTH_COMMUTE, STR_CITIZEN_MONTH_SHOPPING, STR_CITIZEN_MONTH_SOCIAL, STR_CITIZEN_MONTH_OUTDOOR, STR_CITIZEN_MONTH_HOMEBODY};
+		static const StringID year_str[] = {STR_CITIZEN_YEAR_SPORT, STR_CITIZEN_YEAR_EXPLORE, STR_CITIZEN_YEAR_TRAVEL, STR_CITIZEN_YEAR_MOVE, STR_CITIZEN_YEAR_FRIENDS};
+		DrawString(tr.left, tr.right, y, GetString(month_str[(uint)GetMonthIntention(*c)]));
+		y += line;
+		DrawString(tr.left, tr.right, y, GetString(year_str[(uint)GetYearIntention(*c)]));
 	}
 
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
 	{
 		if (widget != WID_CZ_PANEL) return;
 		size.width = std::max<uint>(size.width, 190);
-		size.height = std::max<uint>(size.height, 4 * (GetCharacterHeight(FontSize::Normal) + 2) + 8);
+		size.height = std::max<uint>(size.height, 6 * (GetCharacterHeight(FontSize::Normal) + 2) + 8);
 	}
 
 	/* Die Figur laeuft weiter - Fenster regelmaessig nachzeichnen. */
