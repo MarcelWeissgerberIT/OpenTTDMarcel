@@ -10,6 +10,8 @@
 	<h1>Mein Konto</h1>
 	<p id="who">Lade…</p>
 	<p id="prem"></p>
+	<h2 style="font-size:16px">Cloud-Spielstände</h2>
+	<div id="saves">Lade…</div>
 	<a class="btn" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt spielen</a>
 	<button class="btn" id="logout" style="background:#c9c9c9; border-color:#6e6e6e; box-shadow:0 4px 0 #6e6e6e;">Abmelden</button>
 	<div class="msg" id="msg"></div>
@@ -26,6 +28,17 @@ const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
 		document.getElementById('who').textContent = 'Angemeldet als ' + d.email;
 		document.getElementById('prem').textContent = d.entitlements.length
 			? 'Premium: ' + d.entitlements.join(', ') : 'Premium: noch nicht freigeschaltet';
+		const rs = await fetch(API + '/api/saves', { credentials: 'include', headers: t ? { 'Authorization': 'Bearer ' + t } : {} });
+		const ds = await rs.json();
+		const el = document.getElementById('saves');
+		if (!ds.ok || !ds.saves.length) {
+			el.textContent = 'Noch keine Spielstände in der Cloud. Im Spiel unten rechts auf "Cloud" klicken und anmelden – dann wird jeder Spielstand automatisch gesichert.';
+		} else {
+			el.innerHTML = ds.saves.map(s =>
+				'Slot ' + s.slot + ': <b>' + s.name.replace(/</g, '&lt;') + '</b> (' +
+				Math.round(s.size / 1024) + ' KB, ' + new Date(s.updated_at).toLocaleString('de-DE') + ')'
+			).join('<br>');
+		}
 	} catch { document.getElementById('msg').textContent = 'Netzwerkfehler.'; }
 })();
 document.getElementById('logout').addEventListener('click', async () => {

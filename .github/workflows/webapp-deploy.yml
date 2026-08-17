@@ -93,6 +93,17 @@ jobs:
           done
           [ -n "$TOKEN" ] || { echo "Login-Antwort enthaelt keinen Token"; exit 1; }
           curl -sS --fail -H "Authorization: Bearer $TOKEN" "$API/api/me" | grep -q "$EMAIL"
+          echo "Save-Sync (Upload/Liste/Download/Delete)..."
+          head -c 2048 /dev/urandom > /tmp/citest.sav
+          curl -sS --fail -X PUT -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/citest.sav "$API/api/saves/upload?name=citest.sav"
+          echo
+          curl -sS --fail -H "Authorization: Bearer $TOKEN" "$API/api/saves" | grep -q "citest.sav"
+          curl -sS --fail -H "Authorization: Bearer $TOKEN" "$API/api/saves/download?slot=1" -o /tmp/citest-down.sav
+          cmp /tmp/citest.sav /tmp/citest-down.sav
+          curl -sS --fail -X DELETE -H "Authorization: Bearer $TOKEN" "$API/api/saves/delete?slot=1" > /dev/null
+          echo "Settings-Sync..."
+          curl -sS --fail -X PUT -H "Authorization: Bearer $TOKEN" --data "language = de_DE" "$API/api/settings" > /dev/null
+          curl -sS --fail -H "Authorization: Bearer $TOKEN" "$API/api/settings" | grep -q "de_DE"
           echo "Cleanup test user..."
           npx wrangler d1 execute openttd-web --remote --command "DELETE FROM users WHERE email = '$EMAIL'"
           echo "Auth flow OK"

@@ -93,6 +93,57 @@
         /* OpenTTD draws the cursor itself */
         cursor: none !important;
       }
+
+      /* Cloud-Sync-Panel (Phase 4) im Spiel-UI-Grau */
+      #cloud {
+        bottom: 8px;
+        position: absolute;
+        right: 8px;
+        z-index: 4;
+      }
+      #cloud-badge {
+        background-color: #838383;
+        border: 1px solid #a8a8a8;
+        color: #fcfcfc;
+        cursor: pointer;
+        outline: 1px solid #626262;
+        padding: 3px 8px;
+        text-shadow: 1px 1px #101010;
+        user-select: none;
+      }
+      #cloud-panel {
+        background-color: #838383;
+        border: 1px solid #a8a8a8;
+        bottom: 28px;
+        color: #101010;
+        display: none;
+        outline: 1px solid #626262;
+        padding: 6px;
+        position: absolute;
+        right: 0;
+        width: 230px;
+      }
+      #cloud-panel input {
+        box-sizing: border-box;
+        margin: 2px 0;
+        width: 100%;
+      }
+      #cloud-panel button {
+        background-color: #c16d33;
+        border: 1px solid #e6963f;
+        color: #fcfcfc;
+        cursor: pointer;
+        margin-top: 4px;
+        padding: 2px 8px;
+        text-shadow: 1px 1px #6d3300;
+        width: 100%;
+      }
+      #cloud-status {
+        color: #2b2b2b;
+        font-size: 12px;
+        margin-top: 4px;
+        min-height: 14px;
+      }
     </style>
   </head>
   <body>
@@ -112,6 +163,26 @@
     </div>
     <div>
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+    </div>
+    <div id="cloud">
+      <div id="cloud-panel">
+        <div id="cloud-form">
+          <b>Cloud-Spielstände</b><br/>
+          Mit Konto anmelden, dann werden Spielstände automatisch gesichert.<br/>
+          <input type="email" id="cloud-email" placeholder="E-Mail" autocomplete="email"/>
+          <input type="password" id="cloud-pw" placeholder="Passwort" autocomplete="current-password"/>
+          <button id="cloud-login">Anmelden</button>
+          <a href="https://openttd-web-ene.pages.dev/register.html" target="_blank" rel="noopener">Konto erstellen</a>
+        </div>
+        <div id="cloud-info" style="display:none">
+          <b>Cloud-Spielstände</b><br/>
+          Angemeldet als <span id="cloud-user"></span>.<br/>
+          Spielstände werden nach jedem Speichern automatisch gesichert.
+          <button id="cloud-logout">Abmelden</button>
+        </div>
+        <div id="cloud-status"></div>
+      </div>
+      <span id="cloud-badge">&#9729; Cloud</span>
     </div>
 
     <script type='text/javascript'>
@@ -229,6 +300,73 @@
       window.onerror = function() {
         Module.onAbort();
       };
+
+      /* ---------- Cloud-Sync-Panel (Phase 4) ---------- */
+      (function() {
+        var API = 'https://openttd-api.marcelweissgerber81.workers.dev';
+        var badge = document.getElementById('cloud-badge');
+        var panel = document.getElementById('cloud-panel');
+        var statusEl = document.getElementById('cloud-status');
+
+        function token() { try { return localStorage.getItem('ottd_token'); } catch (e) { return null; } }
+        function email() { try { return localStorage.getItem('ottd_email'); } catch (e) { return null; } }
+
+        function render() {
+          var loggedIn = !!token();
+          document.getElementById('cloud-form').style.display = loggedIn ? 'none' : 'block';
+          document.getElementById('cloud-info').style.display = loggedIn ? 'block' : 'none';
+          document.getElementById('cloud-user').textContent = email() || '';
+          badge.textContent = loggedIn ? '⛅ Cloud an' : '☁ Cloud';
+        }
+
+        Module.onCloudStatus = function(text) {
+          statusEl.textContent = text;
+          badge.title = text;
+        };
+
+        badge.addEventListener('click', function() {
+          panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.getElementById('cloud-login').addEventListener('click', function() {
+          var mail = document.getElementById('cloud-email').value.trim();
+          var pw = document.getElementById('cloud-pw').value;
+          if (!mail || !pw) { statusEl.textContent = 'Bitte E-Mail und Passwort eingeben.'; return; }
+          statusEl.textContent = 'Anmeldung läuft...';
+          fetch(API + '/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: mail, password: pw }),
+          }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+            .then(function(res) {
+              if (!res.ok || !res.d.token) {
+                statusEl.textContent = res.d && res.d.message ? res.d.message : 'Anmeldung fehlgeschlagen.';
+                return;
+              }
+              try {
+                localStorage.setItem('ottd_token', res.d.token);
+                localStorage.setItem('ottd_email', res.d.email);
+              } catch (e) {}
+              statusEl.textContent = 'Angemeldet - Seite lädt neu, um Cloud-Spielstände zu holen...';
+              setTimeout(function() { location.reload(); }, 800);
+            })
+            .catch(function() { statusEl.textContent = 'Server nicht erreichbar.'; });
+        });
+
+        document.getElementById('cloud-logout').addEventListener('click', function() {
+          var t = token();
+          if (t) fetch(API + '/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t } }).catch(function() {});
+          try {
+            localStorage.removeItem('ottd_token');
+            localStorage.removeItem('ottd_email');
+            localStorage.removeItem('ottd_cloud_pushed');
+          } catch (e) {}
+          render();
+          statusEl.textContent = 'Abgemeldet - Spielstände bleiben lokal erhalten.';
+        });
+
+        render();
+      })();
     </script>
     {{{ SCRIPT }}}
   </body>

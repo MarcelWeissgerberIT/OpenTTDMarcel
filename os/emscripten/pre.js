@@ -34,9 +34,146 @@ Module.preRun.push(function() {
     FS.mkdir(personal_dir);
     FS.mount(IDBFS, {}, personal_dir);
 
+    /* ---------- Cloud-Sync (Phase 4): Saves + openttd.cfg in R2/D1 ---------- */
+
+    var CLOUD_API = 'https://openttd-api.marcelweissgerber81.workers.dev';
+    var save_dir = personal_dir + '/save';
+
+    function cloudToken() {
+        try { return localStorage.getItem('ottd_token'); } catch (e) { return null; }
+    }
+    function cloudStatus(text) {
+        if (Module.onCloudStatus) Module.onCloudStatus(text);
+    }
+    function cloudPushedMap() {
+        try { return JSON.parse(localStorage.getItem('ottd_cloud_pushed') || '{}'); } catch (e) { return {}; }
+    }
+    function cloudPushedSave(map) {
+        try { localStorage.setItem('ottd_cloud_pushed', JSON.stringify(map)); } catch (e) {}
+    }
+
+    /* Beim Start: Cloud-Spielstaende holen, die lokal fehlen oder deutlich
+     * neuer sind (1 Minute Puffer gegen Uhren-Schieflage). Fehler blockieren
+     * den Spielstart nie. */
+    function cloudPull(done) {
+        var token = cloudToken();
+        if (!token) { done(); return; }
+        cloudStatus('Cloud: prüfe Spielstände...');
+        var finished = false;
+        var guard = setTimeout(function() { if (!finished) { finished = true; done(); } }, 20000);
+        function finish() {
+            if (!finished) { finished = true; clearTimeout(guard); }
+            else return;
+            FS.syncfs(false, function() { done(); });
+        }
+        fetch(CLOUD_API + '/api/saves', { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(function(r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+            .then(function(d) {
+                var saves = (d && d.saves) || [];
+                var jobs = saves.filter(function(s) {
+                    try {
+                        var st = FS.stat(save_dir + '/' + s.name);
+                        return st.mtime.getTime() < s.updated_at - 60000;
+                    } catch (e) { return true; /* lokal nicht vorhanden */ }
+                });
+                try { FS.mkdirTree(save_dir); } catch (e) {}
+                var idx = 0;
+                function next() {
+                    if (idx >= jobs.length) {
+                        /* Einstellungen nur uebernehmen, wenn lokal noch keine existieren
+                         * (frischer Browser) - lokale Aenderungen gewinnen sonst immer. */
+                        var haveCfg = true;
+                        try { FS.stat(personal_dir + '/openttd.cfg'); } catch (e) { haveCfg = false; }
+                        if (haveCfg) { cloudStatus(jobs.length ? 'Cloud: ' + jobs.length + ' Spielstand(e) geladen' : 'Cloud: synchron'); finish(); return; }
+                        fetch(CLOUD_API + '/api/settings', { headers: { 'Authorization': 'Bearer ' + token } })
+                            .then(function(r) { return r.ok ? r.json() : null; })
+                            .then(function(s) {
+                                if (s && s.json) FS.writeFile(personal_dir + '/openttd.cfg', s.json);
+                                cloudStatus('Cloud: Spielstände & Einstellungen geladen');
+                                finish();
+                            })
+                            .catch(function() { finish(); });
+                        return;
+                    }
+                    var s = jobs[idx++];
+                    cloudStatus('Cloud: lade "' + s.name + '"...');
+                    fetch(CLOUD_API + '/api/saves/download?slot=' + s.slot, { headers: { 'Authorization': 'Bearer ' + token } })
+                        .then(function(r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('HTTP ' + r.status)); })
+                        .then(function(buf) {
+                            FS.writeFile(save_dir + '/' + s.name, new Uint8Array(buf));
+                            next();
+                        })
+                        .catch(function() { next(); });
+                }
+                next();
+            })
+            .catch(function(e) { cloudStatus('Cloud: nicht erreichbar'); finish(); });
+    }
+
+    /* Nach jedem Speichern: die (bis zu 3) neuesten Saves hochladen, die sich
+     * seit dem letzten Push geaendert haben; dazu die openttd.cfg. */
+    var cloud_push_timer = null;
+    function cloudPushSoon() {
+        if (cloud_push_timer) clearTimeout(cloud_push_timer);
+        cloud_push_timer = setTimeout(cloudPush, 3000);
+    }
+    function cloudPush() {
+        var token = cloudToken();
+        if (!token) return;
+        var names = [];
+        try {
+            names = FS.readdir(save_dir).filter(function(n) { return /\.sav$/i.test(n); });
+        } catch (e) { return; }
+        var pushed = cloudPushedMap();
+        var files = names.map(function(n) {
+            var m = 0;
+            try { m = FS.stat(save_dir + '/' + n).mtime.getTime(); } catch (e) {}
+            return { n: n, m: m };
+        }).sort(function(a, b) { return b.m - a.m; }).slice(0, 3)
+          .filter(function(f) { return (pushed[f.n] || 0) < f.m; });
+        var idx = 0;
+        function next() {
+            if (idx >= files.length) {
+                /* openttd.cfg mitschicken, wenn geaendert. */
+                var cfgTime = 0;
+                try { cfgTime = FS.stat(personal_dir + '/openttd.cfg').mtime.getTime(); } catch (e) {}
+                if (cfgTime > (pushed['openttd.cfg'] || 0)) {
+                    var cfg = '';
+                    try { cfg = new TextDecoder().decode(FS.readFile(personal_dir + '/openttd.cfg')); } catch (e) {}
+                    if (cfg) {
+                        fetch(CLOUD_API + '/api/settings', {
+                            method: 'PUT',
+                            headers: { 'Authorization': 'Bearer ' + token },
+                            body: cfg,
+                        }).then(function(r) {
+                            if (r.ok) { pushed['openttd.cfg'] = cfgTime; cloudPushedSave(pushed); }
+                        }).catch(function() {});
+                    }
+                }
+                if (files.length) cloudStatus('Cloud: gesichert (' + new Date().toLocaleTimeString() + ')');
+                return;
+            }
+            var f = files[idx++];
+            var data;
+            try { data = FS.readFile(save_dir + '/' + f.n); } catch (e) { next(); return; }
+            cloudStatus('Cloud: sichere "' + f.n + '"...');
+            fetch(CLOUD_API + '/api/saves/upload?name=' + encodeURIComponent(f.n), {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: data,
+            }).then(function(r) {
+                if (r.ok) { pushed[f.n] = f.m; cloudPushedSave(pushed); }
+                next();
+            }).catch(function() { cloudStatus('Cloud: Upload fehlgeschlagen'); next(); });
+        }
+        next();
+    }
+
     Module.addRunDependency('syncfs');
     FS.syncfs(true, function (err) {
-        Module.removeRunDependency('syncfs');
+        cloudPull(function() {
+            Module.removeRunDependency('syncfs');
+        });
     });
 
     window.openttd_syncfs_shown_warning = false;
@@ -49,6 +186,9 @@ Module.preRun.push(function() {
                 window.openttd_syncfs_shown_warning = true;
                 Module.onWarningFs();
             }
+
+            /* Nach jedem Speichern zusaetzlich in die Cloud sichern. */
+            cloudPushSoon();
 
             if (callback) callback();
         });

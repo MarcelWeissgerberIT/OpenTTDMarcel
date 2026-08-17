@@ -22,7 +22,8 @@ function corsHeaders(request) {
 	return {
 		'Access-Control-Allow-Origin': allowed,
 		'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-		'Access-Control-Allow-Headers': 'Content-Type',
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+		'Access-Control-Expose-Headers': 'X-Save-Name',
 		'Access-Control-Allow-Credentials': 'true',
 		'Vary': 'Origin',
 	};
@@ -154,6 +155,101 @@ async function handleMe(request, env, cors) {
 	}, 200, cors);
 }
 
+/* ---------- Spielstaende (Phase 4: D1-Metadaten + R2-Blobs) ---------- */
+
+const MAX_SAVE_BYTES = 8 * 1024 * 1024;
+const MAX_SLOTS = 3;
+const SAVE_NAME_RE = /^[\w\-. ()\[\]#+',!äöüÄÖÜß]{1,120}\.sav$/;
+
+async function handleSaveList(request, env, cors) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	const rows = await env.DB.prepare(
+		'SELECT slot, name, size, updated_at FROM saves WHERE user_id = ? ORDER BY slot').bind(user.id).all();
+	return json({ ok: true, max_slots: MAX_SLOTS, saves: rows.results || [] }, 200, cors);
+}
+
+async function handleSaveUpload(request, env, cors, url) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	const name = url.searchParams.get('name') || '';
+	if (!SAVE_NAME_RE.test(name)) return json({ error: 'bad_name', message: 'Ungueltiger Spielstand-Name.' }, 400, cors);
+	const body = await request.arrayBuffer();
+	if (body.byteLength === 0 || body.byteLength > MAX_SAVE_BYTES) {
+		return json({ error: 'bad_size', message: 'Spielstand leer oder groesser als 8 MB.' }, 400, cors);
+	}
+	/* Slot-Wahl: gleicher Name -> gleicher Slot; sonst freier Slot; sonst
+	 * wird der aelteste Slot ueberschrieben (3 Slots halten das R2-Budget
+	 * fuer 10.000 Nutzer im Free-Tier). */
+	const rows = (await env.DB.prepare('SELECT slot, name, updated_at FROM saves WHERE user_id = ?').bind(user.id).all()).results || [];
+	let slot = null;
+	const same = rows.find(r => r.name === name);
+	if (same) {
+		slot = same.slot;
+	} else {
+		for (let s = 1; s <= MAX_SLOTS; s++) if (!rows.some(r => r.slot === s)) { slot = s; break; }
+		if (slot === null) slot = rows.slice().sort((a, b) => a.updated_at - b.updated_at)[0].slot;
+	}
+	const key = `saves/${user.id}/${slot}.sav`;
+	await env.SAVES.put(key, body);
+	await env.DB.prepare(
+		`INSERT INTO saves (user_id, slot, name, size, r2_key, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(user_id, slot) DO UPDATE SET name = excluded.name, size = excluded.size,
+		   r2_key = excluded.r2_key, updated_at = excluded.updated_at`)
+		.bind(user.id, slot, name, body.byteLength, key, Date.now()).run();
+	return json({ ok: true, slot, name, size: body.byteLength }, 200, cors);
+}
+
+async function handleSaveDownload(request, env, cors, url) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	const slot = parseInt(url.searchParams.get('slot') || '', 10);
+	const row = await env.DB.prepare('SELECT name, r2_key FROM saves WHERE user_id = ? AND slot = ?')
+		.bind(user.id, slot).first();
+	if (!row) return json({ error: 'not_found' }, 404, cors);
+	const obj = await env.SAVES.get(row.r2_key);
+	if (!obj) return json({ error: 'not_found' }, 404, cors);
+	return new Response(obj.body, {
+		status: 200,
+		headers: { 'Content-Type': 'application/octet-stream', 'X-Save-Name': encodeURIComponent(row.name), ...cors },
+	});
+}
+
+async function handleSaveDelete(request, env, cors, url) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	const slot = parseInt(url.searchParams.get('slot') || '', 10);
+	const row = await env.DB.prepare('SELECT r2_key FROM saves WHERE user_id = ? AND slot = ?')
+		.bind(user.id, slot).first();
+	if (!row) return json({ error: 'not_found' }, 404, cors);
+	await env.SAVES.delete(row.r2_key);
+	await env.DB.prepare('DELETE FROM saves WHERE user_id = ? AND slot = ?').bind(user.id, slot).run();
+	return json({ ok: true }, 200, cors);
+}
+
+/* ---------- Einstellungen (openttd.cfg als Text-Blob) ---------- */
+
+const MAX_SETTINGS_BYTES = 256 * 1024;
+
+async function handleSettingsGet(request, env, cors) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	const row = await env.DB.prepare('SELECT json, updated_at FROM settings WHERE user_id = ?').bind(user.id).first();
+	return json({ ok: true, json: row ? row.json : null, updated_at: row ? row.updated_at : 0 }, 200, cors);
+}
+
+async function handleSettingsPut(request, env, cors) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	const text = await request.text();
+	if (text.length === 0 || text.length > MAX_SETTINGS_BYTES) return json({ error: 'bad_size' }, 400, cors);
+	await env.DB.prepare(
+		`INSERT INTO settings (user_id, json, updated_at) VALUES (?, ?, ?)
+		 ON CONFLICT(user_id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at`)
+		.bind(user.id, text, Date.now()).run();
+	return json({ ok: true }, 200, cors);
+}
+
 export default {
 	async fetch(request, env) {
 		const url = new URL(request.url);
@@ -174,6 +270,12 @@ export default {
 			if (url.pathname === '/api/login' && request.method === 'POST') return await handleLogin(request, env, cors);
 			if (url.pathname === '/api/logout' && request.method === 'POST') return await handleLogout(request, env, cors);
 			if (url.pathname === '/api/me' && request.method === 'GET') return await handleMe(request, env, cors);
+			if (url.pathname === '/api/saves' && request.method === 'GET') return await handleSaveList(request, env, cors);
+			if (url.pathname === '/api/saves/upload' && request.method === 'PUT') return await handleSaveUpload(request, env, cors, url);
+			if (url.pathname === '/api/saves/download' && request.method === 'GET') return await handleSaveDownload(request, env, cors, url);
+			if (url.pathname === '/api/saves/delete' && request.method === 'DELETE') return await handleSaveDelete(request, env, cors, url);
+			if (url.pathname === '/api/settings' && request.method === 'GET') return await handleSettingsGet(request, env, cors);
+			if (url.pathname === '/api/settings' && request.method === 'PUT') return await handleSettingsPut(request, env, cors);
 		} catch (e) {
 			/* Diagnose-Detail, solange Phase 2 stabilisiert wird. */
 			return json({ error: 'server_error', detail: String(e && e.message || e).slice(0, 200) }, 500, cors);
