@@ -12,7 +12,7 @@
 	<p id="prem"></p>
 	<h2 style="font-size:16px">Cloud-Spielstände</h2>
 	<div id="saves">Lade…</div>
-	<a class="btn" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt spielen</a>
+	<a class="btn" id="play" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt spielen</a>
 	<button class="btn" id="logout" style="background:#c9c9c9; border-color:#6e6e6e; box-shadow:0 4px 0 #6e6e6e;">Abmelden</button>
 	<div class="msg" id="msg"></div>
 	<div class="links"><a href="index.html">Zur&uuml;ck zur Startseite</a></div>
@@ -26,6 +26,8 @@ const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
 		const d = await r.json();
 		if (!d.ok) { location.href = 'login.html'; return; }
 		document.getElementById('who').textContent = 'Angemeldet als ' + d.email;
+		/* Login automatisch mit ins Spiel nehmen (getrennte Browser-Speicher). */
+		if (t) document.getElementById('play').href += '#ottd=' + encodeURIComponent(t);
 		document.getElementById('prem').textContent = d.entitlements.length
 			? 'Premium: ' + d.entitlements.join(', ') : 'Premium: noch nicht freigeschaltet';
 		const rs = await fetch(API + '/api/saves', { credentials: 'include', headers: t ? { 'Authorization': 'Bearer ' + t } : {} });

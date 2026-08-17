@@ -311,6 +311,25 @@
         function token() { try { return localStorage.getItem('ottd_token'); } catch (e) { return null; } }
         function email() { try { return localStorage.getItem('ottd_email'); } catch (e) { return null; } }
 
+        /* Automatische Login-Uebergabe von der Konto-/Startseite (#ottd=TOKEN):
+         * Spiel und Webseite haben getrennte Browser-Speicher, daher reicht die
+         * Seite den Sitzungs-Schluessel beim Klick auf "Jetzt spielen" weiter.
+         * Er wird sofort aus der Adresszeile entfernt. */
+        try {
+          var handoff = location.hash.match(/[#&]ottd=([\w.~%-]+)/);
+          if (handoff) {
+            localStorage.setItem('ottd_token', decodeURIComponent(handoff[1]));
+            history.replaceState(null, '', location.pathname + location.search);
+            fetch(API + '/api/me', { headers: { 'Authorization': 'Bearer ' + decodeURIComponent(handoff[1]) } })
+              .then(function(r) { return r.json(); })
+              .then(function(d) {
+                if (d && d.email) { try { localStorage.setItem('ottd_email', d.email); } catch (e) {} }
+                render();
+              })
+              .catch(function() {});
+          }
+        } catch (e) {}
+
         function render() {
           var loggedIn = !!token();
           document.getElementById('cloud-form').style.display = loggedIn ? 'none' : 'block';

@@ -26,9 +26,16 @@
 		<h1>OpenTTD Marcel</h1>
 		<p>Die Eisenbahn-Wirtschaftssimulation im Browser &mdash; mit Candyland-Welt,
 		Auto-Verbindung und deutscher Oberfl&auml;che.</p>
-		<a class="btn" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt gratis spielen</a>
+		<a class="btn" id="play" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt gratis spielen</a>
 		<p class="hint" style="margin-top:18px"><a href="login.html" style="color:#ffe9b0">Anmelden</a> &middot; <a href="register.html" style="color:#ffe9b0">Konto erstellen</a></p>
-		<p class="hint">Cloud-Spielst&auml;nde und Premium-Features sind in Arbeit.</p>
+		<p class="hint">Mit Konto werden Spielst&auml;nde automatisch in der Cloud gesichert.</p>
 	</div>
+	<script>
+	/* Angemeldete Nutzer nehmen ihren Login automatisch mit ins Spiel. */
+	try {
+		const t = localStorage.getItem('ottd_token');
+		if (t) document.getElementById('play').href += '#ottd=' + encodeURIComponent(t);
+	} catch {}
+	</script>
 </body>
 </html>
