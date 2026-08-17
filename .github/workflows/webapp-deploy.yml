@@ -35,7 +35,7 @@ jobs:
       - name: Inject D1 database id
         run: |
           DB_ID=$(npx wrangler d1 list --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);const db=j.find(x=>x.name==='openttd-web');if(!db){console.error('db not found');process.exit(1)};console.log(db.uuid)})")
-          sed -i "s/DATABASE_ID_PLACEHOLDER/$DB_ID/" wrangler.toml
+          sed -i "s/^database_id = .*/database_id = \"$DB_ID\"/" wrangler.toml
           grep database_id wrangler.toml
 
       - name: Ensure R2 bucket exists
