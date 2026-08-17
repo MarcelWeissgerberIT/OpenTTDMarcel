@@ -2277,7 +2277,7 @@ STR_AUTOCONNECT_STATUS_NEED_TOWNS                               :{BLACK}Bitte er
 STR_AUTOCONNECT_STATUS_DONE                                     :{BLACK}Fertig! Gesamtkosten: {CURRENCY_LONG}
 STR_AUTOCONNECT_ERR_SINGLEPLAYER                                :{WHITE}Auto-Verbindung gibt es vorerst nur im Einzelspieler
 STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE                             :{BLACK}Kein Platz für einen Flughafen nahe einer der Städte
-STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Flughafenbau fehlgeschlagen (Geld?)
+STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Bau fehlgeschlagen
 STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}Noch kein passendes Flugzeug verfügbar
 STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Nicht genug Geld für Flugzeuge
 STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}Die Städte liegen zu nah beieinander - bitte zwei weiter entfernte Städte wählen
@@ -2298,6 +2298,7 @@ STR_AUTOCONNECT_ERR_NO_DOCK_SITE                                :{BLACK}Keine K�
 STR_AUTOCONNECT_ERR_NO_SHIP_DEPOT                               :{BLACK}Kein Platz für ein Schiffsdepot beim Hafen
 STR_AUTOCONNECT_CARGO_PAX                                       :{BLACK}Fracht: Passagiere
 STR_AUTOCONNECT_CARGO_MAIL                                      :{BLACK}Fracht: Post
+STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Fracht: Passagiere + Post
 STR_AUTOCONNECT_CARGO_TOOLTIP                                   :{BLACK}Umschalten, welche Fracht die Fahrzeuge befördern
 STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Kosten schätzen
 STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Berechnet die ungefähren Kosten, ohne etwas zu bauen

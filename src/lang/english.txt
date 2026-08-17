@@ -2308,7 +2308,7 @@ STR_AUTOCONNECT_STATUS_NEED_TOWNS                               :{BLACK}Please c
 STR_AUTOCONNECT_STATUS_DONE                                     :{BLACK}Done! Total cost: {CURRENCY_LONG}
 STR_AUTOCONNECT_ERR_SINGLEPLAYER                                :{WHITE}Auto-connect is only available in single-player for now
 STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE                             :{BLACK}No space for an airport near one of the towns
-STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Building an airport failed (money?)
+STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Construction failed
 STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}No suitable aircraft available yet
 STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Not enough money for aircraft
 STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}The towns are too close together - please pick two towns farther apart
@@ -2329,6 +2329,7 @@ STR_AUTOCONNECT_ERR_NO_DOCK_SITE                                :{BLACK}No coast
 STR_AUTOCONNECT_ERR_NO_SHIP_DEPOT                               :{BLACK}No space for a ship depot near the dock
 STR_AUTOCONNECT_CARGO_PAX                                       :{BLACK}Cargo: Passengers
 STR_AUTOCONNECT_CARGO_MAIL                                      :{BLACK}Cargo: Mail
+STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Cargo: Passengers + mail
 STR_AUTOCONNECT_CARGO_TOOLTIP                                   :{BLACK}Switch the cargo the vehicles will carry
 STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Estimate cost
 STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Calculates the approximate cost without building anything
