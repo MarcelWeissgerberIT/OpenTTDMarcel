@@ -81,8 +81,17 @@ jobs:
           echo; echo "Me again..."
           curl -sS --fail -b "$JAR" "$API/api/me" | grep -q "$EMAIL"
           echo "Token auth..."
-          TOKEN=$(curl -sS --fail -H 'Content-Type: application/json' \
-            -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" "$API/api/login" | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+          # Nach dem Worker-Deploy kann die neue Version ein paar Sekunden
+          # brauchen, bis sie weltweit aktiv ist - daher mit Wiederholung.
+          TOKEN=""
+          for i in 1 2 3 4 5 6; do
+            TOKEN=$(curl -sS --fail -H 'Content-Type: application/json' \
+              -d "{\"email\":\"$EMAIL\",\"password\":\"$PW\"}" "$API/api/login" | python3 -c "import sys,json;print(json.load(sys.stdin).get('token',''))")
+            [ -n "$TOKEN" ] && break
+            echo "  noch alte Worker-Version aktiv, warte 10s (Versuch $i/6)..."
+            sleep 10
+          done
+          [ -n "$TOKEN" ] || { echo "Login-Antwort enthaelt keinen Token"; exit 1; }
           curl -sS --fail -H "Authorization: Bearer $TOKEN" "$API/api/me" | grep -q "$EMAIL"
           echo "Cleanup test user..."
           npx wrangler d1 execute openttd-web --remote --command "DELETE FROM users WHERE email = '$EMAIL'"

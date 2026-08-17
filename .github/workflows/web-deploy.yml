@@ -7,7 +7,7 @@ name: Web-Build und Deploy (WASM zu GitHub Pages)
 on:
   push:
     branches: [claude/candyland-scrolling]
-    paths-ignore: ['webapp/**']
+    paths-ignore: ['webapp/**', '.github/workflows/webapp-deploy.yml']
   workflow_dispatch:
 
 permissions:
