@@ -64,6 +64,7 @@ static const uint PS_CAT_HOUSE = 4;
 /** Ein bearbeitbares Objekt in der Liste (Fahrzeug oder Gebaeude). */
 struct PsEntry {
 	bool is_house = false;
+	bool is_flag = false; ///< Firmen-Fahne (festes Sprite).
 	EngineID engine{};   ///< Fahrzeug (wenn !is_house).
 	uint16_t house = 0;  ///< Basis-HouseID (wenn is_house).
 	uint category = 0;   ///< Filterindex: 0-3 Fahrzeugtyp, 4 Haus.
@@ -169,6 +170,10 @@ static void PixelStudioSaveToDisk()
 			write_entry(1, static_cast<uint16_t>(id), static_cast<uint8_t>(v), ps);
 		}
 	}
+	if (PixelStudioHasOverride(SPR_COMPANY_FLAG)) {
+		PixelStudioSprite ps;
+		if (PixelStudioReadSprite(SPR_COMPANY_FLAG, ps)) write_entry(2, 0, 0, ps);
+	}
 	f.close();
 #ifdef __EMSCRIPTEN__
 	EM_ASM(if (window["openttd_syncfs"]) openttd_syncfs());
@@ -214,7 +219,9 @@ void PixelStudioLoadOverrides()
 		if (!f.good()) break;
 
 		std::vector<SpriteID> views;
-		if (kind == 1) {
+		if (kind == 2) {
+			views = {SPR_COMPANY_FLAG};
+		} else if (kind == 1) {
 			if (engine_id >= HouseSpec::Specs().size()) continue;
 			views = PsViewsForHouse(static_cast<HouseID>(engine_id));
 		} else {
@@ -291,6 +298,14 @@ struct PixelStudioWindow : Window {
 				en.views = std::move(views);
 				this->entries.push_back(std::move(en));
 			}
+		}
+		{
+			/* Firmen-Fahne (weht auf gekauften Haeusern). */
+			PsEntry en;
+			en.is_flag = true;
+			en.category = PS_CAT_HOUSE;
+			en.views = {SPR_COMPANY_FLAG};
+			this->entries.push_back(std::move(en));
 		}
 		for (size_t id = 0; id < HouseSpec::Specs().size(); id++) {
 			if (!PsIsBaseHouse(static_cast<HouseID>(id))) continue;
@@ -413,7 +428,9 @@ struct PixelStudioWindow : Window {
 						GfxFillRect(r.left + 1, y, r.right - 1, y + line - 1, PC_BLACK);
 					}
 					const PsEntry &en = this->entries[index];
-					std::string name = en.is_house ? GetString(HouseSpec::Get(en.house)->building_name) : GetString(STR_ENGINE_NAME, en.engine);
+					std::string name = en.is_flag ? GetString(STR_PIXELSTUDIO_FLAG)
+							: en.is_house ? GetString(HouseSpec::Get(en.house)->building_name)
+							: GetString(STR_ENGINE_NAME, en.engine);
 					DrawString(r.left + WidgetDimensions::scaled.frametext.left, r.right - WidgetDimensions::scaled.frametext.right, y,
 							name, index == this->selected ? TextColour::White : TextColour::Black);
 					y += line;
@@ -807,4 +824,20 @@ void ShowPixelStudioWindow()
 {
 	PixelStudioLoadOverrides();
 	AllocateWindowDescFront<PixelStudioWindow>(_pixelstudio_desc, 0);
+}
+
+/** Pixel-Studio mit vorgewaehlter Firmen-Fahne oeffnen (Firmen-Fenster). */
+void ShowPixelStudioFlag()
+{
+	PixelStudioLoadOverrides();
+	CloseWindowById(WindowClass::PixelStudio, 0);
+	AllocateWindowDescFront<PixelStudioWindow>(_pixelstudio_desc, 0);
+	PixelStudioWindow *w = static_cast<PixelStudioWindow *>(FindWindowById(WindowClass::PixelStudio, 0));
+	if (w == nullptr) return;
+	for (int i = 0; i < (int)w->entries.size(); i++) {
+		if (w->entries[i].is_flag) {
+			w->SelectEntry(i);
+			break;
+		}
+	}
 }

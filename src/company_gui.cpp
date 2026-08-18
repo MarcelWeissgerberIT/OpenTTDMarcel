@@ -1896,8 +1896,9 @@ static constexpr std::initializer_list<NWidgetPart> _nested_company_widgets = {
 				NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 					NWidget(WWT_TEXT, Colours::Invalid, WID_C_DESC_INFRASTRUCTURE), SetStringTip(STR_COMPANY_VIEW_INFRASTRUCTURE),  SetAlignment({AlignmentH::Start, AlignmentV::Top}),
 					NWidget(WWT_EMPTY, Colours::Invalid, WID_C_DESC_INFRASTRUCTURE_COUNTS), SetMinimalTextLines(5, 0), SetFill(1, 0),
-					NWidget(NWID_VERTICAL), SetPIPRatio(0, 0, 1),
+					NWidget(NWID_VERTICAL), SetPIPRatio(0, 0, 1), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0),
 						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_C_VIEW_INFRASTRUCTURE), SetStringTip(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON, STR_COMPANY_VIEW_INFRASTRUCTURE_TOOLTIP),
+						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_C_EDIT_FLAG), SetStringTip(STR_COMPANY_VIEW_EDIT_FLAG_BUTTON, STR_COMPANY_VIEW_EDIT_FLAG_TOOLTIP),
 					EndContainer(),
 				EndContainer(),
 
@@ -2043,6 +2044,13 @@ struct CompanyWindow : Window
 			case WID_C_VIEW_HQ:
 			case WID_C_BUILD_HQ:
 			case WID_C_RELOCATE_HQ:
+			case WID_C_EDIT_FLAG: {
+				/* Fork: Firmen-Fahne im Pixel-Studio bemalen. */
+				extern void ShowPixelStudioFlag();
+				ShowPixelStudioFlag();
+				break;
+			}
+
 			case WID_C_VIEW_INFRASTRUCTURE:
 			case WID_C_GIVE_MONEY:
 			case WID_C_HOSTILE_TAKEOVER:
@@ -2226,6 +2234,13 @@ struct CompanyWindow : Window
 				this->LowerWidget(WID_C_RELOCATE_HQ);
 				this->SetWidgetDirty(WID_C_RELOCATE_HQ);
 				break;
+
+			case WID_C_EDIT_FLAG: {
+				/* Fork: Firmen-Fahne im Pixel-Studio bemalen. */
+				extern void ShowPixelStudioFlag();
+				ShowPixelStudioFlag();
+				break;
+			}
 
 			case WID_C_VIEW_INFRASTRUCTURE:
 				ShowCompanyInfrastructure(this->window_number);

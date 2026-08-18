@@ -2256,6 +2256,9 @@ STR_PIXELSTUDIO_FILTER_ROAD                                     :{BLACK}Straße
 STR_PIXELSTUDIO_FILTER_SHIP                                     :{BLACK}Schiff
 STR_PIXELSTUDIO_FILTER_AIR                                      :{BLACK}Luft
 STR_PIXELSTUDIO_FILTER_HOUSE                                    :{BLACK}Haus
+STR_PIXELSTUDIO_FLAG                                            :Firmen-Fahne (gekaufte Gebäude)
+STR_COMPANY_VIEW_EDIT_FLAG_BUTTON                               :{BLACK}Firmen-Fahne...
+STR_COMPANY_VIEW_EDIT_FLAG_TOOLTIP                              :{BLACK}Die Fahne gestalten, die auf gekauften Gebäuden weht
 STR_PIXELSTUDIO_FILTER_TOOLTIP                                  :{BLACK}Diesen Fahrzeugtyp in der Liste ein- oder ausblenden
 STR_PIXELSTUDIO_VIEW                                            :{BLACK}Ansicht {NUM}/{NUM}
 STR_PIXELSTUDIO_VIEW_TOOLTIP                                    :{BLACK}Zwischen den acht Blickrichtungen wechseln

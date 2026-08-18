@@ -46,6 +46,7 @@ void DrawHouseInGUI(int x, int y, HouseID house_id, int view);
 #include "table/strings.h"
 
 #include <fstream>
+#include <unordered_set>
 
 #ifdef __EMSCRIPTEN__
 #	include <emscripten.h>
@@ -63,10 +64,25 @@ struct OwnedHouse {
 };
 static std::vector<OwnedHouse> _owned_houses;
 static bool _owned_loaded = false;
+static std::unordered_set<uint32_t> _owned_tiles; ///< Nordkacheln der aktuellen Karte (fuer die Fahne).
 
 static uint32_t CurrentSeed()
 {
 	return _settings_game.game_creation.generation_seed;
+}
+
+static void RebuildOwnedTiles()
+{
+	_owned_tiles.clear();
+	for (const OwnedHouse &h : _owned_houses) {
+		if (h.seed == CurrentSeed()) _owned_tiles.insert(h.tile);
+	}
+}
+
+/** Fork: Weht auf dieser Kachel die Firmen-Fahne (gekauftes Haus)? */
+bool HouseOwnIsOwnedTile(TileIndex tile)
+{
+	return _owned_tiles.contains(tile.base());
 }
 
 static std::string HouseOwnFilePath()
@@ -112,6 +128,7 @@ static void HouseOwnLoad()
 		if (!f.good()) break;
 		_owned_houses.push_back(h);
 	}
+	RebuildOwnedTiles();
 }
 
 /** Nordkachel des Hauses auf dieser Kachel (mehrteilige Gebaeude). */
@@ -169,6 +186,7 @@ static void HouseOwnMonthly()
 		++it;
 	}
 	if (changed) {
+		RebuildOwnedTiles();
 		HouseOwnSave();
 		SetWindowClassesDirty(WindowClass::HouseInfo);
 	}
@@ -194,8 +212,10 @@ bool HouseOwnBuy(TileIndex tile)
 	ShowCostOrIncomeAnimation(TileX(tile) * TILE_SIZE + 8, TileY(tile) * TILE_SIZE + 8, GetTilePixelZ(tile), price);
 	HouseOwnLoad();
 	_owned_houses.push_back({CurrentSeed(), tile.base(), GetHouseType(tile), price, HouseRent(hs)});
+	RebuildOwnedTiles();
 	HouseOwnSave();
 	SetWindowClassesDirty(WindowClass::HouseInfo);
+	MarkWholeScreenDirty();
 	return true;
 }
 

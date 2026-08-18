@@ -289,6 +289,12 @@ static void DrawTile_Town(TileInfo *ti)
 
 		if (proc >= 0) _town_draw_tile_procs[proc](ti);
 	}
+
+	/* Fork: Firmen-Fahne markiert gekaufte Haeuser (Nordkachel). */
+	extern bool HouseOwnIsOwnedTile(TileIndex tile);
+	if (Company::IsValidID(_local_company) && HouseOwnIsOwnedTile(ti->tile)) {
+		AddSortableSpriteToDraw(SPR_COMPANY_FLAG, GetCompanyPalette(_local_company), *ti, {{12, 12, 0}, {2, 2, 20}, {}});
+	}
 }
 
 /** @copydoc GetFoundationProc */

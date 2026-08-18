@@ -33,6 +33,7 @@ enum CompanyWidgets : WidgetID {
 	WID_C_COMPANY_NAME,               ///< Button to change company name.
 
 	WID_C_SELECT_VIEW_BUILD_HQ,       ///< Panel about HQ.
+	WID_C_EDIT_FLAG,                  ///< Fork: Firmen-Fahne im Pixel-Studio bearbeiten.
 	WID_C_VIEW_HQ,                    ///< Button to view the HQ.
 	WID_C_BUILD_HQ,                   ///< Button to build the HQ.
 
