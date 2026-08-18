@@ -946,6 +946,15 @@ public:
 			ir.top += line_height;
 		}
 
+		/* Fork: Ausbaustufe immer anzeigen - nach einem Produktions-Ausbau
+		 * sieht man sonst nicht, wie weit die Industrie ausgebaut ist
+		 * (100 % = Grundproduktion, 800 % = Maximum). */
+		if (this->editable != Editability::Multiplier && i->prod_level != PRODLEVEL_CLOSURE) {
+			ir.top += WidgetDimensions::scaled.vsep_wide;
+			DrawString(ir, GetString(STR_INDUSTRY_VIEW_PRODUCTION_LEVEL, RoundDivSU(i->prod_level * 100, PRODLEVEL_DEFAULT)));
+			ir.top += GetCharacterHeight(FontSize::Normal);
+		}
+
 		/* Display production multiplier if editable */
 		if (this->editable == Editability::Multiplier) {
 			line_height = this->cheat_line_height;

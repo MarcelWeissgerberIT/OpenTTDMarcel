@@ -30,6 +30,7 @@ enum SelectGameIntroWidgets : WidgetID {
 	WID_SGI_SCALE_150,             ///< Interface scale 1.5x button.
 	WID_SGI_SCALE_200,             ///< Interface scale 2x button.
 	WID_SGI_SCALE_250,             ///< Interface scale 2.5x button.
+	WID_SGI_PIXELSTUDIO,           ///< Fork: Pixel-Studio oeffnen.
 	WID_SGI_EXIT,                  ///< Exit button.
 };
 

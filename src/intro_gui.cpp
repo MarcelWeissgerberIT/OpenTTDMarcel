@@ -315,6 +315,13 @@ struct SelectGameWindow : public Window {
 				StartScenarioEditor();
 				break;
 
+			case WID_SGI_PIXELSTUDIO: {
+				/* Fork: Fahrzeuggrafiken direkt im Spiel bearbeiten. */
+				extern void ShowPixelStudioWindow();
+				ShowPixelStudioWindow();
+				break;
+			}
+
 			case WID_SGI_PLAY_NETWORK:
 				if (!_network_available) {
 					ShowErrorMessage(GetEncodedString(STR_NETWORK_ERROR_NOTAVAILABLE), {}, WarningLevel::Error);
@@ -385,6 +392,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_select_game_widgets 
 				NWidget(WWT_PUSHIMGTEXTBTN, Colours::Orange, WID_SGI_OPTIONS), SetToolbarMinimalSize(1), SetSpriteStringTip(SPR_IMG_SETTINGS, STR_INTRO_GAME_OPTIONS, STR_INTRO_TOOLTIP_GAME_OPTIONS), SetAlignment({AlignmentH::Start, AlignmentV::Middle}), SetFill(1, 0),
 				NWidget(WWT_PUSHIMGTEXTBTN, Colours::Orange, WID_SGI_CONTENT_DOWNLOAD), SetToolbarMinimalSize(1), SetSpriteStringTip(SPR_IMG_SHOW_VEHICLES, STR_INTRO_ONLINE_CONTENT, STR_INTRO_TOOLTIP_ONLINE_CONTENT), SetAlignment({AlignmentH::Start, AlignmentV::Middle}), SetFill(1, 0),
 				NWidget(WWT_PUSHIMGTEXTBTN, Colours::Orange, WID_SGI_EDIT_SCENARIO), SetToolbarMinimalSize(1), SetSpriteStringTip(SPR_IMG_SMALLMAP, STR_INTRO_SCENARIO_EDITOR, STR_INTRO_TOOLTIP_SCENARIO_EDITOR), SetAlignment({AlignmentH::Start, AlignmentV::Middle}), SetFill(1, 0),
+				NWidget(WWT_PUSHIMGTEXTBTN, Colours::Orange, WID_SGI_PIXELSTUDIO), SetToolbarMinimalSize(1), SetSpriteStringTip(SPR_IMG_LANDSCAPING, STR_PIXELSTUDIO_BUTTON, STR_PIXELSTUDIO_BUTTON_TOOLTIP), SetAlignment({AlignmentH::Start, AlignmentV::Middle}), SetFill(1, 0),
 				NWidget(WWT_PUSHIMGTEXTBTN, Colours::Orange, WID_SGI_HELP), SetToolbarMinimalSize(1), SetSpriteStringTip(SPR_IMG_QUERY, STR_INTRO_HELP, STR_INTRO_TOOLTIP_HELP), SetAlignment({AlignmentH::Start, AlignmentV::Middle}), SetFill(1, 0),
 			EndContainer(),
 

@@ -344,6 +344,11 @@ static void LoadIntroGame(bool load_newgrfs = true)
 
 	CheckForMissingGlyphs();
 
+	/* Fork Pixel-Studio: gespeicherte Sprite-Bearbeitungen aktivieren
+	 * (jetzt sind Fahrzeuge und Sprites vollstaendig geladen). */
+	extern void PixelStudioLoadOverrides();
+	PixelStudioLoadOverrides();
+
 	MusicLoop(); // ensure music is correct
 }
 

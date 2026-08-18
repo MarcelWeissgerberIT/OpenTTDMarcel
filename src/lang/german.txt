@@ -2247,6 +2247,31 @@ STR_INTRO_TOOLTIP_LOAD_GAME                                     :{BLACK}Ein gesp
 STR_INTRO_TOOLTIP_PLAY_HEIGHTMAP                                :{BLACK}Ein neues Spiel mit Reliefkarte als Landschaft starten
 STR_INTRO_TOOLTIP_PLAY_SCENARIO                                 :{BLACK}Starte ein neues Spiel basierend auf einem Szenario
 STR_INTRO_TOOLTIP_SCENARIO_EDITOR                               :{BLACK}Eine eigene Karte oder Szenario erstellen
+STR_PIXELSTUDIO_BUTTON                                          :{BLACK}Pixel-Studio
+STR_PIXELSTUDIO_BUTTON_TOOLTIP                                  :{BLACK}Fahrzeuggrafiken mit dem eingebauten Pixel-Editor bearbeiten
+STR_PIXELSTUDIO_CAPTION                                         :{WHITE}Pixel-Studio
+STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Straßenfahrzeug zum Bearbeiten wählen
+STR_PIXELSTUDIO_VIEW                                            :{BLACK}Ansicht {NUM}/{NUM}
+STR_PIXELSTUDIO_VIEW_TOOLTIP                                    :{BLACK}Zwischen den acht Blickrichtungen wechseln
+STR_PIXELSTUDIO_PREV                                            :{BLACK}<
+STR_PIXELSTUDIO_NEXT                                            :{BLACK}>
+STR_PIXELSTUDIO_CANVAS_TOOLTIP                                  :{BLACK}Hier malen. Karierte Zellen sind durchsichtig
+STR_PIXELSTUDIO_PALETTE_TOOLTIP                                 :{BLACK}Spielpalette. Farben 198-205 übernehmen die Firmenfarbe
+STR_PIXELSTUDIO_COLOUR                                          :{BLACK}Farbe: {NUM}
+STR_PIXELSTUDIO_TOOL_PENCIL                                     :{BLACK}Stift
+STR_PIXELSTUDIO_TOOL_PENCIL_TOOLTIP                             :{BLACK}Einzelne Pixel malen (Ziehen zeichnet durch)
+STR_PIXELSTUDIO_TOOL_FILL                                       :{BLACK}Füllen
+STR_PIXELSTUDIO_TOOL_FILL_TOOLTIP                               :{BLACK}Zusammenhängende Fläche mit der gewählten Farbe füllen
+STR_PIXELSTUDIO_TOOL_PICK                                       :{BLACK}Pipette
+STR_PIXELSTUDIO_TOOL_PICK_TOOLTIP                               :{BLACK}Farbe aus dem Bild aufnehmen
+STR_PIXELSTUDIO_TOOL_ERASE                                      :{BLACK}Radierer
+STR_PIXELSTUDIO_TOOL_ERASE_TOOLTIP                              :{BLACK}Pixel durchsichtig machen
+STR_PIXELSTUDIO_UNDO                                            :{BLACK}Rückgängig
+STR_PIXELSTUDIO_UNDO_TOOLTIP                                    :{BLACK}Letzten Malzug zurücknehmen
+STR_PIXELSTUDIO_RESET                                           :{BLACK}Original
+STR_PIXELSTUDIO_RESET_TOOLTIP                                   :{BLACK}Originalgrafik dieser Ansicht wiederherstellen
+STR_PIXELSTUDIO_SAVE                                            :{BLACK}Speichern
+STR_PIXELSTUDIO_SAVE_TOOLTIP                                    :{BLACK}Im Spiel übernehmen und dauerhaft behalten
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Mehrspieler-Spiel beginnen
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landschaft mit gemäßigtem Klima auswählen

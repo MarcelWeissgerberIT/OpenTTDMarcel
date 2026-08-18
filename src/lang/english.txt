@@ -2278,6 +2278,31 @@ STR_INTRO_TOOLTIP_LOAD_GAME                                     :{BLACK}Load a s
 STR_INTRO_TOOLTIP_PLAY_HEIGHTMAP                                :{BLACK}Start a new game, using a heightmap as landscape
 STR_INTRO_TOOLTIP_PLAY_SCENARIO                                 :{BLACK}Start a new game, using a customised scenario
 STR_INTRO_TOOLTIP_SCENARIO_EDITOR                               :{BLACK}Create a customised game world/scenario
+STR_PIXELSTUDIO_BUTTON                                          :{BLACK}Pixel Studio
+STR_PIXELSTUDIO_BUTTON_TOOLTIP                                  :{BLACK}Edit vehicle graphics with an in-game pixel editor
+STR_PIXELSTUDIO_CAPTION                                         :{WHITE}Pixel Studio
+STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Pick a road vehicle to edit
+STR_PIXELSTUDIO_VIEW                                            :{BLACK}View {NUM}/{NUM}
+STR_PIXELSTUDIO_VIEW_TOOLTIP                                    :{BLACK}Switch between the eight view directions
+STR_PIXELSTUDIO_PREV                                            :{BLACK}<
+STR_PIXELSTUDIO_NEXT                                            :{BLACK}>
+STR_PIXELSTUDIO_CANVAS_TOOLTIP                                  :{BLACK}Paint here. Chequered cells are transparent
+STR_PIXELSTUDIO_PALETTE_TOOLTIP                                 :{BLACK}Game palette. Colours 198-205 take the company colour
+STR_PIXELSTUDIO_COLOUR                                          :{BLACK}Colour: {NUM}
+STR_PIXELSTUDIO_TOOL_PENCIL                                     :{BLACK}Pencil
+STR_PIXELSTUDIO_TOOL_PENCIL_TOOLTIP                             :{BLACK}Paint single pixels (drag to draw)
+STR_PIXELSTUDIO_TOOL_FILL                                       :{BLACK}Fill
+STR_PIXELSTUDIO_TOOL_FILL_TOOLTIP                               :{BLACK}Fill a connected area with the chosen colour
+STR_PIXELSTUDIO_TOOL_PICK                                       :{BLACK}Pick
+STR_PIXELSTUDIO_TOOL_PICK_TOOLTIP                               :{BLACK}Pick up a colour from the image
+STR_PIXELSTUDIO_TOOL_ERASE                                      :{BLACK}Erase
+STR_PIXELSTUDIO_TOOL_ERASE_TOOLTIP                              :{BLACK}Make pixels transparent
+STR_PIXELSTUDIO_UNDO                                            :{BLACK}Undo
+STR_PIXELSTUDIO_UNDO_TOOLTIP                                    :{BLACK}Undo the last stroke
+STR_PIXELSTUDIO_RESET                                           :{BLACK}Original
+STR_PIXELSTUDIO_RESET_TOOLTIP                                   :{BLACK}Restore the original graphics of this view
+STR_PIXELSTUDIO_SAVE                                            :{BLACK}Save
+STR_PIXELSTUDIO_SAVE_TOOLTIP                                    :{BLACK}Apply in game and keep permanently
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Start a multiplayer game
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select 'temperate' landscape style

@@ -47,6 +47,22 @@ inline const uint8_t *GetNonSprite(SpriteID sprite, SpriteType type)
 	return (uint8_t*)GetRawSprite(sprite, type);
 }
 
+/* ---------- Pixel-Studio (Fork): Sprites zur Laufzeit ueberschreiben ---------- */
+
+/** Ein bearbeitetes Sprite: Palettenindizes (0 = transparent), zeilenweise. */
+struct PixelStudioSprite {
+	uint16_t width = 0;
+	uint16_t height = 0;
+	int16_t x_offs = 0;
+	int16_t y_offs = 0;
+	std::vector<uint8_t> pixels;
+};
+
+bool PixelStudioReadSprite(SpriteID id, PixelStudioSprite &out);
+void PixelStudioSetOverride(SpriteID id, PixelStudioSprite data);
+void PixelStudioClearOverride(SpriteID id);
+bool PixelStudioHasOverride(SpriteID id);
+
 void GfxInitSpriteMem();
 void GfxClearSpriteCache();
 void GfxClearFontSpriteCache();

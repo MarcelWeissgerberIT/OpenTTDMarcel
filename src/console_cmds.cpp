@@ -40,6 +40,7 @@
 #include "newgrf_profiling.h"
 #include "console_func.h"
 #include "engine_base.h"
+#include "spritecache.h"
 #include "road.h"
 #include "rail.h"
 #include "game/game.hpp"
@@ -377,6 +378,23 @@ static bool ConAutoConnect(std::span<std::string_view> argv)
 	}
 	if (argv.size() >= 5) count = std::max<uint>(1, ParseInteger(argv[4]).value_or(1));
 	IConsolePrint(CC_DEFAULT, "{}", AutoConnectDebugBuild(argv[1], a, b, count, auto_pick));
+	return true;
+}
+
+/* Fork: Pixel-Studio-Diagnose - liest das Sprite des ersten Strassenfahrzeugs. */
+static bool ConPixelTest(std::span<std::string_view> argv)
+{
+	extern SpriteID GetRoadVehBaseSprite(EngineID engine);
+	uint offset = argv.size() >= 2 ? (uint)ParseInteger(argv[1]).value_or(0) : 0;
+	for (const Engine *e : Engine::IterateType(VehicleType::Road)) {
+		SpriteID base = GetRoadVehBaseSprite(e->index);
+		IConsolePrint(CC_DEFAULT, "Engine {} base {}", e->index.base(), base);
+		if (base == 0) continue;
+		PixelStudioSprite ps;
+		bool ok = PixelStudioReadSprite(base + offset, ps);
+		IConsolePrint(CC_DEFAULT, "ReadSprite({}) -> {} ({}x{})", base + offset, ok, ps.width, ps.height);
+		break;
+	}
 	return true;
 }
 
@@ -3019,6 +3037,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("scrollto",                ConScrollToTile);
 	IConsole::CmdRegister("autoconnect",             ConAutoConnect);
 	IConsole::CmdRegister("citizenwin",              ConCitizenWindow);
+	IConsole::CmdRegister("pstest",                  ConPixelTest);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

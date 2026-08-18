@@ -104,6 +104,19 @@ int RoadVehicle::GetDisplayImageWidth(Point *offset) const
 	return ScaleSpriteTrad(this->gcache.cached_veh_length * reference_width / VEHICLE_LENGTH);
 }
 
+/**
+ * Fork Pixel-Studio: Basissprite der 8 Blickrichtungen eines
+ * Standard-Strassenfahrzeugs (0 wenn NewGRF-Grafik aktiv ist).
+ */
+SpriteID GetRoadVehBaseSprite(EngineID engine)
+{
+	const Engine *e = Engine::Get(engine);
+	uint8_t spritenum = e->VehInfo<RoadVehicleInfo>().image_index;
+	if (IsCustomVehicleSpriteNum(spritenum)) return 0;
+	if (!IsValidImageIndex<VehicleType::Road>(spritenum)) return 0;
+	return _roadveh_images[spritenum];
+}
+
 static void GetRoadVehIcon(EngineID engine, EngineImageType image_type, VehicleSpriteSeq *result)
 {
 	const Engine *e = Engine::Get(engine);

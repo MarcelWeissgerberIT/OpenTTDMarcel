@@ -451,6 +451,83 @@ static void *ReadRecolourSprite(SpriteFile &file, size_t file_pos, uint num, Spr
  * @param encoder     Sprite encoder to use.
  * @return Read sprite data.
  */
+/* ---------- Pixel-Studio (Fork): Laufzeit-Ueberschreibungen ----------
+ * Bearbeitete Sprites liegen als Palettenpixel in einer Map; beim Laden
+ * eines Sprites ersetzt der Hook in ReadSprite die Originaldaten. Die
+ * Map ueberlebt GfxClearSpriteCache, Overrides gehen also nie verloren. */
+static std::map<SpriteID, PixelStudioSprite> _pixelstudio_overrides;
+
+const PixelStudioSprite *PixelStudioFindOverride(SpriteID id)
+{
+	auto it = _pixelstudio_overrides.find(id);
+	return it != _pixelstudio_overrides.end() ? &it->second : nullptr;
+}
+
+bool PixelStudioHasOverride(SpriteID id)
+{
+	return _pixelstudio_overrides.contains(id);
+}
+
+void PixelStudioSetOverride(SpriteID id, PixelStudioSprite data)
+{
+	_pixelstudio_overrides[id] = std::move(data);
+	GfxClearSpriteCache();
+}
+
+void PixelStudioClearOverride(SpriteID id)
+{
+	_pixelstudio_overrides.erase(id);
+	GfxClearSpriteCache();
+}
+
+/**
+ * Aktuelle Pixel eines Sprites lesen: vorhandenes Override, sonst die
+ * 8bpp-Originaldaten aus der GRF-Datei.
+ */
+bool PixelStudioReadSprite(SpriteID id, PixelStudioSprite &out)
+{
+	const PixelStudioSprite *ov = PixelStudioFindOverride(id);
+	if (ov != nullptr) {
+		out = *ov;
+		return true;
+	}
+
+	if (!SpriteExists(id)) {
+		Debug(misc, 1, "PS: Sprite {} existiert nicht", id);
+		return false;
+	}
+	SpriteCache *sc = GetSpriteCache(id);
+	if (sc->type != SpriteType::Normal || sc->file == nullptr) {
+		Debug(misc, 1, "PS: Sprite {} Typ {} Datei {}", id, (int)sc->type, sc->file != nullptr);
+		return false;
+	}
+
+	SpriteLoader::SpriteCollection sprite;
+	ZoomLevels avail_8bpp, avail_32bpp;
+	SpriteLoaderGrf sprite_loader(sc->file->GetContainerVersion());
+	ZoomLevels avail = sprite_loader.LoadSprite(sprite, *sc->file, sc->file_pos, SpriteType::Normal, false, sc->control_flags, avail_8bpp, avail_32bpp);
+	if (!avail.Test(ZoomLevel::Normal)) {
+		Debug(misc, 1, "PS: Sprite {} ohne 1x-8bpp (avail {:x})", id, avail.base());
+		return false;
+	}
+
+	const SpriteLoader::Sprite &sp = sprite[ZoomLevel::Normal];
+	if (sp.width == 0 || sp.height == 0 || sp.width > 160 || sp.height > 160) {
+		Debug(misc, 1, "PS: Sprite {} Masse {}x{} unbrauchbar", id, sp.width, sp.height);
+		return false;
+	}
+	out.width = sp.width;
+	out.height = sp.height;
+	out.x_offs = sp.x_offs;
+	out.y_offs = sp.y_offs;
+	size_t num = static_cast<size_t>(sp.width) * sp.height;
+	out.pixels.resize(num);
+	for (size_t i = 0; i < num; i++) {
+		out.pixels[i] = sp.data[i].a != 0 ? sp.data[i].m : 0;
+	}
+	return true;
+}
+
 static void *ReadSprite(const SpriteCache *sc, SpriteID id, SpriteType sprite_type, SpriteAllocator &allocator, SpriteEncoder *encoder)
 {
 	/* Use current blitter if no other sprite encoder is given. */
@@ -517,6 +594,28 @@ static void *ReadSprite(const SpriteCache *sc, SpriteID id, SpriteType sprite_ty
 		}
 
 		return s;
+	}
+
+	/* Fork Pixel-Studio: bearbeitete Pixel ersetzen das Original. Nur die
+	 * 1x-Stufe wird ersetzt; alle anderen Zoomstufen werden unten daraus
+	 * neu berechnet, damit das Ergebnis in jeder Zoomstufe passt. */
+	if (sprite_type == SpriteType::Normal) {
+		const PixelStudioSprite *ov = PixelStudioFindOverride(id);
+		if (ov != nullptr && ov->width > 0 && ov->pixels.size() == static_cast<size_t>(ov->width) * ov->height) {
+			SpriteLoader::Sprite &sp = sprite[ZoomLevel::Normal];
+			sp.width = ov->width;
+			sp.height = ov->height;
+			sp.x_offs = ov->x_offs;
+			sp.y_offs = ov->y_offs;
+			sp.colours = SpriteComponents{SpriteComponent::Palette};
+			sp.AllocateData(ZoomLevel::Normal, static_cast<size_t>(sp.width) * sp.height);
+			for (size_t i = 0; i < ov->pixels.size(); i++) {
+				sp.data[i].r = sp.data[i].g = sp.data[i].b = 0;
+				sp.data[i].m = ov->pixels[i];
+				sp.data[i].a = ov->pixels[i] != 0 ? 0xFF : 0;
+			}
+			sprite_avail = ZoomLevels{ZoomLevel::Normal};
+		}
 	}
 
 	if (!ResizeSprites(sprite, sprite_avail, encoder)) {

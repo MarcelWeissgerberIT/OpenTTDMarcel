@@ -430,6 +430,11 @@ enum class WindowClass : uint16_t {
 	IndustryConnect,
 
 	/**
+	 * Pixel-Studio (Fork): Fahrzeuggrafiken bearbeiten.
+	 */
+	PixelStudio,
+
+	/**
 	 * Build station; %Window numbers:
 	 *   - #TransportType::Air = #AirportPickerWidgets
 	 *   - #TransportType::Water = #DockToolbarWidgets

@@ -195,6 +195,7 @@ add_files(
     fios.cpp
     fios.h
     fios_gui.cpp
+    pixelstudio_gui.cpp
     fontcache.cpp
     fontcache.h
     framerate_gui.cpp
