@@ -18,6 +18,7 @@
 
 #include "stdafx.h"
 #include "citizen.h"
+#include "debug.h"
 #include "landscape.h"
 #include "road_map.h"
 #include "bridge_map.h"
@@ -27,6 +28,8 @@
 #include "town_map.h"
 #include "station_map.h"
 #include "station_base.h"
+#include "vehicle_base.h"
+#include "cargotype.h"
 #include "news_func.h"
 #include "tile_map.h"
 #include "map_func.h"
@@ -441,11 +444,94 @@ static void MaybePublishTransportDemand(uint64_t tick)
 	}
 }
 
+/* ---------- Ein-/Aussteige-Animation an Stationen ----------
+ * Solange ein Fahrzeug mit Passagieren an einer Station laedt, laufen
+ * kleine Figuren zum Fahrzeug hin (Einsteigen) oder von ihm weg
+ * (Aussteigen) - verteilt ueber alle Fahrzeugteile, also den ganzen
+ * Bahnsteig entlang. Reine Optik, kurzlebig, nicht gespeichert. */
+
+struct BoardingAnim {
+	TileIndex tile;         ///< Stationskachel der Figur.
+	uint8_t x0, y0, x1, y1; ///< Start-/Zielposition in der Kachel.
+	uint8_t t, dur;         ///< Fortschritt und Dauer in Ticks.
+	uint32_t seed;          ///< Fuer Kleidungsfarbe.
+};
+static std::vector<BoardingAnim> _boarding_anims;
+
+static void SpawnBoardingAnims()
+{
+	if (_boarding_anims.size() > 220) return;
+	for (const Station *st : Station::Iterate()) {
+		if (st->loading_vehicles.empty()) continue;
+		for (const Vehicle *front : st->loading_vehicles) {
+			bool pax = false;
+			uint parts = 0;
+			for (const Vehicle *u = front; u != nullptr && parts < 8; u = u->Next(), parts++) {
+				if (u->cargo_cap > 0 && IsCargoInClass(u->cargo_type, CargoClass::Passengers)) { pax = true; break; }
+			}
+			if (!pax) continue;
+			if (CitizenRandom() % 3 != 0) continue;
+
+			std::vector<TileIndex> part_tiles;
+			parts = 0;
+			for (const Vehicle *u = front; u != nullptr && parts < 8; u = u->Next(), parts++) part_tiles.push_back(u->tile);
+			TileIndex tile = part_tiles[CitizenRandom() % part_tiles.size()];
+			if (!IsTileType(tile, TileType::Station)) continue;
+
+			BoardingAnim a;
+			a.tile = tile;
+			bool boarding = (CitizenRandom() & 1) != 0;
+			uint8_t edge_x = static_cast<uint8_t>(2 + CitizenRandom() % 11);
+			uint8_t edge_y = (CitizenRandom() & 1) != 0 ? 2 : 12;
+			uint8_t mid_x = static_cast<uint8_t>(5 + CitizenRandom() % 5);
+			uint8_t mid_y = static_cast<uint8_t>(6 + CitizenRandom() % 3);
+			if (boarding) {
+				a.x0 = edge_x; a.y0 = edge_y; a.x1 = mid_x; a.y1 = mid_y;
+			} else {
+				a.x0 = mid_x; a.y0 = mid_y; a.x1 = edge_x; a.y1 = edge_y;
+			}
+			a.t = 0;
+			a.dur = static_cast<uint8_t>(50 + CitizenRandom() % 30);
+			a.seed = CitizenRandom();
+			Debug(misc, 4, "BA: {} an Kachel {}", boarding ? "Einstieg" : "Ausstieg", tile.base());
+			_boarding_anims.push_back(a);
+		}
+	}
+}
+
+static void TickBoardingAnims()
+{
+	for (auto it = _boarding_anims.begin(); it != _boarding_anims.end(); ) {
+		it->t++;
+		if ((it->t & 1) == 0) MarkTileDirtyByTile(it->tile);
+		if (it->t >= it->dur) {
+			MarkTileDirtyByTile(it->tile);
+			it = _boarding_anims.erase(it);
+		} else {
+			++it;
+		}
+	}
+}
+
+void DrawBoardingAnimsOnTile(const TileInfo *ti)
+{
+	for (const BoardingAnim &a : _boarding_anims) {
+		if (a.tile != ti->tile) continue;
+		int px = a.x0 + ((int)a.x1 - (int)a.x0) * a.t / a.dur;
+		int py = a.y0 + ((int)a.y1 - (int)a.y0) * a.t / a.dur;
+		SpriteID spr = ((a.t >> 2) & 1) != 0 ? SPR_CITIZEN_WALK_1 : SPR_CITIZEN_WALK_2;
+		AddSortableSpriteToDraw(spr, PALETTE_RECOLOUR_START + (a.seed & 15), *ti,
+				{{static_cast<int8_t>(Clamp(px, 0, 13)), static_cast<int8_t>(Clamp(py, 0, 13)), 0}, {3, 3, 6}, {}});
+	}
+}
+
 void RunCitizensTick()
 {
 	uint64_t tick = TimerGameTick::counter;
 
 	MaybePublishTransportDemand(tick);
+	if (tick % 6 == 0) SpawnBoardingAnims();
+	TickBoardingAnims();
 
 	/* Bewegung: Fussgaenger jeden 3. Tick, Autos jeden Tick. */
 	for (Citizen &c : _citizens) {
@@ -561,6 +647,7 @@ void RunCitizensTick()
 void ClearCitizens()
 {
 	_citizens.clear();
+	_boarding_anims.clear();
 	_citizen_rng ^= (uint32_t)TimerGameTick::counter | 1;
 }
 

@@ -59,6 +59,7 @@ struct Citizen {
 
 void RunCitizensTick();
 void DrawCitizensOnTile(const TileInfo *ti);
+void DrawBoardingAnimsOnTile(const TileInfo *ti);
 bool IsParkedCarAway(TileIndex tile);
 bool CheckClickOnCitizen(int world_x, int world_y);
 void ClearCitizens();

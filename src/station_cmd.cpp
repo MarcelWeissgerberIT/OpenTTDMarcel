@@ -79,6 +79,8 @@
 
 #include <bitset>
 
+#include "citizen.h"
+
 #include "safeguards.h"
 
 /**
@@ -3530,6 +3532,9 @@ static void DrawTile_Station(TileInfo *ti)
 			AddSortableSpriteToDraw(SPR_WAITING_PASSENGERS_2, PAL_NONE, *ti, {{9, 8, 0}, {6, 6, 6}, {}});
 		}
 	}
+
+	/* Fork: Ein-/Aussteige-Figuren waehrend des Ladens. */
+	DrawBoardingAnimsOnTile(ti);
 
 	DrawBridgeMiddle(ti, GetStationBlockedPillars(bridgeable_info, GetStationGfx(ti->tile)));
 }

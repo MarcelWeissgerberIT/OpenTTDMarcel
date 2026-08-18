@@ -68,12 +68,12 @@ logos = ogfxi_logos.grf
 extra = ogfxe_extra.grf
 
 [md5s]
-ogfx1_base.grf     = 448f12926435d318eeab39e292d61998
-ogfxc_arctic.grf   = 9126545a10bb338cb335b8324ff8054e
-ogfxh_tropical.grf = bdc9abf28bce854a1866981ff5761425
-ogfxt_toyland.grf  = 426fd537a3a04386ec55bcc3b6d8147f
-ogfxi_logos.grf = 5b027b56e4a8dfe1269ab490a82ab66d
-ogfxe_extra.grf    = d6f28e388f2ad5aeb536be3de89c2d0c
+ogfx1_base.grf       = 5d83f4f22307448b1083461ce15deac4
+ogfxc_arctic.grf     = e30b131412378e29f215e35dc878e6a6
+ogfxh_tropical.grf   = a430d61120ebdc9a290a272ec3fb3002
+ogfxt_toyland.grf    = 0f9667022bbeb83e0c10e13c428aba48
+ogfxi_logos.grf      = e417284543ba14dad3a6ce47f4105f15
+ogfxe_extra.grf      = 785211a05c5b1f2a6d06e9c2f3faddbd
 
 [origin]
 default = Please redownload from official source.
