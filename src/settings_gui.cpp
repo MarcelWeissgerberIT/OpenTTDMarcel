@@ -17,6 +17,7 @@
 #include "network/network_content.h"
 #include "town.h"
 #include "settings_internal.h"
+#include "settings_func.h"
 #include "strings_func.h"
 #include "window_func.h"
 #include "string_func.h"
@@ -465,6 +466,9 @@ struct GameOptionsWindow : Window {
 	{
 		CloseWindowById(WindowClass::CustomCurrenty, 0);
 		if (this->reload) _switch_mode = SwitchMode::Menu;
+		/* Fork: Beim Schliessen alles sichern - deckt auch Knopf-Optionen
+		 * (Vollbild, Skalierung usw.) ab, die kein Dropdown durchlaufen. */
+		if (_save_config) SaveToConfig();
 		this->Window::Close();
 	}
 
@@ -1516,6 +1520,11 @@ struct GameOptionsWindow : Window {
 				this->SetDirty();
 				break;
 		}
+
+		/* Fork: Auswahl sofort in die Konfiguration schreiben. Sprache & Co.
+		 * wurden sonst erst beim Beenden gespeichert - im Browser gibt es
+		 * kein Beenden, die Wahl ging beim Neuladen verloren. */
+		if (_save_config) SaveToConfig();
 	}
 
 	void OnDropdownClose(Point pt, WidgetID widget, int index, int click_result, bool instant_close) override

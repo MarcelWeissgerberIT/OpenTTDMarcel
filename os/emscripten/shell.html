@@ -102,6 +102,7 @@
         z-index: 4;
       }
       #cloud-badge {
+        display: none;
         background-color: #838383;
         border: 1px solid #a8a8a8;
         color: #fcfcfc;
@@ -114,14 +115,15 @@
       #cloud-panel {
         background-color: #838383;
         border: 1px solid #a8a8a8;
-        bottom: 28px;
+        bottom: 40vh;
         color: #101010;
         display: none;
         outline: 1px solid #626262;
-        padding: 6px;
-        position: absolute;
-        right: 0;
-        width: 230px;
+        padding: 8px;
+        position: fixed;
+        right: calc(50vw - 130px);
+        width: 250px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.45);
       }
       #cloud-panel input {
         box-sizing: border-box;
@@ -181,6 +183,7 @@
           <button id="cloud-logout">Abmelden</button>
         </div>
         <div id="cloud-status"></div>
+        <button id="cloud-close">Schließen</button>
       </div>
       <span id="cloud-badge">&#9729; Cloud</span>
     </div>
@@ -345,6 +348,15 @@
 
         badge.addEventListener('click', function() {
           panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        });
+
+        /* Vom Spiel aufgerufen (Knopf "Konto..." im Speichern/Laden-Dialog). */
+        window.openttd_cloud_panel = function() {
+          render();
+          panel.style.display = 'block';
+        };
+        document.getElementById('cloud-close').addEventListener('click', function() {
+          panel.style.display = 'none';
         });
 
         /* Tastatur im Cloud-Panel nicht ans Spiel durchreichen - sonst

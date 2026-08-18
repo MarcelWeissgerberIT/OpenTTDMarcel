@@ -37,9 +37,25 @@
 #include "table/sprites.h"
 #include "table/strings.h"
 
+#ifdef __EMSCRIPTEN__
+#	include <emscripten.h>
+#endif
+
 #include "safeguards.h"
 
 LoadCheckData _load_check_data;    ///< Data loaded from save during SL_LOAD_CHECK.
+
+#ifdef __EMSCRIPTEN__
+/* Fork: Cloud-Status aus dem JavaScript-Sync (pre.js) fuer die
+ * Cloud-Zeile im Speichern/Laden-Dialog. */
+static std::string _cloud_status_text = "Cloud: nicht verbunden";
+
+extern "C" void CDECL em_openttd_cloud_status(const char *text)
+{
+	_cloud_status_text = text;
+	SetWindowClassesDirty(WindowClass::SaveLoad);
+}
+#endif
 
 static bool _fios_path_changed;
 static bool _savegame_sort_dirty;
@@ -132,6 +148,16 @@ static constexpr std::initializer_list<NWidgetPart> _nested_load_dialog_widgets 
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SL_CONTENT_DOWNLOAD), SetResize(1, 0),
 						SetStringTip(STR_INTRO_ONLINE_CONTENT, STR_INTRO_TOOLTIP_ONLINE_CONTENT),
 			EndContainer(),
+#ifdef __EMSCRIPTEN__
+			/* Fork: Cloud-Zeile direkt im Dialog statt HTML-Overlay. */
+			NWidget(NWID_HORIZONTAL),
+				NWidget(WWT_PANEL, Colours::Grey), SetFill(1, 0), SetResize(1, 0),
+					NWidget(WWT_TEXT, Colours::Invalid, WID_SL_CLOUD_STATUS), SetFill(1, 0), SetResize(1, 0), SetPadding(3, 2, 3, 2),
+				EndContainer(),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SL_CLOUD_SYNC), SetStringTip(STR_SAVELOAD_CLOUD_SYNC, STR_SAVELOAD_CLOUD_SYNC_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SL_CLOUD_ACCOUNT), SetStringTip(STR_SAVELOAD_CLOUD_ACCOUNT, STR_SAVELOAD_CLOUD_ACCOUNT_TOOLTIP),
+			EndContainer(),
+#endif
 		EndContainer(),
 
 		/* Right side : game details */
@@ -289,6 +315,16 @@ static constexpr std::initializer_list<NWidgetPart> _nested_save_dialog_widgets 
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SL_DELETE_SELECTION), SetStringTip(STR_SAVELOAD_DELETE_BUTTON, STR_SAVELOAD_DELETE_TOOLTIP), SetFill(1, 0), SetResize(1, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SL_SAVE_GAME),        SetStringTip(STR_SAVELOAD_SAVE_BUTTON, STR_SAVELOAD_SAVE_TOOLTIP),     SetFill(1, 0), SetResize(1, 0),
 			EndContainer(),
+#ifdef __EMSCRIPTEN__
+			/* Fork: Cloud-Zeile direkt im Dialog statt HTML-Overlay. */
+			NWidget(NWID_HORIZONTAL),
+				NWidget(WWT_PANEL, Colours::Grey), SetFill(1, 0), SetResize(1, 0),
+					NWidget(WWT_TEXT, Colours::Invalid, WID_SL_CLOUD_STATUS), SetFill(1, 0), SetResize(1, 0), SetPadding(3, 2, 3, 2),
+				EndContainer(),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SL_CLOUD_SYNC), SetStringTip(STR_SAVELOAD_CLOUD_SYNC, STR_SAVELOAD_CLOUD_SYNC_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SL_CLOUD_ACCOUNT), SetStringTip(STR_SAVELOAD_CLOUD_ACCOUNT, STR_SAVELOAD_CLOUD_ACCOUNT_TOOLTIP),
+			EndContainer(),
+#endif
 		EndContainer(),
 
 		/* Right side : game details */
@@ -758,9 +794,26 @@ public:
 		this->DrawWidgets();
 	}
 
+#ifdef __EMSCRIPTEN__
+	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
+	{
+		if (widget == WID_SL_CLOUD_STATUS) return GetString(STR_SAVELOAD_CLOUD_STATUS, _cloud_status_text);
+		return this->Window::GetWidgetString(widget, stringid);
+	}
+#endif
+
 	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override
 	{
 		switch (widget) {
+#ifdef __EMSCRIPTEN__
+			case WID_SL_CLOUD_SYNC: // Fork: Spielstaende + Einstellungen sofort hochladen
+				EM_ASM(if (window["openttd_cloud_sync"]) openttd_cloud_sync());
+				break;
+
+			case WID_SL_CLOUD_ACCOUNT: // Fork: Login-Dialog der Seite oeffnen
+				EM_ASM(if (window["openttd_cloud_panel"]) openttd_cloud_panel());
+				break;
+#endif
 			case WID_SL_SORT_BYNAME: // Sort save games by name
 				_savegame_sorter_ascending = _savegame_sorter != SavegameSorter::Name || !_savegame_sorter_ascending;
 				_savegame_sorter = SavegameSorter::Name;

@@ -42,8 +42,18 @@ Module.preRun.push(function() {
     function cloudToken() {
         try { return localStorage.getItem('ottd_token'); } catch (e) { return null; }
     }
+    /* Status geht an das HTML-Panel UND an die Cloud-Zeile im
+     * Speichern/Laden-Dialog des Spiels (em_openttd_cloud_status). */
+    var cloud_last_status = '';
+    var cloud_c_ready = false;
+    function cloudStatusToGame() {
+        if (!cloud_c_ready || !cloud_last_status) return;
+        try { Module.ccall('em_openttd_cloud_status', null, ['string'], [cloud_last_status]); } catch (e) {}
+    }
     function cloudStatus(text) {
+        cloud_last_status = text;
         if (Module.onCloudStatus) Module.onCloudStatus(text);
+        cloudStatusToGame();
     }
     function cloudPushedMap() {
         try { return JSON.parse(localStorage.getItem('ottd_cloud_pushed') || '{}'); } catch (e) { return {}; }
@@ -150,7 +160,9 @@ Module.preRun.push(function() {
                         }).catch(function() {});
                     }
                 }
-                if (files.length) cloudStatus('Cloud: gesichert (' + new Date().toLocaleTimeString() + ')');
+                cloudStatus(files.length
+                    ? 'Cloud: gesichert (' + new Date().toLocaleTimeString() + ')'
+                    : 'Cloud: synchron');
                 return;
             }
             var f = files[idx++];
@@ -175,6 +187,30 @@ Module.preRun.push(function() {
             Module.removeRunDependency('syncfs');
         });
     });
+
+    /* Sobald die Laufzeit steht: aktuellen Cloud-Zustand ins Spiel melden. */
+    if (!Module.postRun) Module.postRun = [];
+    Module.postRun.push(function() {
+        cloud_c_ready = true;
+        if (!cloud_last_status) {
+            var mail = '';
+            try { mail = localStorage.getItem('ottd_email') || ''; } catch (e) {}
+            cloud_last_status = cloudToken()
+                ? 'Cloud: angemeldet' + (mail ? ' als ' + mail : '') + ' - sichert automatisch'
+                : 'Cloud: nicht angemeldet';
+        }
+        cloudStatusToGame();
+    });
+
+    /* Vom Spiel aufgerufen (Knopf "Cloud-Sicherung" im Speichern-Dialog). */
+    window.openttd_cloud_sync = function() {
+        if (!cloudToken()) {
+            cloudStatus('Cloud: nicht angemeldet - bitte über "Konto..." anmelden');
+            return;
+        }
+        cloudStatus('Cloud: sichere...');
+        FS.syncfs(false, function() { cloudPush(); });
+    };
 
     window.openttd_syncfs_shown_warning = false;
     window.openttd_syncfs = function(callback) {
