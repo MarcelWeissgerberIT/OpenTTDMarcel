@@ -44,6 +44,7 @@ jobs:
           mkdir site
           cp build/openttd.html site/index.html
           cp build/openttd.html build/openttd.js build/openttd.wasm build/openttd.data site/
+          cp -r web/landing site/kaufen
           touch site/.nojekyll
 
       - name: Cache-Busting (Browser laedt nach jedem Deploy frische Dateien)

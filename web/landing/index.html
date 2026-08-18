@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenTTD Marcel Edition – Die Eisenbahn-Simulation mit Extras</title>
+<meta name="description" content="OpenTTD Marcel Edition: Pixel Studio, Immobilien-Modus, Cloud-Speicherstände, lebendige Bürger und mehr – direkt im Browser. Einmalig 29 €.">
+<style>
+  :root {
+    --bg: #101528;
+    --bg2: #1a2140;
+    --card: #1e2749;
+    --card-edge: #2e3a6e;
+    --text: #eef1ff;
+    --muted: #a9b2d8;
+    --candy1: #ff5fa2;
+    --candy2: #ffd24a;
+    --candy3: #4adfff;
+    --candy4: #7dff8e;
+    --cta: #ff5fa2;
+    --cta-hover: #ff7ab4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+  }
+  /* Sprachumschaltung: body[data-lang] blendet die jeweils andere Sprache aus */
+  body[data-lang="de"] .en { display: none !important; }
+  body[data-lang="en"] .de { display: none !important; }
+
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 20px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(16, 21, 40, 0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--card-edge);
+  }
+  .nav { display: flex; align-items: center; gap: 16px; padding: 14px 0; }
+  .logo { font-weight: 800; font-size: 1.15rem; letter-spacing: 0.3px; }
+  .logo .tt { color: var(--candy2); }
+  .logo .me { color: var(--candy1); }
+  .nav .spacer { flex: 1; }
+  .langswitch { display: flex; gap: 6px; }
+  .langswitch button {
+    background: var(--card); color: var(--muted);
+    border: 1px solid var(--card-edge); border-radius: 8px;
+    padding: 5px 12px; font-size: 0.85rem; cursor: pointer;
+  }
+  .langswitch button.active { color: var(--text); border-color: var(--candy3); }
+
+  .hero { text-align: center; padding: 72px 0 40px; }
+  .hero h1 {
+    font-size: clamp(2rem, 5.5vw, 3.4rem);
+    font-weight: 900; line-height: 1.15; margin-bottom: 18px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(90deg, var(--candy1), var(--candy2), var(--candy3));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.sub {
+    font-size: 1.15rem; color: var(--muted);
+    max-width: 720px; margin: 0 auto 30px;
+  }
+  .pricepill {
+    display: inline-block; margin-bottom: 26px;
+    background: var(--card); border: 1px solid var(--candy2);
+    border-radius: 999px; padding: 8px 22px;
+    font-weight: 700; color: var(--candy2); font-size: 1.05rem;
+  }
+  .ctarow { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; border-radius: 12px; padding: 14px 30px;
+    font-size: 1.05rem; font-weight: 700; text-decoration: none;
+    cursor: pointer; border: none;
+  }
+  .btn-buy { background: var(--cta); color: #fff; box-shadow: 0 6px 24px rgba(255, 95, 162, 0.35); }
+  .btn-buy:hover { background: var(--cta-hover); }
+  .btn-demo { background: var(--card); color: var(--text); border: 1px solid var(--card-edge); }
+  .btn-demo:hover { border-color: var(--candy3); }
+  .shopnote {
+    display: none; margin: 18px auto 0; max-width: 520px;
+    background: var(--card); border: 1px solid var(--candy2);
+    border-radius: 12px; padding: 12px 18px; color: var(--candy2); font-size: 0.95rem;
+  }
+  .shopnote.show { display: block; }
+
+  section { padding: 54px 0; }
+  section.alt { background: var(--bg2); }
+  h2 { font-size: clamp(1.5rem, 3.5vw, 2.1rem); font-weight: 800; text-align: center; margin-bottom: 10px; }
+  p.lead { text-align: center; color: var(--muted); max-width: 700px; margin: 0 auto 38px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; }
+  .card {
+    background: var(--card); border: 1px solid var(--card-edge);
+    border-radius: 14px; padding: 22px;
+  }
+  .card .ico { font-size: 1.9rem; display: block; margin-bottom: 10px; }
+  .card h3 { font-size: 1.1rem; margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: 0.95rem; }
+  .card.hl { border-color: var(--candy1); }
+
+  .pricebox {
+    max-width: 460px; margin: 0 auto; text-align: center;
+    background: var(--card); border: 2px solid var(--candy1);
+    border-radius: 18px; padding: 36px 30px;
+  }
+  .pricebox .amount { font-size: 3.2rem; font-weight: 900; color: var(--candy2); line-height: 1; }
+  .pricebox .once { color: var(--muted); margin-bottom: 22px; }
+  .pricebox ul { list-style: none; text-align: left; margin: 0 0 26px; }
+  .pricebox li { padding: 6px 0 6px 30px; position: relative; color: var(--text); font-size: 0.97rem; }
+  .pricebox li::before { content: "✔"; position: absolute; left: 4px; color: var(--candy4); }
+
+  footer { border-top: 1px solid var(--card-edge); padding: 34px 0 44px; color: var(--muted); font-size: 0.88rem; }
+  footer a { color: var(--candy3); text-decoration: none; }
+  footer p { margin-bottom: 8px; }
+</style>
+</head>
+<body data-lang="de">
+
+<header>
+  <div class="wrap nav">
+    <div class="logo">Open<span class="tt">TTD</span> <span class="me">Marcel&nbsp;Edition</span></div>
+    <div class="spacer"></div>
+    <nav class="langswitch" aria-label="Sprache / Language">
+      <button id="btn-de" onclick="setLang('de')">Deutsch</button>
+      <button id="btn-en" onclick="setLang('en')">English</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="pricepill">
+      <span class="de">Einmalig 29&nbsp;€ – kein Abo</span>
+      <span class="en">One-time 29&nbsp;€ – no subscription</span>
+    </div>
+    <h1>
+      <span class="de">Deine Eisenbahn-Welt.<br><span class="grad">Deine Regeln. Deine Pixel.</span></span>
+      <span class="en">Your railway world.<br><span class="grad">Your rules. Your pixels.</span></span>
+    </h1>
+    <p class="sub">
+      <span class="de">Die OpenTTD Marcel Edition erweitert den Klassiker um einen eingebauten Pixel-Editor, einen Immobilien-Modus, Cloud-Speicherstände und viele Komfort-Funktionen – spielbar direkt im Browser, ohne Installation.</span>
+      <span class="en">The OpenTTD Marcel Edition extends the classic with a built-in pixel editor, a real-estate mode, cloud saves and many quality-of-life features – playable right in your browser, no installation needed.</span>
+    </p>
+    <div class="ctarow">
+      <button class="btn btn-buy" onclick="showShopNote()">
+        <span class="de">Jetzt kaufen – 29&nbsp;€</span>
+        <span class="en">Buy now – 29&nbsp;€</span>
+      </button>
+      <a class="btn btn-demo" href="../">
+        <span class="de">Kostenlos im Browser ausprobieren</span>
+        <span class="en">Try it free in your browser</span>
+      </a>
+    </div>
+    <div class="shopnote" id="shopnote">
+      <span class="de">Der Shop öffnet in Kürze. Bis dahin kannst du die Vorschau kostenlos im Browser spielen!</span>
+      <span class="en">The shop opens soon. Until then, play the preview for free in your browser!</span>
+    </div>
+  </div>
+
+  <section class="alt" id="features">
+    <div class="wrap">
+      <h2>
+        <span class="de">Was steckt alles drin?</span>
+        <span class="en">What's inside?</span>
+      </h2>
+      <p class="lead">
+        <span class="de">Alle Erweiterungen sind fest ins Spiel integriert – kein Absprung, keine Zusatz-Tools, alles im gewohnten Spiel-UI.</span>
+        <span class="en">Every extension is built right into the game – no external tools, everything inside the familiar game UI.</span>
+      </p>
+      <div class="grid">
+        <div class="card hl">
+          <span class="ico">🎨</span>
+          <h3><span class="de">Pixel Studio</span><span class="en">Pixel Studio</span></h3>
+          <p>
+            <span class="de">Der eingebaute Mal-Editor für Spiel-Grafiken: Bearbeite Züge, Busse, LKW, Schiffe, Flugzeuge und sogar Häuser direkt im Spiel. Mit Typ-Filtern, Zoom, Rückgängig, Palette – und Einfügen aus der Zwischenablage. Deine Kunstwerke bleiben dauerhaft gespeichert.</span>
+            <span class="en">The built-in paint editor for game graphics: edit trains, buses, trucks, ships, aircraft and even houses right inside the game. With type filters, zoom, undo, palette – and paste from your clipboard. Your artwork is stored permanently.</span>
+          </p>
+        </div>
+        <div class="card hl">
+          <span class="ico">🏠</span>
+          <h3><span class="de">Immobilien-Modus</span><span class="en">Real-estate mode</span></h3>
+          <p>
+            <span class="de">Klicke auf jedes Wohnhaus: Sieh Bewohner, Alter und Porträt – und kaufe es, um monatliche Miete zu kassieren. Deine Häuser sind vor Abriss geschützt, kosten jährlichen Unterhalt und lassen sich renovieren oder gegen Geld zu größeren Gebäuden ausbauen.</span>
+            <span class="en">Click any residential building: see residents, age and a portrait – and buy it to collect monthly rent. Your houses are protected from demolition, cost yearly upkeep and can be renovated or upgraded into bigger buildings.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">🚩</span>
+          <h3><span class="de">Firmen-Fahne mit Logo-Editor</span><span class="en">Company flag with logo editor</span></h3>
+          <p>
+            <span class="de">Deine Firma zeigt Flagge – auf jedem gekauften Haus weht deine eigene Fahne. Das Logo malst du selbst im Pixel Studio.</span>
+            <span class="en">Your company shows its colors – every purchased house flies your own flag. You paint the logo yourself in Pixel Studio.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">🧍</span>
+          <h3><span class="de">Lebendige Bürger</span><span class="en">Living citizens</span></h3>
+          <p>
+            <span class="de">Wartende Fahrgäste stehen sichtbar am Bahnsteig, Ein- und Aussteigen ist animiert. Jeder Bürger hat Namen und Porträt – Männer, Frauen und Kinder, jeweils passend gezeichnet.</span>
+            <span class="en">Waiting passengers visibly stand on the platform, boarding and alighting is animated. Every citizen has a name and portrait – men, women and children, each drawn accordingly.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">☁️</span>
+          <h3><span class="de">Cloud-Speicherstände</span><span class="en">Cloud saves</span></h3>
+          <p>
+            <span class="de">Speichern und Synchronisieren direkt aus dem Spiel-Dialog. Auch alle Einstellungen bleiben erhalten – die Sprache musst du nie wieder umstellen.</span>
+            <span class="en">Save and sync right from the in-game dialog. All settings are kept too – you'll never have to switch the language again.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">🚌</span>
+          <h3><span class="de">Auto-Modernisierung</span><span class="en">Auto-modernization</span></h3>
+          <p>
+            <span class="de">Alte Fahrzeuge werden automatisch gegen bessere Modelle getauscht – und behalten dabei ihre Fahrpläne. Kein mühsames Neuaufsetzen mehr.</span>
+            <span class="en">Old vehicles are automatically replaced with better models – keeping their schedules. No tedious re-setup anymore.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">🛤️</span>
+          <h3><span class="de">Schlauere Bahn-Automatik</span><span class="en">Smarter rail auto-connect</span></h3>
+          <p>
+            <span class="de">Der Verbindungs-Assistent prüft vorher, ob dein Geld für Gleise und Züge reicht, und lehnt unsinnige Umwege ab – statt teure Ruinen zu bauen.</span>
+            <span class="en">The connection assistant checks in advance whether your money covers tracks and trains, and rejects absurd detours – instead of building expensive ruins.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">🔕</span>
+          <h3><span class="de">Ruhe im Postfach</span><span class="en">A quieter inbox</span></h3>
+          <p>
+            <span class="de">Ankunfts-Meldungen landen dezent im Ticker statt als große Störung am Bildschirmrand. Wichtiges bleibt sichtbar, Spam verschwindet.</span>
+            <span class="en">Arrival messages appear discreetly in the ticker instead of as big interruptions. Important news stays visible, spam disappears.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">♾️</span>
+          <h3><span class="de">Kein Spielende</span><span class="en">No game over</span></h3>
+          <p>
+            <span class="de">2030? 2050? Egal – dein Spiel läuft einfach weiter. Baue dein Imperium so lange aus, wie du willst.</span>
+            <span class="en">2030? 2050? Doesn't matter – your game just keeps going. Grow your empire for as long as you like.</span>
+          </p>
+        </div>
+        <div class="card">
+          <span class="ico">🌐</span>
+          <h3><span class="de">Direkt im Browser</span><span class="en">Right in your browser</span></h3>
+          <p>
+            <span class="de">Keine Installation, keine Admin-Rechte: Link öffnen und losspielen – auf jedem modernen Rechner.</span>
+            <span class="en">No installation, no admin rights: open the link and play – on any modern computer.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="kaufen">
+    <div class="wrap">
+      <h2>
+        <span class="de">Ein Preis. Alles drin.</span>
+        <span class="en">One price. Everything included.</span>
+      </h2>
+      <p class="lead">
+        <span class="de">Kein Abo, keine In-Game-Käufe, keine Werbung.</span>
+        <span class="en">No subscription, no in-game purchases, no ads.</span>
+      </p>
+      <div class="pricebox">
+        <div class="amount">29&nbsp;€</div>
+        <div class="once">
+          <span class="de">einmalig</span>
+          <span class="en">one-time</span>
+        </div>
+        <ul>
+          <li><span class="de">Alle Features der Marcel Edition</span><span class="en">All Marcel Edition features</span></li>
+          <li><span class="de">Spielbar direkt im Browser</span><span class="en">Playable right in the browser</span></li>
+          <li><span class="de">Cloud-Speicherstände inklusive</span><span class="en">Cloud saves included</span></li>
+          <li><span class="de">Alle zukünftigen Updates</span><span class="en">All future updates</span></li>
+          <li><span class="de">Deutsch und Englisch (u.&nbsp;v.&nbsp;m.)</span><span class="en">German and English (and more)</span></li>
+        </ul>
+        <button class="btn btn-buy" onclick="showShopNote(true)">
+          <span class="de">Jetzt kaufen – 29&nbsp;€</span>
+          <span class="en">Buy now – 29&nbsp;€</span>
+        </button>
+        <div class="shopnote" id="shopnote2">
+          <span class="de">Der Shop öffnet in Kürze. Bis dahin kannst du die Vorschau kostenlos im Browser spielen!</span>
+          <span class="en">The shop opens soon. Until then, play the preview for free in your browser!</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <span class="de">Die OpenTTD Marcel Edition ist ein unabhängiger Fan-Fork von <a href="https://www.openttd.org/" rel="noopener">OpenTTD</a> und steht nicht in Verbindung mit dem OpenTTD-Projekt.</span>
+      <span class="en">The OpenTTD Marcel Edition is an independent fan fork of <a href="https://www.openttd.org/" rel="noopener">OpenTTD</a> and is not affiliated with the OpenTTD project.</span>
+    </p>
+    <p>
+      <span class="de">Das Spiel ist freie Software unter der GNU GPL v2 – der Quellcode ist auf <a href="https://github.com/MarcelWeissgerberIT/OpenTTDMarcel" rel="noopener">GitHub</a> frei verfügbar. Der Preis gilt für den bequemen, fertig eingerichteten Browser-Zugang samt Cloud-Speicherständen.</span>
+      <span class="en">The game is free software under the GNU GPL v2 – the source code is freely available on <a href="https://github.com/MarcelWeissgerberIT/OpenTTDMarcel" rel="noopener">GitHub</a>. The price covers the convenient, ready-to-play browser access including cloud saves.</span>
+    </p>
+  </div>
+</footer>
+
+<script>
+  function setLang(lang) {
+    document.body.dataset.lang = lang;
+    document.documentElement.lang = lang;
+    document.getElementById('btn-de').classList.toggle('active', lang === 'de');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.title = lang === 'de'
+      ? 'OpenTTD Marcel Edition – Die Eisenbahn-Simulation mit Extras'
+      : 'OpenTTD Marcel Edition – The railway simulation with extras';
+    try { localStorage.setItem('ottdm_lang', lang); } catch (e) {}
+    var url = new URL(window.location);
+    url.searchParams.set('lang', lang);
+    history.replaceState(null, '', url);
+  }
+  function showShopNote(second) {
+    document.getElementById(second ? 'shopnote2' : 'shopnote').classList.add('show');
+  }
+  (function () {
+    var lang = new URLSearchParams(window.location.search).get('lang');
+    if (!lang) { try { lang = localStorage.getItem('ottdm_lang'); } catch (e) {} }
+    if (!lang) { lang = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en'; }
+    setLang(lang === 'en' ? 'en' : 'de');
+  })();
+</script>
+
+</body>
+</html>
