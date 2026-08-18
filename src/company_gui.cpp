@@ -2044,13 +2044,7 @@ struct CompanyWindow : Window
 			case WID_C_VIEW_HQ:
 			case WID_C_BUILD_HQ:
 			case WID_C_RELOCATE_HQ:
-			case WID_C_EDIT_FLAG: {
-				/* Fork: Firmen-Fahne im Pixel-Studio bemalen. */
-				extern void ShowPixelStudioFlag();
-				ShowPixelStudioFlag();
-				break;
-			}
-
+			case WID_C_EDIT_FLAG:
 			case WID_C_VIEW_INFRASTRUCTURE:
 			case WID_C_GIVE_MONEY:
 			case WID_C_HOSTILE_TAKEOVER:
@@ -2058,6 +2052,7 @@ struct CompanyWindow : Window
 				size.width = GetStringBoundingBox(STR_COMPANY_VIEW_VIEW_HQ_BUTTON).width;
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_BUILD_HQ_BUTTON).width);
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_RELOCATE_HQ).width);
+				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_EDIT_FLAG_BUTTON).width);
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON).width);
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_GIVE_MONEY_BUTTON).width);
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_HOSTILE_TAKEOVER_BUTTON).width);

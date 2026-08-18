@@ -2325,6 +2325,7 @@ STR_HOUSEOWN_PRICE                                              :{BLACK}Purchase
 STR_HOUSEOWN_RENT_OUT                                           :{BLACK}Expected rent: {ORANGE}{CURRENCY_LONG}{BLACK} per month
 STR_HOUSEOWN_OWNED                                              :{BLACK}You own this building (paid {CURRENCY_LONG})
 STR_HOUSEOWN_RENT_IN                                            :{BLACK}Rental income: {ORANGE}{CURRENCY_LONG}{BLACK} per month
+STR_HOUSEOWN_UPKEEP                                             :{BLACK}Upkeep: {ORANGE}{CURRENCY_LONG}{BLACK} per year ({NUM}%)
 STR_HOUSEOWN_BUY                                                :{BLACK}Buy building
 STR_HOUSEOWN_BUY_TOOLTIP                                        :{BLACK}Buy this building and earn monthly rent
 STR_HOUSEOWN_VIEW                                               :{BLACK}Show location

@@ -2294,6 +2294,7 @@ STR_HOUSEOWN_PRICE                                              :{BLACK}Kaufprei
 STR_HOUSEOWN_RENT_OUT                                           :{BLACK}Zu erwartende Miete: {ORANGE}{CURRENCY_LONG}{BLACK} pro Monat
 STR_HOUSEOWN_OWNED                                              :{BLACK}Dieses Gebäude gehört Ihnen (bezahlt: {CURRENCY_LONG})
 STR_HOUSEOWN_RENT_IN                                            :{BLACK}Mieteinnahmen: {ORANGE}{CURRENCY_LONG}{BLACK} pro Monat
+STR_HOUSEOWN_UPKEEP                                             :{BLACK}Unterhalt: {ORANGE}{CURRENCY_LONG}{BLACK} pro Jahr ({NUM} %)
 STR_HOUSEOWN_BUY                                                :{BLACK}Gebäude kaufen
 STR_HOUSEOWN_BUY_TOOLTIP                                        :{BLACK}Dieses Gebäude kaufen und monatlich Miete verdienen
 STR_HOUSEOWN_VIEW                                               :{BLACK}Ort zeigen

@@ -649,9 +649,12 @@ static void TileLoop_Town(TileIndex tile)
 
 	AutoRestoreBackup cur_company(_current_company, OWNER_TOWN);
 
+	/* Fork: Gekaufte Haeuser (Miet-Feature) reisst die Stadt nicht ab. */
+	extern bool HouseOwnIsProtected(TileIndex tile);
 	if (hs->building_flags.Any(BUILDING_HAS_1_TILE) &&
 			t->flags.Test(TownFlag::IsGrowing) &&
 			CanDeleteHouse(tile) &&
+			!HouseOwnIsProtected(tile) &&
 			GetHouseAge(tile) >= hs->minimum_life &&
 			--t->time_until_rebuild == 0) {
 		t->time_until_rebuild = GB(r, 16, 8) + 192;

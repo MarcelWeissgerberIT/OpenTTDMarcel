@@ -158,6 +158,22 @@ static Money HouseRent(const HouseSpec *hs)
 	return HousePrice(hs) / 84;
 }
 
+/** Jaehrlicher Unterhalt: 1-5 % des Kaufpreises, fest je Kachel. */
+static uint HouseUpkeepPct(uint32_t tile)
+{
+	return 1 + tile % 5;
+}
+
+/** Fork: Gekaufte Haeuser reisst die Stadt nicht ab (town_cmd.cpp fragt hier an). */
+bool HouseOwnIsProtected(TileIndex tile)
+{
+	HouseOwnLoad();
+	if (_owned_tiles.empty()) return false;
+	HouseID house = GetHouseType(tile);
+	TileIndex north = tile + GetHouseNorthPart(house);
+	return _owned_tiles.contains(north.base());
+}
+
 /* ---------- Monatliche Miete ---------- */
 
 static void HouseOwnMonthly()
@@ -194,6 +210,26 @@ static void HouseOwnMonthly()
 
 static const IntervalTimer<TimerGameCalendar> _houseown_monthly_timer = {{TimerGameCalendar::Trigger::Month, TimerGameCalendar::Priority::None}, [](auto) {
 	HouseOwnMonthly();
+}};
+
+/** Jahresunterhalt der gekauften Haeuser (1-5 % vom Kaufpreis, Grundbesitz-Konto). */
+static void HouseOwnYearly()
+{
+	if (_game_mode != GameMode::Normal) return;
+	if (!Company::IsValidID(_local_company)) return;
+	HouseOwnLoad();
+	for (const OwnedHouse &h : _owned_houses) {
+		if (h.seed != CurrentSeed()) continue;
+		TileIndex tile(h.tile);
+		if (!IsValidTile(tile) || !IsTileType(tile, TileType::House)) continue;
+		Money upkeep = (Money)h.price * HouseUpkeepPct(h.tile) / 100;
+		SubtractMoneyFromCompany(_local_company, CommandCost(ExpensesType::Property, upkeep));
+		ShowCostOrIncomeAnimation(TileX(tile) * TILE_SIZE + 8, TileY(tile) * TILE_SIZE + 8, GetTilePixelZ(tile), upkeep);
+	}
+}
+
+static const IntervalTimer<TimerGameCalendar> _houseown_yearly_timer = {{TimerGameCalendar::Trigger::Year, TimerGameCalendar::Priority::None}, [](auto) {
+	HouseOwnYearly();
 }};
 
 /** Haus kaufen: prueft Spielmodus, Besitz und Geld; bucht und speichert. */
@@ -248,7 +284,7 @@ struct HouseInfoWindow : Window {
 	{
 		if (widget != WID_HO_INFO) return;
 		size.width = std::max(size.width, static_cast<uint>(ScaleGUITrad(150 + 240)));
-		size.height = std::max({size.height, static_cast<uint>(6 * (GetCharacterHeight(FontSize::Normal) + 2) + ScaleGUITrad(8)), static_cast<uint>(ScaleGUITrad(130))});
+		size.height = std::max({size.height, static_cast<uint>(7 * (GetCharacterHeight(FontSize::Normal) + 2) + ScaleGUITrad(8)), static_cast<uint>(ScaleGUITrad(130))});
 	}
 
 	void DrawWidget(const Rect &r, WidgetID widget) const override
@@ -290,14 +326,19 @@ struct HouseInfoWindow : Window {
 		y += line;
 
 		const OwnedHouse *owned = FindOwned(this->tile);
+		uint pct = HouseUpkeepPct(this->tile.base());
 		if (owned != nullptr) {
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_OWNED, (Money)owned->price));
 			y += line;
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_RENT_IN, (Money)owned->rent));
+			y += line;
+			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_UPKEEP, (Money)owned->price * pct / 100, pct));
 		} else {
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_PRICE, HousePrice(hs)));
 			y += line;
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_RENT_OUT, HouseRent(hs)));
+			y += line;
+			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_UPKEEP, HousePrice(hs) * pct / 100, pct));
 		}
 	}
 
