@@ -37,6 +37,8 @@
 #include "timer/timer_game_calendar.h"
 #include "settings_type.h"
 #include "error.h"
+#include "town_cmd.h"
+#include "command_func.h"
 
 #include "widgets/houseown_widget.h"
 
@@ -174,6 +176,39 @@ bool HouseOwnIsProtected(TileIndex tile)
 	return _owned_tiles.contains(north.base());
 }
 
+/** Naechstgroesseres 1x1-Standardgebaeude gleicher Klimafamilie (Ausbau-Ziel). */
+static HouseID FindUpgradeHouse(HouseID cur_id)
+{
+	const HouseSpec *cur = HouseSpec::Get(cur_id);
+	if (!cur->building_flags.Test(BuildingFlag::Size1x1)) return INVALID_HOUSE_ID;
+	HouseID best = INVALID_HOUSE_ID;
+	uint best_pop = UINT_MAX;
+	for (size_t id = 0; id < HouseSpec::Specs().size(); id++) {
+		const HouseSpec *hs = HouseSpec::Get(id);
+		if (!hs->enabled || hs->grf_prop.HasSpriteGroups()) continue;
+		if (!hs->building_flags.Test(BuildingFlag::Size1x1)) continue;
+		if (hs->population <= cur->population) continue;
+		if (!(hs->building_availability & cur->building_availability).Any()) continue;
+		if (hs->population < best_pop) {
+			best_pop = hs->population;
+			best = static_cast<HouseID>(id);
+		}
+	}
+	return best;
+}
+
+/** Renovierungskosten: 15 % des Kaufpreises, mindestens 5k. */
+static Money HouseRenovateCost(Money price)
+{
+	return std::max<Money>(price * 15 / 100, 5000);
+}
+
+/** Ausbaukosten: das 1,5-fache der Preisdifferenz, mindestens 20k. */
+static Money HouseUpgradeCost(const HouseSpec *cur, const HouseSpec *next)
+{
+	return std::max<Money>((HousePrice(next) - HousePrice(cur)) * 3 / 2, 20000);
+}
+
 /* ---------- Monatliche Miete ---------- */
 
 static void HouseOwnMonthly()
@@ -283,8 +318,23 @@ struct HouseInfoWindow : Window {
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
 	{
 		if (widget != WID_HO_INFO) return;
-		size.width = std::max(size.width, static_cast<uint>(ScaleGUITrad(150 + 240)));
-		size.height = std::max({size.height, static_cast<uint>(7 * (GetCharacterHeight(FontSize::Normal) + 2) + ScaleGUITrad(8)), static_cast<uint>(ScaleGUITrad(130))});
+		/* Breite an den laengsten Text anpassen - vorher wurde die
+		 * Besitz-Zeile bei grossen Betraegen abgeschnitten. */
+		uint text_w = ScaleGUITrad(200);
+		const HouseSpec *hs = this->Spec();
+		if (hs != nullptr) {
+			uint pct = HouseUpkeepPct(this->tile.base());
+			Money price = HousePrice(hs);
+			std::string lines[] = {
+				GetString(STR_HOUSEOWN_OWNED, price),
+				GetString(STR_HOUSEOWN_PRICE, price),
+				GetString(STR_HOUSEOWN_RENT_OUT, HouseRent(hs)),
+				GetString(STR_HOUSEOWN_UPKEEP, price * pct / 100, pct),
+			};
+			for (const std::string &l : lines) text_w = std::max(text_w, GetStringBoundingBox(l).width);
+		}
+		size.width = std::max(size.width, static_cast<uint>(ScaleGUITrad(150)) + text_w + static_cast<uint>(ScaleGUITrad(16)));
+		size.height = std::max({size.height, static_cast<uint>(8 * (GetCharacterHeight(FontSize::Normal) + 2) + ScaleGUITrad(8)), static_cast<uint>(ScaleGUITrad(120))});
 	}
 
 	void DrawWidget(const Rect &r, WidgetID widget) const override
@@ -304,7 +354,7 @@ struct HouseInfoWindow : Window {
 				/* Dieselbe Varianten-Wahl wie beim Kartenzeichnen, sonst
 				 * zeigt das Portraet gelegentlich das falsche Gebaeude. */
 				int view = TileHash2Bit(TileX(this->tile) * TILE_SIZE, TileY(this->tile) * TILE_SIZE);
-				DrawHouseInGUI(pw / 2, ph * 3 / 4, GetHouseType(this->tile), view);
+				DrawHouseInGUI(pw / 2, ph * 7 / 10, GetHouseType(this->tile), view);
 			}
 		}
 		tr.left += pw + ScaleGUITrad(8);
@@ -333,6 +383,14 @@ struct HouseInfoWindow : Window {
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_RENT_IN, (Money)owned->rent));
 			y += line;
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_UPKEEP, (Money)owned->price * pct / 100, pct));
+			y += line;
+			HouseID up = FindUpgradeHouse(GetHouseType(this->tile));
+			if (up != INVALID_HOUSE_ID) {
+				const HouseSpec *cur_hs = HouseSpec::Get(GetHouseType(this->tile));
+				const HouseSpec *up_hs = HouseSpec::Get(up);
+				DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_UPGRADE_INFO,
+						HouseUpgradeCost(cur_hs, up_hs), up_hs->population - cur_hs->population));
+			}
 		} else {
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_PRICE, HousePrice(hs)));
 			y += line;
@@ -348,6 +406,14 @@ struct HouseInfoWindow : Window {
 		bool can_buy = hs != nullptr && FindOwned(this->tile) == nullptr &&
 				_game_mode == GameMode::Normal && Company::IsValidID(_local_company);
 		this->SetWidgetDisabledState(WID_HO_BUY, !can_buy);
+		bool can_upgrade = hs != nullptr && FindOwned(this->tile) != nullptr &&
+				_game_mode == GameMode::Normal && Company::IsValidID(_local_company) &&
+				FindUpgradeHouse(GetHouseType(this->tile)) != INVALID_HOUSE_ID;
+		this->SetWidgetDisabledState(WID_HO_UPGRADE, !can_upgrade);
+		bool can_renovate = hs != nullptr && FindOwned(this->tile) != nullptr &&
+				_game_mode == GameMode::Normal && Company::IsValidID(_local_company) &&
+				GetHouseAge(this->tile).base() > 0;
+		this->SetWidgetDisabledState(WID_HO_RENOVATE, !can_renovate);
 		this->DrawWidgets();
 	}
 
@@ -361,6 +427,56 @@ struct HouseInfoWindow : Window {
 			case WID_HO_BUY:
 				if (HouseOwnBuy(this->tile)) this->SetDirty();
 				break;
+
+			case WID_HO_RENOVATE: {
+				OwnedHouse *owned = FindOwned(this->tile);
+				if (owned == nullptr || _game_mode != GameMode::Normal || !Company::IsValidID(_local_company)) break;
+				Money cost = HouseRenovateCost(owned->price);
+				if (Company::Get(_local_company)->money < cost) {
+					ShowErrorMessage(GetEncodedString(STR_HOUSEOWN_NO_MONEY), {}, WarningLevel::Error);
+					break;
+				}
+				SubtractMoneyFromCompany(_local_company, CommandCost(ExpensesType::Property, cost));
+				ShowCostOrIncomeAnimation(TileX(this->tile) * TILE_SIZE + 8, TileY(this->tile) * TILE_SIZE + 8, GetTilePixelZ(this->tile), cost);
+				/* Verjuengen: Hausalter liegt in m5 (Jahre seit Fertigstellung). */
+				Tile t(this->tile);
+				t.m5() = static_cast<uint8_t>(std::max(0, (int)t.m5() - 10));
+				MarkTileDirtyByTile(this->tile);
+				this->SetDirty();
+				break;
+			}
+
+			case WID_HO_UPGRADE: {
+				OwnedHouse *owned = FindOwned(this->tile);
+				if (owned == nullptr || _game_mode != GameMode::Normal || !Company::IsValidID(_local_company)) break;
+				HouseID cur_id = GetHouseType(this->tile);
+				HouseID up = FindUpgradeHouse(cur_id);
+				if (up == INVALID_HOUSE_ID) break;
+				const HouseSpec *cur_hs = HouseSpec::Get(cur_id);
+				const HouseSpec *up_hs = HouseSpec::Get(up);
+				Money cost = HouseUpgradeCost(cur_hs, up_hs);
+				if (Company::Get(_local_company)->money < cost) {
+					ShowErrorMessage(GetEncodedString(STR_HOUSEOWN_NO_MONEY), {}, WarningLevel::Error);
+					break;
+				}
+				/* Neues Gebaeude an derselben Stelle errichten (ersetzt das alte). */
+				Backup<CompanyID> deity(_current_company, OWNER_DEITY);
+				AutoRestoreBackup place(_settings_game.economy.place_houses, PlaceHouses::Allowed);
+				CommandCost res = Command<Commands::PlaceHouse>::Do(DoCommandFlag::Execute, this->tile, up, false, true);
+				deity.Restore();
+				if (res.Failed()) {
+					ShowErrorMessage(GetEncodedString(STR_HOUSEOWN_UPGRADE_FAILED), {}, WarningLevel::Error);
+					break;
+				}
+				SubtractMoneyFromCompany(_local_company, CommandCost(ExpensesType::Property, cost));
+				ShowCostOrIncomeAnimation(TileX(this->tile) * TILE_SIZE + 8, TileY(this->tile) * TILE_SIZE + 8, GetTilePixelZ(this->tile), cost);
+				owned->house_type = GetHouseType(this->tile);
+				owned->price = HousePrice(up_hs);
+				owned->rent = HouseRent(up_hs);
+				HouseOwnSave();
+				MarkWholeScreenDirty();
+				break;
+			}
 
 			default:
 				break;
@@ -384,6 +500,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_houseown_widgets = {
 	EndContainer(),
 	NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_HO_VIEW), SetStringTip(STR_HOUSEOWN_VIEW, STR_HOUSEOWN_VIEW_TOOLTIP), SetFill(1, 0),
+		NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_HO_RENOVATE), SetStringTip(STR_HOUSEOWN_RENOVATE, STR_HOUSEOWN_RENOVATE_TOOLTIP), SetFill(1, 0),
+		NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_HO_UPGRADE), SetStringTip(STR_HOUSEOWN_UPGRADE, STR_HOUSEOWN_UPGRADE_TOOLTIP), SetFill(1, 0),
 		NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_HO_BUY), SetStringTip(STR_HOUSEOWN_BUY, STR_HOUSEOWN_BUY_TOOLTIP), SetFill(1, 0),
 	EndContainer(),
 };

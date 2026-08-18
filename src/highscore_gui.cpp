@@ -275,7 +275,9 @@ static const IntervalTimer<TimerGameCalendar> _check_end_game({TimerGameCalendar
 	if (_settings_game.game_creation.ending_year == 0) return;
 
 	/* Show the end-game chart at the end of the ending year (hence the + 1). */
-	if (TimerGameCalendar::year == _settings_game.game_creation.ending_year + 1) {
+	/* Fork: Kein Spielende - die Abschlusswertung kommt nie, es wird
+	 * einfach unbegrenzt weitergespielt. */
+	if (false && TimerGameCalendar::year == _settings_game.game_creation.ending_year + 1) {
 		ShowEndGameChart();
 	}
 });

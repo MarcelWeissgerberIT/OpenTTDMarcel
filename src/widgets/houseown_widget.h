@@ -15,6 +15,8 @@ enum HouseOwnWidgets : WidgetID {
 	WID_HO_CAPTION, ///< Fenstertitel (Gebaeudename).
 	WID_HO_INFO,    ///< Infozeilen (Stadt, Bewohner, Preis, Miete).
 	WID_HO_BUY,     ///< Kaufen-Knopf.
+	WID_HO_UPGRADE, ///< Ausbauen-Knopf (groesseres Gebaeude).
+	WID_HO_RENOVATE, ///< Renovieren-Knopf (verjuengt das Gebaeude).
 	WID_HO_VIEW,    ///< Ansicht zentrieren.
 };
 

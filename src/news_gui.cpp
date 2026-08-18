@@ -355,6 +355,17 @@ NewsDisplay NewsTypeData::GetDisplay() const
 	return static_cast<NewsDisplay>(sd->AsIntSetting()->Read(nullptr));
 }
 
+/* Fork: Ankunfts-Jubelmeldungen ("erster Bus!") nie als grosses
+ * Zeitungsfenster - hoechstens als Laufband im Statusbalken. */
+static NewsDisplay GetEffectiveDisplay(NewsType type)
+{
+	NewsDisplay d = _news_type_data[type].GetDisplay();
+	if ((type == NewsType::ArrivalCompany || type == NewsType::ArrivalOther) && d == NewsDisplay::Full) {
+		d = NewsDisplay::Summary;
+	}
+	return d;
+}
+
 /** Window class displaying a news item. */
 struct NewsWindow : Window {
 	uint16_t chat_height = 0; ///< Height of the chat window.
@@ -776,7 +787,7 @@ static void MoveToNextTickerItem()
 		/* check the date, don't show too old items */
 		if (TimerGameEconomy::date - _news_type_data[type].age > _statusbar_news->economy_date) continue;
 
-		switch (_news_type_data[type].GetDisplay()) {
+		switch (GetEffectiveDisplay(type)) {
 			default: NOT_REACHED();
 			case NewsDisplay::Off: // Show nothing only a small reminder in the status bar.
 				InvalidateWindowData(WindowClass::Statusbar, 0, SBI_SHOW_REMINDER);
@@ -814,7 +825,7 @@ static void MoveToNextNewsItem()
 		/* check the date, don't show too old items */
 		if (TimerGameEconomy::date - _news_type_data[type].age > _current_news->economy_date) continue;
 
-		switch (_news_type_data[type].GetDisplay()) {
+		switch (GetEffectiveDisplay(type)) {
 			default: NOT_REACHED();
 			case NewsDisplay::Off: // Show nothing only a small reminder in the status bar, skipped here.
 				break;
@@ -1180,7 +1191,7 @@ void ShowLastNewsMessage()
 	}
 	bool wrap = false;
 	for (;;) {
-		if (_news_type_data[ni->type].GetDisplay() != NewsDisplay::Off) {
+		if (GetEffectiveDisplay(ni->type) != NewsDisplay::Off) {
 			ShowNewsMessage(ni);
 			break;
 		}

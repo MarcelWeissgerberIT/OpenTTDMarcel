@@ -73,6 +73,12 @@
 #include "table/sprites.h"
 #include "table/strings.h"
 
+#include "autoreplace_func.h"
+#include "autoreplace_cmd.h"
+#include "group.h"
+#include "timer/timer.h"
+#include "timer/timer_game_calendar.h"
+
 #include "safeguards.h"
 
 /** Halteauftrag wie im Auftrags-GUI konstruieren (Haltepunkt: Ende). */
@@ -2132,3 +2138,55 @@ void ShowIndustryConnectWindow(IndustryID ind)
 {
 	AllocateWindowDescFront<IndustryConnectWindow>(_industry_connect_desc, ind.base());
 }
+
+
+/* =================== Auto-Modernisierung (Fork) ===================
+ * Fuer jedes genutzte Fahrzeugmodell mit klar besserem, verfuegbarem
+ * Nachfolger (gleiche Fracht, Kapazitaet und Tempo mindestens gleich,
+ * eines echt besser) wird automatisch eine Ersetzen-Regel angelegt.
+ * Der Tausch passiert wie gewohnt beim Depotbesuch - die Fahrplaene
+ * der Fahrzeuge bleiben dabei vollstaendig erhalten. */
+static void AutoModernizeMonthly()
+{
+	if (_game_mode != GameMode::Normal) return;
+	if (!Company::IsValidID(_local_company)) return;
+	Company *c = Company::Get(_local_company);
+
+	std::set<EngineID> used;
+	for (const Vehicle *v : Vehicle::Iterate()) {
+		if (v->owner != _local_company || !v->IsPrimaryVehicle()) continue;
+		if (v->type == VehicleType::Train) continue; /* Waggonketten: spaeter */
+		used.insert(v->engine_type);
+	}
+
+	for (EngineID from : used) {
+		const Engine *ef = Engine::Get(from);
+		uint cap_f = ef->GetDisplayDefaultCapacity();
+		uint spd_f = ef->GetDisplayMaxSpeed();
+		uint best_score = cap_f * 3 + spd_f;
+		EngineID best = EngineID::Invalid();
+		for (const Engine *e : Engine::IterateType(ef->type)) {
+			if (e->index == from) continue;
+			if (!e->company_avail.Test(_local_company)) continue;
+			if (e->GetDefaultCargoType() != ef->GetDefaultCargoType()) continue;
+			if (ef->type == VehicleType::Road && e->VehInfo<RoadVehicleInfo>().roadtype != ef->VehInfo<RoadVehicleInfo>().roadtype) continue;
+			uint cap = e->GetDisplayDefaultCapacity();
+			uint spd = e->GetDisplayMaxSpeed();
+			if (cap < cap_f || spd < spd_f) continue;
+			uint score = cap * 3 + spd;
+			if (score > best_score) {
+				best_score = score;
+				best = e->index;
+			}
+		}
+		if (best == EngineID::Invalid()) continue;
+		if (EngineReplacementForCompany(c, from, ALL_GROUP) == best) continue;
+		Backup<CompanyID> cur_company(_current_company, _local_company);
+		Command<Commands::SetAutoreplace>::Do(DoCommandFlag::Execute, ALL_GROUP, from, best, false);
+		cur_company.Restore();
+	}
+}
+
+static const IntervalTimer<TimerGameCalendar> _auto_modernize_timer = {{TimerGameCalendar::Trigger::Month, TimerGameCalendar::Priority::None}, [](auto) {
+	AutoModernizeMonthly();
+}};

@@ -2292,9 +2292,15 @@ STR_HOUSEOWN_COMMERCIAL                                         :{BLACK}Gewerbeg
 STR_HOUSEOWN_AGE                                                :{BLACK}Alter: {ORANGE}{NUM} Jahr{P "" e}
 STR_HOUSEOWN_PRICE                                              :{BLACK}Kaufpreis: {ORANGE}{CURRENCY_LONG}
 STR_HOUSEOWN_RENT_OUT                                           :{BLACK}Zu erwartende Miete: {ORANGE}{CURRENCY_LONG}{BLACK} pro Monat
-STR_HOUSEOWN_OWNED                                              :{BLACK}Dieses Gebäude gehört Ihnen (bezahlt: {CURRENCY_LONG})
+STR_HOUSEOWN_OWNED                                              :{BLACK}In Ihrem Besitz - bezahlt: {ORANGE}{CURRENCY_LONG}
 STR_HOUSEOWN_RENT_IN                                            :{BLACK}Mieteinnahmen: {ORANGE}{CURRENCY_LONG}{BLACK} pro Monat
 STR_HOUSEOWN_UPKEEP                                             :{BLACK}Unterhalt: {ORANGE}{CURRENCY_LONG}{BLACK} pro Jahr ({NUM} %)
+STR_HOUSEOWN_UPGRADE                                            :{BLACK}Ausbauen
+STR_HOUSEOWN_UPGRADE_TOOLTIP                                    :{BLACK}Gegen Geld durch ein größeres Gebäude ersetzen (mehr Bewohner, mehr Miete)
+STR_HOUSEOWN_UPGRADE_INFO                                       :{BLACK}Ausbau: {ORANGE}{CURRENCY_LONG}{BLACK} (+{NUM} Bewohner)
+STR_HOUSEOWN_UPGRADE_FAILED                                     :{WHITE}Ausbau ist hier nicht möglich
+STR_HOUSEOWN_RENOVATE                                           :{BLACK}Renovieren
+STR_HOUSEOWN_RENOVATE_TOOLTIP                                   :{BLACK}Für 15 % des Kaufpreises renovieren - das Gebäude wird 10 Jahre jünger
 STR_HOUSEOWN_BUY                                                :{BLACK}Gebäude kaufen
 STR_HOUSEOWN_BUY_TOOLTIP                                        :{BLACK}Dieses Gebäude kaufen und monatlich Miete verdienen
 STR_HOUSEOWN_VIEW                                               :{BLACK}Ort zeigen
