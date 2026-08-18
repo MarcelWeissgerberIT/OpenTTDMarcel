@@ -2311,7 +2311,7 @@ STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE                             :{BLACK}No space
 STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Construction failed
 STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}No suitable aircraft available yet
 STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Not enough money for aircraft
-STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}The towns are too close together - please pick two towns farther apart
+STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}Airports need at least 12 tiles between the towns - please pick towns farther apart
 STR_AUTOCONNECT_MODE_AIR                                        :{BLACK}Mode: Aircraft
 STR_AUTOCONNECT_MODE_BUS                                        :{BLACK}Mode: Buses
 STR_AUTOCONNECT_MODE_TOOLTIP                                    :{BLACK}Switch between aircraft, bus, train and ship connections

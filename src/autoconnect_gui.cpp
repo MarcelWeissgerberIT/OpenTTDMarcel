@@ -51,6 +51,7 @@
 #include "station_map.h"
 #include "roadstop_base.h"
 #include "depot_base.h"
+#include "landscape_cmd.h"
 #include "industry.h"
 #include "water_map.h"
 #include "station_cmd.h"
@@ -176,7 +177,7 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 
 	/* Sind die Städte weit genug auseinander für zwei getrennte Flughäfen? */
-	if (DistanceManhattan(town_a->xy, town_b->xy) < 24) {
+	if (DistanceManhattan(town_a->xy, town_b->xy) < 12) {
 		result.error = STR_AUTOCONNECT_ERR_TOO_CLOSE;
 		return result;
 	}
@@ -1116,9 +1117,14 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			/* Anschlusskurven vom Depot auf beide Streckenrichtungen. */
 			CommandCost c1 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, path[i].first, RAILTYPE_RAIL, TrackFromEdges(d, entry_edge), true);
 			CommandCost c2 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, path[i].first, RAILTYPE_RAIL, TrackFromEdges(d, exit_edge), true);
-			if (c1.Succeeded()) result.cost += c1.GetCost();
-			if (c2.Succeeded()) result.cost += c2.GetCost();
-			if (c1.Failed() && c2.Failed()) continue; /* Depot bleibt, aber unbrauchbar - nächster Versuch */
+			/* BEIDE Anschlusskurven muessen stehen, sonst haengt das Depot nur
+			 * einseitig an der Strecke und der Zug findet kein Ziel ("lost").
+			 * Dann Depot wieder abreissen und die naechste Stelle versuchen. */
+			if (c1.Failed() || c2.Failed()) {
+				Command<Commands::LandscapeClear>::Do(DoCommandFlag::Execute, cand);
+				continue;
+			}
+			result.cost += c1.GetCost() + c2.GetCost();
 			depot = cand;
 			break;
 		}
@@ -1505,7 +1511,7 @@ struct AutoConnectWindow : Window {
 							this->status = GetString(STR_AUTOCONNECT_STATUS_DONE, res.cost);
 						} else {
 							this->status = GetString(res.error);
-							if (res.error_detail != 0) this->status += fmt::format(" [#{}]", res.error_detail);
+							if (res.error_detail != 0) this->status += ": " + GetString(StringID(res.error_detail));
 						}
 					}
 					this->sug_cargo = INVALID_CARGO;
@@ -1599,10 +1605,10 @@ struct AutoConnectWindow : Window {
 				AutoConnectResult res = run(estimate);
 				if (res.ok) {
 					this->status = GetString(estimate ? STR_AUTOCONNECT_STATUS_ESTIMATE : STR_AUTOCONNECT_STATUS_DONE, res.cost);
-					if (res.error_detail != 0) this->status += fmt::format(" [#{}]", res.error_detail);
+					if (res.error_detail != 0) this->status += ": " + GetString(StringID(res.error_detail));
 				} else {
 					this->status = GetString(res.error);
-					if (res.error_detail != 0) this->status += fmt::format(" [#{}]", res.error_detail);
+					if (res.error_detail != 0) this->status += ": " + GetString(StringID(res.error_detail));
 				}
 				this->SetDirty();
 				break;
@@ -1626,6 +1632,13 @@ struct AutoConnectWindow : Window {
 	{
 		this->picking_for = 0;
 		this->SetDirty();
+	}
+
+	void DrawWidget(const Rect &r, WidgetID widget) const override
+	{
+		/* Statuszeile mehrzeilig, damit auch lange Fehlermeldungen lesbar sind. */
+		if (widget != WID_AC_STATUS) return;
+		DrawStringMultiLine(r, this->status, TextColour::Black);
 	}
 };
 
@@ -1653,7 +1666,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CHECK), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_CHECK, STR_AUTOCONNECT_CHECK_TOOLTIP),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_SUGGEST), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_SUGGEST, STR_AUTOCONNECT_SUGGEST_TOOLTIP),
 			EndContainer(),
-			NWidget(WWT_TEXT, Colours::Invalid, WID_AC_STATUS), SetFill(1, 0), SetMinimalSize(220, 28),
+			NWidget(WWT_EMPTY, Colours::Invalid, WID_AC_STATUS), SetFill(1, 0), SetMinimalSize(220, 44),
 		EndContainer(),
 	EndContainer(),
 };
@@ -1669,4 +1682,56 @@ static WindowDesc _autoconnect_desc(
 void ShowAutoConnectWindow()
 {
 	AllocateWindowDescFront<AutoConnectWindow>(_autoconnect_desc, 0);
+}
+
+
+/**
+ * Fork: Diagnose-Einstieg fuer den Konsolenbefehl "autoconnect".
+ * Fuehrt den Auto-Bau direkt aus und liefert eine lesbare Zusammenfassung.
+ * @param mode "air", "bus", "rail" oder "ship".
+ * @param a_idx/b_idx Stadt-Indizes in Iterationsreihenfolge; bei auto_pick
+ *                    wird das naechstgelegene Stadtpaar (15-45 Kacheln) gewaehlt.
+ */
+std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick)
+{
+	std::vector<Town *> towns;
+	for (Town *t : Town::Iterate()) towns.push_back(t);
+	if (towns.size() < 2) return "Zu wenige Staedte auf der Karte.";
+
+	Town *ta = nullptr, *tb = nullptr;
+	if (auto_pick) {
+		uint best = UINT_MAX;
+		for (size_t i = 0; i < towns.size(); i++) {
+			for (size_t j = i + 1; j < towns.size(); j++) {
+				uint d = DistanceManhattan(towns[i]->xy, towns[j]->xy);
+				if (d >= 15 && d <= 45 && d < best) { best = d; ta = towns[i]; tb = towns[j]; }
+			}
+		}
+		if (ta == nullptr) { ta = towns[0]; tb = towns[1]; }
+	} else {
+		if (a_idx >= towns.size() || b_idx >= towns.size() || a_idx == b_idx) return "Ungueltige Stadt-Indizes.";
+		ta = towns[a_idx];
+		tb = towns[b_idx];
+	}
+
+	Backup<CompanyID> cur_company(_current_company, _local_company);
+	AutoConnectResult res;
+	if (mode == "air") res = BuildAirConnection(ta, tb, count, false);
+	else if (mode == "bus") res = BuildRoadConnection(ta, tb, count, 0, false);
+	else if (mode == "rail") res = BuildRailConnection(ta->xy, tb->xy, count, 0, INVALID_CARGO, false);
+	else if (mode == "ship") res = BuildShipConnection(ta, tb, count, 0, false);
+	else { cur_company.Restore(); return "Unbekannter Modus (air/bus/rail/ship)."; }
+	cur_company.Restore();
+
+	std::string out = fmt::format("AC-Diagnose {}: {} -> {} (Distanz {}): ", mode,
+			ta->GetCachedName(), tb->GetCachedName(), DistanceManhattan(ta->xy, tb->xy));
+	if (res.ok) {
+		out += fmt::format("OK, Kosten {}", (int64_t)res.cost);
+		if (res.error_detail != 0) out += fmt::format(" (Teilproblem: {})", GetString(StringID(res.error_detail)));
+	} else {
+		out += fmt::format("FEHLGESCHLAGEN: {}", GetString(res.error));
+		if (res.error_detail != 0) out += fmt::format(" - Grund: {}", GetString(StringID(res.error_detail)));
+	}
+	Debug(misc, 0, "{}", out);
+	return out;
 }

@@ -2280,7 +2280,7 @@ STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE                             :{BLACK}Kein Pla
 STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Bau fehlgeschlagen
 STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}Noch kein passendes Flugzeug verfügbar
 STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Nicht genug Geld für Flugzeuge
-STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}Die Städte liegen zu nah beieinander - bitte zwei weiter entfernte Städte wählen
+STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}Flughäfen brauchen mindestens 12 Kacheln Abstand zwischen den Städten - bitte weiter entfernte Städte wählen
 STR_AUTOCONNECT_MODE_AIR                                        :{BLACK}Modus: Flugzeuge
 STR_AUTOCONNECT_MODE_BUS                                        :{BLACK}Modus: Busse
 STR_AUTOCONNECT_MODE_TOOLTIP                                    :{BLACK}Zwischen Flugzeug-, Bus-, Zug- und Schiffsverbindung umschalten

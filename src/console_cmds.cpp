@@ -361,6 +361,25 @@ static bool ConZoomToLevel(std::span<std::string_view> argv)
  * Scroll to a tile on the map.
  * @copydoc IConsoleCmdProc
  */
+/* Fork: Auto-Verbindung direkt aus der Konsole ausfuehren (Diagnose). */
+static bool ConAutoConnect(std::span<std::string_view> argv)
+{
+	if (argv.size() < 2) {
+		IConsolePrint(CC_HELP, "Baut eine Auto-Verbindung. Usage: 'autoconnect <air|bus|rail|ship> [<townA> <townB>|auto] [count]'.");
+		return true;
+	}
+	extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
+	bool auto_pick = argv.size() < 4 || argv[2] == "auto";
+	uint a = 0, b = 1, count = 1;
+	if (!auto_pick) {
+		a = ParseInteger(argv[2]).value_or(0);
+		b = ParseInteger(argv[3]).value_or(1);
+	}
+	if (argv.size() >= 5) count = std::max<uint>(1, ParseInteger(argv[4]).value_or(1));
+	IConsolePrint(CC_DEFAULT, "{}", AutoConnectDebugBuild(argv[1], a, b, count, auto_pick));
+	return true;
+}
+
 static bool ConScrollToTile(std::span<std::string_view> argv)
 {
 	if (argv.empty()) {
@@ -2985,6 +3004,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("script",                  ConScript);
 	IConsole::CmdRegister("zoomto",                  ConZoomToLevel);
 	IConsole::CmdRegister("scrollto",                ConScrollToTile);
+	IConsole::CmdRegister("autoconnect",             ConAutoConnect);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

@@ -218,7 +218,7 @@ static bool IsParkingSpotTile(TileIndex tile)
 
 /* ---------- Spawnen ---------- */
 
-static const uint MAX_CITIZENS = 2500;
+static const uint MAX_CITIZENS = 3000;
 static const uint NETWORK_LIMIT = 90;
 
 /** Zufaellige Strassenkachel mit Haus daneben im Umkreis der Stadt. */
@@ -409,14 +409,14 @@ void RunCitizensTick()
 			MarkTileDirtyByTile(c.path[std::min<size_t>(c.pos, c.path.size() - 1)]);
 			c.pos = static_cast<uint16_t>(c.path.size() - 1);
 			c.state = CitizenState::Dwelling;
-			c.dwell_until = tick + 300 + CitizenRandom() % 1700;
+			c.dwell_until = tick + 150 + CitizenRandom() % 450;
 			if (c.goal == CitizenGoal::Move) {
 				/* Umzug vollzogen: neues Zuhause. */
 				c.home = c.path.back();
 				c.goal = CitizenGoal::Home;
 			}
 			if (c.path.back() == c.home && GetMonthIntention(c) == MonthIntention::Homebody) {
-				c.dwell_until = tick + 1500 + CitizenRandom() % 3000; /* Bleibt gern daheim. */
+				c.dwell_until = tick + 800 + CitizenRandom() % 1600; /* Bleibt gern daheim. */
 			}
 			if (c.goal == CitizenGoal::Stroll && c.stroll_legs > 0) {
 				c.stroll_legs--;
@@ -497,7 +497,7 @@ void RunCitizensTick()
 		for (const Citizen &c : _citizens) {
 			if (c.town == t->index) here++;
 		}
-		uint want = ClampU(t->cache.population / 12, 6, 90);
+		uint want = ClampU(t->cache.population / 8, 8, 120);
 		if (here < want) SpawnCitizen(t);
 		if (here + 10 < want) SpawnCitizen(t);
 		break;
