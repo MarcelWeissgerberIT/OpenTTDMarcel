@@ -57,7 +57,7 @@ static const SpriteID SPR_LARGE_SMALL_WINDOW = 682;
 
 /** @{
  * Extra graphic spritenumbers */
-static const SpriteID SPR_OPENTTD_BASE   = 4908; /* Fork: +12 Buerger-/Blasen-Sprites in den Logos-Slots 103-114. */
+static const SpriteID SPR_OPENTTD_BASE   = 4910; /* Fork: +14 Buerger-/Blasen-/Portraet-Sprites in den Logos-Slots 103-116. */
 static const uint16_t OPENTTD_SPRITE_COUNT = 192;
 /** @} */
 
@@ -1579,6 +1579,9 @@ static const SpriteID SPR_BUBBLE_HOME                = 4904;
 static const SpriteID SPR_BUBBLE_SHOPPING            = 4905;
 static const SpriteID SPR_BUBBLE_STROLL              = 4906;
 static const SpriteID SPR_BUBBLE_MOVE                = 4907;
+/* Kinder-Portraets fuer das Buerger-Fenster (Fork), Logos-Slots 115/116. */
+static const SpriteID SPR_CITIZEN_PORTRAIT_BOY       = 4908;
+static const SpriteID SPR_CITIZEN_PORTRAIT_GIRL     = 4909;
 /** @} */
 
 /** @defgroup cursor_sprites Cursor sprite numbers.

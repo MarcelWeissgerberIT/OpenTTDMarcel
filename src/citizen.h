@@ -60,8 +60,10 @@ struct Citizen {
 void RunCitizensTick();
 void DrawCitizensOnTile(const TileInfo *ti);
 void DrawBoardingAnimsOnTile(const TileInfo *ti);
+void DrawWaitingPassengersOnTile(const TileInfo *ti);
 bool IsParkedCarAway(TileIndex tile);
 bool CheckClickOnCitizen(int world_x, int world_y);
+bool ShowCitizenWindowDebug(bool want_child);
 void ClearCitizens();
 
 #endif /* CITIZEN_H */

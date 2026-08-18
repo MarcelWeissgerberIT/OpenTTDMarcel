@@ -380,6 +380,19 @@ static bool ConAutoConnect(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Buerger-Fenster aus der Konsole oeffnen (Diagnose, z. B. Kinder-Portraet). */
+static bool ConCitizenWindow(std::span<std::string_view> argv)
+{
+	extern bool ShowCitizenWindowDebug(bool want_child);
+	bool child = argv.size() >= 2 && argv[1] == "child";
+	if (ShowCitizenWindowDebug(child)) {
+		IConsolePrint(CC_DEFAULT, "Buerger-Fenster geoeffnet ({}).", child ? "Kind" : "Erwachsener");
+	} else {
+		IConsolePrint(CC_DEFAULT, "Kein passender Buerger unterwegs.");
+	}
+	return true;
+}
+
 static bool ConScrollToTile(std::span<std::string_view> argv)
 {
 	if (argv.empty()) {
@@ -3005,6 +3018,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("zoomto",                  ConZoomToLevel);
 	IConsole::CmdRegister("scrollto",                ConScrollToTile);
 	IConsole::CmdRegister("autoconnect",             ConAutoConnect);
+	IConsole::CmdRegister("citizenwin",              ConCitizenWindow);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

@@ -119,13 +119,26 @@ static PaletteID CitizenPalette(uint32_t id)
 	return PALETTE_RECOLOUR_START + CitizenHash(id, 8) % 16;
 }
 
-/* Portraet deterministisch aus der ID - dieselbe Person, dasselbe Gesicht. */
+/* Vorname entscheidet das Geschlecht: erste Haelfte der Liste maennlich. */
+static bool CitizenIsMale(const Citizen &c)
+{
+	return CitizenHash(c.id, 1) % lengthof(_citizen_first_names) < lengthof(_citizen_first_names) / 2;
+}
+
+/* Portraet deterministisch aus der ID - dieselbe Person, dasselbe Gesicht.
+ * Der Gesichts-Stil passt zum Vornamen (Stile 0/2 maennlich, 1/3 weiblich). */
 static CompanyManagerFace CitizenFace(const Citizen &c)
 {
 	CompanyManagerFace cmf;
 	Randomizer r;
 	r.SetSeed(CitizenHash(c.id, 6) | 1);
-	RandomiseCompanyManagerFace(cmf, r);
+	uint style = (CitizenIsMale(c) ? 0 : 1) + (CitizenHash(c.id, 12) & 1) * 2;
+	if (style < GetNumCompanyManagerFaceStyles()) {
+		SetCompanyManagerFaceStyle(cmf, style);
+		RandomiseCompanyManagerFaceBits(cmf, GetCompanyManagerFaceVars(cmf.style), r);
+	} else {
+		RandomiseCompanyManagerFace(cmf, r);
+	}
 	return cmf;
 }
 
@@ -513,6 +526,42 @@ static void TickBoardingAnims()
 	}
 }
 
+/* ---------- Wartende Passagiere als sichtbare Menschenmenge ----------
+ * Statt zweier fester Gruppen-Sprites stehen einzelne Buerger-Figuren
+ * auf dem Bahnsteig bzw. an der Haltestelle; ihre Anzahl waechst mit
+ * den wartenden Passagieren der Station. Positionen und Farben sind
+ * deterministisch aus der Kachel abgeleitet (kein Flackern). */
+void DrawWaitingPassengersOnTile(const TileInfo *ti)
+{
+	bool rail = IsRailStation(ti->tile) && !IsStationTileBlocked(ti->tile);
+	bool road = IsAnyRoadStopTile(ti->tile);
+	if (!rail && !road) return;
+
+	BaseStation *bst = BaseStation::GetByTile(ti->tile);
+	if (bst == nullptr || !Station::IsExpected(bst)) return;
+	const Station *stn = Station::From(bst);
+
+	uint waiting = 0;
+	for (const CargoSpec *cs : CargoSpec::Iterate()) {
+		if (cs->classes.Test(CargoClass::Passengers)) waiting += stn->goods[cs->Index()].TotalCount();
+	}
+	if (waiting < 5) return;
+
+	uint n = ClampU(waiting / 10, 1, rail ? 8 : 4);
+	for (uint i = 0; i < n; i++) {
+		uint32_t h = CitizenHash(ti->tile.base(), 0x5150 + i);
+		uint along = 1 + (h % 13);
+		uint side = ((h >> 8) & 1) != 0 ? 2 + ((h >> 9) % 3) : 10 + ((h >> 9) % 3);
+		int px, py;
+		Axis axis = rail ? GetRailStationAxis(ti->tile) :
+				(IsDriveThroughStopTile(ti->tile) ? GetDriveThroughStopAxis(ti->tile) : Axis::X);
+		if (axis == Axis::X) { px = (int)along; py = (int)side; } else { px = (int)side; py = (int)along; }
+		SpriteID spr = ((h >> 12) & 1) != 0 ? SPR_CITIZEN_WALK_1 : SPR_CITIZEN_WALK_2;
+		AddSortableSpriteToDraw(spr, PALETTE_RECOLOUR_START + ((h >> 4) & 15), *ti,
+				{{static_cast<int8_t>(px), static_cast<int8_t>(py), 0}, {3, 3, 6}, {}});
+	}
+}
+
 void DrawBoardingAnimsOnTile(const TileInfo *ti)
 {
 	for (const BoardingAnim &a : _boarding_anims) {
@@ -763,7 +812,14 @@ struct CitizenWindow : Window {
 		 * das Bild ueber Rahmen und Schliessen-Knopf. */
 		int fw = ScaleGUITrad(92), fh = ScaleGUITrad(119);
 		Rect face_r = {tr.left, tr.top, tr.left + fw - 1, tr.top + fh - 1};
-		DrawCompanyManagerFace(CitizenFace(*c), Colours::Grey, face_r);
+		if (c->kind == CitizenKind::Child) {
+			/* Kinder bekommen ein eigenes Portraet - die Manager-Gesichter
+			 * des Spiels gibt es nur als Erwachsene. */
+			DrawSprite(CitizenIsMale(*c) ? SPR_CITIZEN_PORTRAIT_BOY : SPR_CITIZEN_PORTRAIT_GIRL,
+					PAL_NONE, face_r.left, face_r.top);
+		} else {
+			DrawCompanyManagerFace(CitizenFace(*c), Colours::Grey, face_r);
+		}
 		tr.left += fw + ScaleGUITrad(8);
 
 		int line = GetCharacterHeight(FontSize::Normal) + 2;
@@ -837,6 +893,18 @@ static WindowDesc _citizen_desc(
 static void ShowCitizenWindow(uint32_t id)
 {
 	AllocateWindowDescFront<CitizenWindow>(_citizen_desc, id);
+}
+
+/* Fork-Diagnose: Fenster eines Buergers per Konsole oeffnen ("citizenwin"). */
+bool ShowCitizenWindowDebug(bool want_child)
+{
+	for (const Citizen &c : _citizens) {
+		if (want_child && c.kind != CitizenKind::Child) continue;
+		if (!want_child && c.kind == CitizenKind::Child) continue;
+		ShowCitizenWindow(c.id);
+		return true;
+	}
+	return false;
 }
 
 bool CheckClickOnCitizen(int world_x, int world_y)
