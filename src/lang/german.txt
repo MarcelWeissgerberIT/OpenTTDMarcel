@@ -2251,6 +2251,11 @@ STR_PIXELSTUDIO_BUTTON                                          :{BLACK}Pixel-St
 STR_PIXELSTUDIO_BUTTON_TOOLTIP                                  :{BLACK}Fahrzeuggrafiken mit dem eingebauten Pixel-Editor bearbeiten
 STR_PIXELSTUDIO_CAPTION                                         :{WHITE}Pixel-Studio
 STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Straßenfahrzeug zum Bearbeiten wählen
+STR_PIXELSTUDIO_FILTER_TRAIN                                    :{BLACK}Bahn
+STR_PIXELSTUDIO_FILTER_ROAD                                     :{BLACK}Straße
+STR_PIXELSTUDIO_FILTER_SHIP                                     :{BLACK}Schiff
+STR_PIXELSTUDIO_FILTER_AIR                                      :{BLACK}Luft
+STR_PIXELSTUDIO_FILTER_TOOLTIP                                  :{BLACK}Diesen Fahrzeugtyp in der Liste ein- oder ausblenden
 STR_PIXELSTUDIO_VIEW                                            :{BLACK}Ansicht {NUM}/{NUM}
 STR_PIXELSTUDIO_VIEW_TOOLTIP                                    :{BLACK}Zwischen den acht Blickrichtungen wechseln
 STR_PIXELSTUDIO_PREV                                            :{BLACK}<
@@ -2266,6 +2271,10 @@ STR_PIXELSTUDIO_TOOL_PICK                                       :{BLACK}Pipette
 STR_PIXELSTUDIO_TOOL_PICK_TOOLTIP                               :{BLACK}Farbe aus dem Bild aufnehmen
 STR_PIXELSTUDIO_TOOL_ERASE                                      :{BLACK}Radierer
 STR_PIXELSTUDIO_TOOL_ERASE_TOOLTIP                              :{BLACK}Pixel durchsichtig machen
+STR_PIXELSTUDIO_COPY                                            :{BLACK}Kopieren
+STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Diese Ansicht als Bild in die Zwischenablage kopieren
+STR_PIXELSTUDIO_PASTE                                           :{BLACK}Einfügen
+STR_PIXELSTUDIO_PASTE_TOOLTIP                                   :{BLACK}Bild aus der Zwischenablage einfügen; Farben werden automatisch auf die Spielpalette umgerechnet
 STR_PIXELSTUDIO_UNDO                                            :{BLACK}Rückgängig
 STR_PIXELSTUDIO_UNDO_TOOLTIP                                    :{BLACK}Letzten Malzug zurücknehmen
 STR_PIXELSTUDIO_RESET                                           :{BLACK}Original

@@ -59,8 +59,34 @@ enum class PsTool : uint8_t {
 /** Ein bearbeitbares Fahrzeug in der Liste. */
 struct PsEntry {
 	EngineID engine;
-	SpriteID base; ///< Sprite der ersten Blickrichtung.
+	VehicleType vtype;
+	std::vector<SpriteID> views; ///< Eindeutige Sprites der Blickrichtungen.
 };
+
+/* Standardsprite-Zugriffe je Fahrzeugtyp (0 = NewGRF-Grafik, nicht editierbar). */
+SpriteID GetTrainDefaultSpritePS(EngineID engine, Direction direction);
+SpriteID GetAircraftDefaultSpritePS(EngineID engine, Direction direction);
+SpriteID GetShipDefaultSpritePS(EngineID engine, Direction direction);
+
+/** Eindeutige Blickrichtungs-Sprites eines Fahrzeugs (leer = nicht editierbar). */
+static std::vector<SpriteID> PsViewsForEngine(const Engine *e)
+{
+	std::vector<SpriteID> views;
+	for (uint di = 0; di < 8; di++) {
+		Direction d = static_cast<Direction>(di);
+		SpriteID s = 0;
+		switch (e->type) {
+			case VehicleType::Train:    s = GetTrainDefaultSpritePS(e->index, d); break;
+			case VehicleType::Road:     s = GetRoadVehBaseSprite(e->index); if (s != 0) s += to_underlying(d); break;
+			case VehicleType::Ship:     s = GetShipDefaultSpritePS(e->index, d); break;
+			case VehicleType::Aircraft: s = GetAircraftDefaultSpritePS(e->index, d); break;
+			default: break;
+		}
+		if (s == 0) return {};
+		if (std::find(views.begin(), views.end(), s) == views.end()) views.push_back(s);
+	}
+	return views;
+}
 
 /* ---------- Dauerhafte Ablage (pixelstudio.dat im Nutzerverzeichnis) ---------- */
 
@@ -74,14 +100,13 @@ static void PixelStudioSaveToDisk()
 {
 	std::ofstream f(PixelStudioFilePath(), std::ios::binary | std::ios::trunc);
 	if (!f.is_open()) return;
-	f.write("PXS1", 4);
-	for (const Engine *e : Engine::IterateType(VehicleType::Road)) {
-		SpriteID base = GetRoadVehBaseSprite(e->index);
-		if (base == 0) continue;
-		for (uint v = 0; v < PS_VIEWS; v++) {
-			if (!PixelStudioHasOverride(base + v)) continue;
+	f.write("PXS2", 4);
+	for (const Engine *e : Engine::Iterate()) {
+		std::vector<SpriteID> views = PsViewsForEngine(e);
+		for (uint v = 0; v < views.size(); v++) {
+			if (!PixelStudioHasOverride(views[v])) continue;
 			PixelStudioSprite ps;
-			if (!PixelStudioReadSprite(base + v, ps)) continue;
+			if (!PixelStudioReadSprite(views[v], ps)) continue;
 			uint16_t engine_id = e->index.base();
 			uint8_t view = static_cast<uint8_t>(v);
 			f.write(reinterpret_cast<const char *>(&engine_id), 2);
@@ -110,7 +135,9 @@ void PixelStudioLoadOverrides()
 	if (!f.is_open()) return;
 	char magic[4];
 	f.read(magic, 4);
-	if (!f.good() || std::string_view(magic, 4) != "PXS1") return;
+	if (!f.good()) return;
+	bool v1 = std::string_view(magic, 4) == "PXS1"; /* alte Version: nur Strassenfahrzeuge */
+	if (!v1 && std::string_view(magic, 4) != "PXS2") return;
 
 	for (;;) {
 		uint16_t engine_id;
@@ -129,17 +156,51 @@ void PixelStudioLoadOverrides()
 		if (!f.good()) break;
 
 		const Engine *e = Engine::GetIfValid(engine_id);
-		if (e == nullptr || e->type != VehicleType::Road) continue;
-		SpriteID base = GetRoadVehBaseSprite(e->index);
-		if (base == 0) continue;
-		PixelStudioSetOverride(base + view, std::move(ps));
+		if (e == nullptr) continue;
+		if (v1 && e->type != VehicleType::Road) continue;
+		std::vector<SpriteID> views = PsViewsForEngine(e);
+		if (view >= views.size()) continue;
+		PixelStudioSetOverride(views[view], std::move(ps));
 	}
+}
+
+/** Editierpuffer als RGBA-Bytes (fuer die Zwischenablage). */
+static std::vector<uint8_t> PixelsToRGBA(const PixelStudioSprite &ps)
+{
+	std::vector<uint8_t> rgba(static_cast<size_t>(ps.width) * ps.height * 4);
+	for (size_t i = 0; i < ps.pixels.size(); i++) {
+		uint8_t idx = ps.pixels[i];
+		Colour c = _cur_palette.palette[idx];
+		rgba[i * 4 + 0] = c.r;
+		rgba[i * 4 + 1] = c.g;
+		rgba[i * 4 + 2] = c.b;
+		rgba[i * 4 + 3] = idx == 0 ? 0 : 0xFF;
+	}
+	return rgba;
+}
+
+/** Naechster Palettenindex zu einer RGB-Farbe (ohne Firmenfarben-Rampe). */
+static uint8_t NearestPaletteIndex(uint8_t r, uint8_t g, uint8_t b)
+{
+	uint best = 1;
+	uint32_t best_d = UINT32_MAX;
+	for (uint i = 1; i < 256; i++) {
+		if (i >= 0xC6 && i <= 0xCD) continue; /* CC-Rampe nicht automatisch treffen */
+		if (i >= PALETTE_ANIM_START && i < PALETTE_ANIM_START + PALETTE_ANIM_SIZE) continue; /* animierte Farben zappeln */
+		Colour c = _cur_palette.palette[i];
+		int dr = (int)c.r - r, dg = (int)c.g - g, db = (int)c.b - b;
+		uint32_t d = dr * dr + dg * dg + db * db;
+		if (d < best_d) { best_d = d; best = i; }
+	}
+	return static_cast<uint8_t>(best);
 }
 
 /* ---------- Das Editor-Fenster ---------- */
 
 struct PixelStudioWindow : Window {
 	std::vector<PsEntry> entries; ///< Bearbeitbare Fahrzeuge.
+	std::vector<int> filtered;    ///< Sichtbare Indizes in #entries (Typ-Filter).
+	bool show_type[4] = {true, true, true, true}; ///< Zug/Strasse/Schiff/Luft.
 	int selected = -1;            ///< Index in #entries.
 	uint view = 0;                ///< Blickrichtung 0..7.
 	PixelStudioSprite cur;        ///< Aktueller Malpuffer.
@@ -155,19 +216,44 @@ struct PixelStudioWindow : Window {
 		this->vscroll = this->GetScrollbar(WID_PS_SCROLLBAR);
 		this->FinishInitNested();
 
-		for (const Engine *e : Engine::IterateType(VehicleType::Road)) {
-			SpriteID base = GetRoadVehBaseSprite(e->index);
-			if (base == 0) continue;
-			this->entries.push_back({e->index, base});
+		static const VehicleType order[] = {VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft};
+		for (VehicleType vt : order) {
+			for (const Engine *e : Engine::IterateType(vt)) {
+				std::vector<SpriteID> views = PsViewsForEngine(e);
+				if (views.empty()) continue;
+				this->entries.push_back({e->index, vt, std::move(views)});
+			}
 		}
-		this->vscroll->SetCount(this->entries.size());
-		if (!this->entries.empty()) this->SelectEntry(0);
+		this->RebuildFilter();
+		if (!this->filtered.empty()) this->SelectEntry(this->filtered[0]);
+	}
+
+	void RebuildFilter()
+	{
+		this->filtered.clear();
+		for (int i = 0; i < (int)this->entries.size(); i++) {
+			if (this->show_type[to_underlying(this->entries[i].vtype)]) this->filtered.push_back(i);
+		}
+		this->vscroll->SetCount(this->filtered.size());
+		/* Auswahl unsichtbar geworden? Ersten sichtbaren Eintrag nehmen. */
+		if (this->selected >= 0 && !this->show_type[to_underlying(this->entries[this->selected].vtype)]) {
+			if (!this->filtered.empty()) this->SelectEntry(this->filtered[0]);
+		}
+		this->SetDirty();
+	}
+
+	uint NumViews() const
+	{
+		if (this->selected < 0) return 1;
+		return static_cast<uint>(this->entries[this->selected].views.size());
 	}
 
 	SpriteID CurrentSprite() const
 	{
 		if (this->selected < 0) return 0;
-		return this->entries[this->selected].base + this->view;
+		const PsEntry &en = this->entries[this->selected];
+		if (this->view >= en.views.size()) return 0;
+		return en.views[this->view];
 	}
 
 	void SelectEntry(int index)
@@ -211,7 +297,7 @@ struct PixelStudioWindow : Window {
 	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
 	{
 		switch (widget) {
-			case WID_PS_VIEW_LABEL: return GetString(STR_PIXELSTUDIO_VIEW, this->view + 1, PS_VIEWS);
+			case WID_PS_VIEW_LABEL: return GetString(STR_PIXELSTUDIO_VIEW, this->view + 1, this->NumViews());
 			case WID_PS_COLOUR: return GetString(STR_PIXELSTUDIO_COLOUR, this->colour);
 			default: return this->Window::GetWidgetString(widget, stringid);
 		}
@@ -241,14 +327,14 @@ struct PixelStudioWindow : Window {
 			case WID_PS_ENGINE_LIST: {
 				int line = GetCharacterHeight(FontSize::Normal);
 				int y = r.top + WidgetDimensions::scaled.framerect.top;
-				auto [first, last] = this->vscroll->GetVisibleRangeIterators(this->entries);
+				auto [first, last] = this->vscroll->GetVisibleRangeIterators(this->filtered);
 				for (auto it = first; it != last; ++it) {
-					int index = static_cast<int>(it - this->entries.begin());
+					int index = *it;
 					if (index == this->selected) {
 						GfxFillRect(r.left + 1, y, r.right - 1, y + line - 1, PC_BLACK);
 					}
 					DrawString(r.left + WidgetDimensions::scaled.frametext.left, r.right - WidgetDimensions::scaled.frametext.right, y,
-							GetString(STR_ENGINE_NAME, it->engine), index == this->selected ? TextColour::White : TextColour::Black);
+							GetString(STR_ENGINE_NAME, this->entries[index].engine), index == this->selected ? TextColour::White : TextColour::Black);
 					y += line;
 				}
 				break;
@@ -281,6 +367,14 @@ struct PixelStudioWindow : Window {
 				for (uint i = 0; i < 256; i++) {
 					int left = r.left + (i % 16) * cell;
 					int top = r.top + (i / 16) * cell;
+					if (i >= PALETTE_ANIM_START && i < PALETTE_ANIM_START + PALETTE_ANIM_SIZE) {
+						/* Animierte Spielfarben (Wasser/Feuer) zappeln nur -
+						 * gesperrt und als dunkles Kreuzmuster gezeichnet. */
+						GfxFillRect(left, top, left + cell - 1, top + cell - 1, PixelColour{GREY_SCALE(4)});
+						GfxFillRect(left, top, left + cell - 1, top, PixelColour{GREY_SCALE(2)});
+						GfxFillRect(left, top + cell - 1, left + cell - 1, top + cell - 1, PixelColour{GREY_SCALE(2)});
+						continue;
+					}
 					if (i == 0) {
 						GfxFillRect(left, top, left + cell - 1, top + cell - 1, PixelColour{GREY_SCALE(5)});
 						GfxFillRect(left, top, left + cell / 2 - 1, top + cell / 2 - 1, PixelColour{GREY_SCALE(7)});
@@ -315,8 +409,9 @@ struct PixelStudioWindow : Window {
 					}
 				}
 				/* ... und daneben alle gespeicherten Blickrichtungen. */
-				for (uint v = 0; v < PS_VIEWS; v++) {
-					DrawSprite(this->entries[this->selected].base + v, PALETTE_RECOLOUR_START,
+				const PsEntry &en = this->entries[this->selected];
+				for (uint v = 0; v < en.views.size(); v++) {
+					DrawSprite(en.views[v], PALETTE_RECOLOUR_START,
 							r.left + ScaleGUITrad(66 + 44 * v), cy);
 				}
 				break;
@@ -388,18 +483,29 @@ struct PixelStudioWindow : Window {
 	{
 		switch (widget) {
 			case WID_PS_ENGINE_LIST: {
-				auto it = this->vscroll->GetScrolledItemFromWidget(this->entries, pt.y, this, WID_PS_ENGINE_LIST, WidgetDimensions::scaled.framerect.top);
-				if (it != this->entries.end()) this->SelectEntry(static_cast<int>(it - this->entries.begin()));
+				auto it = this->vscroll->GetScrolledItemFromWidget(this->filtered, pt.y, this, WID_PS_ENGINE_LIST, WidgetDimensions::scaled.framerect.top);
+				if (it != this->filtered.end()) this->SelectEntry(*it);
+				break;
+			}
+
+			case WID_PS_FILTER_TRAIN:
+			case WID_PS_FILTER_ROAD:
+			case WID_PS_FILTER_SHIP:
+			case WID_PS_FILTER_AIR: {
+				uint idx = widget - WID_PS_FILTER_TRAIN;
+				static const VehicleType map[] = {VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft};
+				this->show_type[to_underlying(map[idx])] = !this->show_type[to_underlying(map[idx])];
+				this->RebuildFilter();
 				break;
 			}
 
 			case WID_PS_VIEW_PREV:
-				this->view = (this->view + PS_VIEWS - 1) % PS_VIEWS;
+				this->view = (this->view + this->NumViews() - 1) % this->NumViews();
 				this->LoadView();
 				break;
 
 			case WID_PS_VIEW_NEXT:
-				this->view = (this->view + 1) % PS_VIEWS;
+				this->view = (this->view + 1) % this->NumViews();
 				this->LoadView();
 				break;
 
@@ -420,12 +526,34 @@ struct PixelStudioWindow : Window {
 				uint cx = (pt.x - nw->pos_x) / cell;
 				uint cy = (pt.y - nw->pos_y) / cell;
 				if (cx < 16 && cy < 16) {
-					this->colour = static_cast<uint8_t>(cy * 16 + cx);
+					uint8_t idx = static_cast<uint8_t>(cy * 16 + cx);
+					/* Animierte Spielfarben sind nicht waehlbar. */
+					if (idx >= PALETTE_ANIM_START && idx < PALETTE_ANIM_START + PALETTE_ANIM_SIZE) break;
+					this->colour = idx;
 					if (this->colour == 0) this->tool = PsTool::Erase;
 					this->SetDirty();
 				}
 				break;
 			}
+
+			case WID_PS_COPY:
+#ifdef __EMSCRIPTEN__
+				if (this->cur.width > 0) {
+					std::vector<uint8_t> rgba = PixelsToRGBA(this->cur);
+					EM_ASM({ if (window["openttd_ps_copy"]) openttd_ps_copy($0, $1, $2); },
+							rgba.data(), this->cur.width, this->cur.height);
+				}
+#endif
+				break;
+
+			case WID_PS_PASTE:
+#ifdef __EMSCRIPTEN__
+				if (this->cur.width > 0) {
+					EM_ASM({ if (window["openttd_ps_paste"]) openttd_ps_paste($0, $1); },
+							this->cur.width, this->cur.height);
+				}
+#endif
+				break;
 
 			case WID_PS_TOOL_PENCIL: this->tool = PsTool::Pencil; this->SetDirty(); break;
 			case WID_PS_TOOL_FILL:   this->tool = PsTool::Fill;   this->SetDirty(); break;
@@ -487,6 +615,15 @@ struct PixelStudioWindow : Window {
 
 	void OnPaint() override
 	{
+#ifndef __EMSCRIPTEN__
+		/* Zwischenablage gibt es nur im Web-Build. */
+		this->SetWidgetDisabledState(WID_PS_COPY, true);
+		this->SetWidgetDisabledState(WID_PS_PASTE, true);
+#endif
+		this->SetWidgetLoweredState(WID_PS_FILTER_TRAIN, this->show_type[to_underlying(VehicleType::Train)]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_ROAD, this->show_type[to_underlying(VehicleType::Road)]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_SHIP, this->show_type[to_underlying(VehicleType::Ship)]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_AIR, this->show_type[to_underlying(VehicleType::Aircraft)]);
 		this->SetWidgetLoweredState(WID_PS_TOOL_PENCIL, this->tool == PsTool::Pencil);
 		this->SetWidgetLoweredState(WID_PS_TOOL_FILL, this->tool == PsTool::Fill);
 		this->SetWidgetLoweredState(WID_PS_TOOL_PICK, this->tool == PsTool::Pick);
@@ -507,11 +644,19 @@ static constexpr std::initializer_list<NWidgetPart> _nested_pixelstudio_widgets 
 	EndContainer(),
 	NWidget(WWT_PANEL, Colours::Grey),
 		NWidget(NWID_HORIZONTAL), SetPIP(4, 4, 4), SetPadding(4, 4, 4, 4),
-			/* Links: Fahrzeugliste */
-			NWidget(NWID_HORIZONTAL),
-				NWidget(WWT_INSET, Colours::Grey, WID_PS_ENGINE_LIST), SetToolTip(STR_PIXELSTUDIO_LIST_TOOLTIP), SetScrollbar(WID_PS_SCROLLBAR), SetFill(0, 1),
+			/* Links: Typ-Filter + Fahrzeugliste */
+			NWidget(NWID_VERTICAL), SetPIP(0, 2, 0),
+				NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
+					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_TRAIN), SetStringTip(STR_PIXELSTUDIO_FILTER_TRAIN, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
+					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_ROAD), SetStringTip(STR_PIXELSTUDIO_FILTER_ROAD, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
+					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_SHIP), SetStringTip(STR_PIXELSTUDIO_FILTER_SHIP, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
+					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_AIR), SetStringTip(STR_PIXELSTUDIO_FILTER_AIR, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
 				EndContainer(),
-				NWidget(NWID_VSCROLLBAR, Colours::Grey, WID_PS_SCROLLBAR),
+				NWidget(NWID_HORIZONTAL),
+					NWidget(WWT_INSET, Colours::Grey, WID_PS_ENGINE_LIST), SetToolTip(STR_PIXELSTUDIO_LIST_TOOLTIP), SetScrollbar(WID_PS_SCROLLBAR), SetFill(0, 1),
+					EndContainer(),
+					NWidget(NWID_VSCROLLBAR, Colours::Grey, WID_PS_SCROLLBAR),
+				EndContainer(),
 			EndContainer(),
 			/* Mitte: Ansicht + Leinwand + Vorschau */
 			NWidget(NWID_VERTICAL), SetPIP(0, 4, 0),
@@ -535,6 +680,10 @@ static constexpr std::initializer_list<NWidgetPart> _nested_pixelstudio_widgets 
 					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_TOOL_PICK), SetStringTip(STR_PIXELSTUDIO_TOOL_PICK, STR_PIXELSTUDIO_TOOL_PICK_TOOLTIP), SetFill(1, 0),
 					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_TOOL_ERASE), SetStringTip(STR_PIXELSTUDIO_TOOL_ERASE, STR_PIXELSTUDIO_TOOL_ERASE_TOOLTIP), SetFill(1, 0),
 				EndContainer(),
+				NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
+					NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_PS_COPY), SetStringTip(STR_PIXELSTUDIO_COPY, STR_PIXELSTUDIO_COPY_TOOLTIP), SetFill(1, 0),
+					NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_PS_PASTE), SetStringTip(STR_PIXELSTUDIO_PASTE, STR_PIXELSTUDIO_PASTE_TOOLTIP), SetFill(1, 0),
+				EndContainer(),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_PS_UNDO), SetStringTip(STR_PIXELSTUDIO_UNDO, STR_PIXELSTUDIO_UNDO_TOOLTIP), SetFill(1, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_PS_RESET), SetStringTip(STR_PIXELSTUDIO_RESET, STR_PIXELSTUDIO_RESET_TOOLTIP), SetFill(1, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_PS_SAVE), SetStringTip(STR_PIXELSTUDIO_SAVE, STR_PIXELSTUDIO_SAVE_TOOLTIP), SetFill(1, 0),
@@ -549,6 +698,26 @@ static WindowDesc _pixelstudio_desc(
 	{},
 	_nested_pixelstudio_widgets
 );
+
+#ifdef __EMSCRIPTEN__
+/* Vom JavaScript gerufen: auf Sprite-Groesse skaliertes RGBA-Bild aus der
+ * Zwischenablage in den Malpuffer uebernehmen (Palette wird automatisch
+ * getroffen, Alpha < 128 wird transparent). */
+extern "C" void CDECL em_openttd_ps_paste_data(const uint8_t *rgba, int w, int h)
+{
+	Window *base = FindWindowById(WindowClass::PixelStudio, 0);
+	if (base == nullptr) return;
+	PixelStudioWindow *win = static_cast<PixelStudioWindow *>(base);
+	if (win->cur.width != w || win->cur.height != h) return;
+	win->PushUndo();
+	for (int i = 0; i < w * h; i++) {
+		uint8_t a = rgba[i * 4 + 3];
+		win->cur.pixels[i] = a < 128 ? 0 : NearestPaletteIndex(rgba[i * 4 + 0], rgba[i * 4 + 1], rgba[i * 4 + 2]);
+	}
+	win->stroke_active = false;
+	win->SetDirty();
+}
+#endif
 
 /** Pixel-Studio oeffnen (Fork-Feature). */
 void ShowPixelStudioWindow()

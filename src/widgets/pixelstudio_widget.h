@@ -13,6 +13,10 @@
 /** Widgets of the #PixelStudioWindow class. */
 enum PixelStudioWidgets : WidgetID {
 	WID_PS_CAPTION,     ///< Fenstertitel.
+	WID_PS_FILTER_TRAIN, ///< Filter: Zuege anzeigen.
+	WID_PS_FILTER_ROAD,  ///< Filter: Strassenfahrzeuge anzeigen.
+	WID_PS_FILTER_SHIP,  ///< Filter: Schiffe anzeigen.
+	WID_PS_FILTER_AIR,   ///< Filter: Flugzeuge anzeigen.
 	WID_PS_ENGINE_LIST, ///< Liste der bearbeitbaren Fahrzeuge.
 	WID_PS_SCROLLBAR,   ///< Scrollbar der Liste.
 	WID_PS_VIEW_PREV,   ///< Vorherige Blickrichtung.
@@ -25,6 +29,8 @@ enum PixelStudioWidgets : WidgetID {
 	WID_PS_TOOL_FILL,   ///< Werkzeug Fuellen.
 	WID_PS_TOOL_PICK,   ///< Werkzeug Pipette.
 	WID_PS_TOOL_ERASE,  ///< Werkzeug Radierer.
+	WID_PS_COPY,        ///< Ansicht als Bild in die Zwischenablage.
+	WID_PS_PASTE,       ///< Bild aus der Zwischenablage einfuegen.
 	WID_PS_UNDO,        ///< Rueckgaengig.
 	WID_PS_RESET,       ///< Auf Original zuruecksetzen.
 	WID_PS_SAVE,        ///< Uebernehmen und dauerhaft speichern.

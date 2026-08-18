@@ -506,6 +506,16 @@ static SpriteID GetDefaultTrainSprite(uint8_t spritenum, Direction direction)
 	return ((to_underlying(direction) + _engine_sprite_add[spritenum]) & _engine_sprite_and[spritenum]) + _engine_sprite_base[spritenum];
 }
 
+/* Fork Pixel-Studio: Standardsprite eines Zugs/Waggons je Richtung (0 bei NewGRF). */
+SpriteID GetTrainDefaultSpritePS(EngineID engine, Direction direction)
+{
+	const Engine *e = Engine::Get(engine);
+	uint8_t spritenum = e->VehInfo<RailVehicleInfo>().image_index;
+	if (IsCustomVehicleSpriteNum(spritenum)) return 0;
+	if (!IsValidImageIndex<VehicleType::Train>(spritenum)) return 0;
+	return GetDefaultTrainSprite(spritenum, direction);
+}
+
 /**
  * Get the sprite to display the train.
  * @param direction Direction of view/travel.

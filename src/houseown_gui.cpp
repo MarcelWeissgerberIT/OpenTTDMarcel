@@ -27,6 +27,7 @@
 #include "company_base.h"
 #include "company_func.h"
 #include "economy_func.h"
+#include "core/backup_type.hpp"
 #include "texteff.hpp"
 #include "news_func.h"
 #include "fileio_func.h"
@@ -38,6 +39,9 @@
 #include "error.h"
 
 #include "widgets/houseown_widget.h"
+
+/* town_gui.cpp: Haus samt Mehrfach-Kacheln im GUI zeichnen. */
+void DrawHouseInGUI(int x, int y, HouseID house_id, int view);
 
 #include "table/strings.h"
 
@@ -223,8 +227,8 @@ struct HouseInfoWindow : Window {
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
 	{
 		if (widget != WID_HO_INFO) return;
-		size.width = std::max(size.width, static_cast<uint>(ScaleGUITrad(240)));
-		size.height = std::max(size.height, static_cast<uint>(6 * (GetCharacterHeight(FontSize::Normal) + 2) + ScaleGUITrad(8)));
+		size.width = std::max(size.width, static_cast<uint>(ScaleGUITrad(150 + 240)));
+		size.height = std::max({size.height, static_cast<uint>(6 * (GetCharacterHeight(FontSize::Normal) + 2) + ScaleGUITrad(8)), static_cast<uint>(ScaleGUITrad(130))});
 	}
 
 	void DrawWidget(const Rect &r, WidgetID widget) const override
@@ -233,6 +237,17 @@ struct HouseInfoWindow : Window {
 		const HouseSpec *hs = this->Spec();
 		if (hs == nullptr) return;
 		Rect tr = r.Shrink(WidgetDimensions::scaled.framerect);
+
+		/* Portraet links: das angeklickte Gebaeude (inkl. Mehrfach-Kacheln). */
+		int pw = ScaleGUITrad(140);
+		{
+			DrawPixelInfo tmp_dpi;
+			if (FillDrawPixelInfo(&tmp_dpi, tr.left, tr.top, pw, tr.bottom - tr.top + 1)) {
+				AutoRestoreBackup dpi_backup(_cur_dpi, &tmp_dpi);
+				DrawHouseInGUI(pw / 2, tr.bottom - tr.top - ScaleGUITrad(14), GetHouseType(this->tile), 0);
+			}
+		}
+		tr.left += pw + ScaleGUITrad(8);
 
 		int line = GetCharacterHeight(FontSize::Normal) + 2;
 		int y = tr.top;

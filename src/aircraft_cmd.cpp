@@ -185,6 +185,16 @@ void Aircraft::GetImage(Direction direction, EngineImageType image_type, Vehicle
 	result->Set(to_underlying(direction) + _aircraft_sprite[spritenum]);
 }
 
+/* Fork Pixel-Studio: Standardsprite eines Flugzeugs je Richtung (0 bei NewGRF). */
+SpriteID GetAircraftDefaultSpritePS(EngineID engine, Direction direction)
+{
+	const Engine *e = Engine::Get(engine);
+	uint8_t spritenum = e->VehInfo<AircraftVehicleInfo>().image_index;
+	if (IsCustomVehicleSpriteNum(spritenum)) return 0;
+	if (!IsValidImageIndex<VehicleType::Aircraft>(spritenum)) return 0;
+	return to_underlying(direction) + _aircraft_sprite[spritenum];
+}
+
 void GetRotorImage(const Aircraft *v, EngineImageType image_type, VehicleSpriteSeq *result)
 {
 	assert(v->subtype == AIR_HELICOPTER);

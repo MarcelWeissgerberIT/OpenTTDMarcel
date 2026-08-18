@@ -212,6 +212,55 @@ Module.preRun.push(function() {
         FS.syncfs(false, function() { cloudPush(); });
     };
 
+    /* ---------- Pixel-Studio: Zwischenablage (Copy/Paste) ---------- */
+
+    /* Aktuelle Ansicht als PNG in die Zwischenablage. */
+    window.openttd_ps_copy = function(ptr, w, h) {
+        try {
+            var data = new Uint8ClampedArray(HEAPU8.subarray(ptr, ptr + w * h * 4));
+            var cnv = document.createElement('canvas');
+            cnv.width = w;
+            cnv.height = h;
+            cnv.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
+            cnv.toBlob(function(blob) {
+                if (!blob || !navigator.clipboard || !navigator.clipboard.write) return;
+                navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).catch(function() {});
+            });
+        } catch (e) {}
+    };
+
+    /* Bild aus der Zwischenablage lesen, auf Sprite-Groesse skalieren und
+     * als RGBA an das Spiel geben (dort: Palette treffen + Undo). */
+    window.openttd_ps_paste = function(w, h) {
+        if (!navigator.clipboard || !navigator.clipboard.read) return;
+        navigator.clipboard.read().then(function(items) {
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                var type = null;
+                for (var j = 0; j < item.types.length; j++) {
+                    if (item.types[j].indexOf('image/') === 0) { type = item.types[j]; break; }
+                }
+                if (!type) continue;
+                item.getType(type).then(function(blob) {
+                    return createImageBitmap(blob);
+                }).then(function(bmp) {
+                    var cnv = document.createElement('canvas');
+                    cnv.width = w;
+                    cnv.height = h;
+                    var ctx = cnv.getContext('2d');
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.drawImage(bmp, 0, 0, w, h);
+                    var data = ctx.getImageData(0, 0, w, h).data;
+                    var buf = Module._malloc(data.length);
+                    HEAPU8.set(data, buf);
+                    Module.ccall('em_openttd_ps_paste_data', null, ['number', 'number', 'number'], [buf, w, h]);
+                    Module._free(buf);
+                }).catch(function() {});
+                return;
+            }
+        }).catch(function() {});
+    };
+
     window.openttd_syncfs_shown_warning = false;
     window.openttd_syncfs = function(callback) {
         /* Copy the virtual FS to the persistent storage. */

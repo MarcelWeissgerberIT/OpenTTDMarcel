@@ -149,6 +149,16 @@ void Ship::GetImage(Direction direction, EngineImageType image_type, VehicleSpri
 	result->Set(_ship_sprites[spritenum] + to_underlying(direction));
 }
 
+/* Fork Pixel-Studio: Standardsprite eines Schiffs je Richtung (0 bei NewGRF). */
+SpriteID GetShipDefaultSpritePS(EngineID engine, Direction direction)
+{
+	const Engine *e = Engine::Get(engine);
+	uint8_t spritenum = e->VehInfo<ShipVehicleInfo>().image_index;
+	if (IsCustomVehicleSpriteNum(spritenum)) return 0;
+	if (!IsValidImageIndex<VehicleType::Ship>(spritenum)) return 0;
+	return _ship_sprites[spritenum] + to_underlying(direction);
+}
+
 static const Depot *FindClosestShipDepot(const Vehicle *v, uint max_distance)
 {
 	const int max_region_distance = (max_distance / WATER_REGION_EDGE_LENGTH) + 1;

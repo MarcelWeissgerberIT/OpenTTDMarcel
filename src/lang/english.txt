@@ -2282,6 +2282,11 @@ STR_PIXELSTUDIO_BUTTON                                          :{BLACK}Pixel St
 STR_PIXELSTUDIO_BUTTON_TOOLTIP                                  :{BLACK}Edit vehicle graphics with an in-game pixel editor
 STR_PIXELSTUDIO_CAPTION                                         :{WHITE}Pixel Studio
 STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Pick a road vehicle to edit
+STR_PIXELSTUDIO_FILTER_TRAIN                                    :{BLACK}Rail
+STR_PIXELSTUDIO_FILTER_ROAD                                     :{BLACK}Road
+STR_PIXELSTUDIO_FILTER_SHIP                                     :{BLACK}Ship
+STR_PIXELSTUDIO_FILTER_AIR                                      :{BLACK}Air
+STR_PIXELSTUDIO_FILTER_TOOLTIP                                  :{BLACK}Show or hide this vehicle type in the list
 STR_PIXELSTUDIO_VIEW                                            :{BLACK}View {NUM}/{NUM}
 STR_PIXELSTUDIO_VIEW_TOOLTIP                                    :{BLACK}Switch between the eight view directions
 STR_PIXELSTUDIO_PREV                                            :{BLACK}<
@@ -2297,6 +2302,10 @@ STR_PIXELSTUDIO_TOOL_PICK                                       :{BLACK}Pick
 STR_PIXELSTUDIO_TOOL_PICK_TOOLTIP                               :{BLACK}Pick up a colour from the image
 STR_PIXELSTUDIO_TOOL_ERASE                                      :{BLACK}Erase
 STR_PIXELSTUDIO_TOOL_ERASE_TOOLTIP                              :{BLACK}Make pixels transparent
+STR_PIXELSTUDIO_COPY                                            :{BLACK}Copy
+STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Copy this view as an image to the clipboard
+STR_PIXELSTUDIO_PASTE                                           :{BLACK}Paste
+STR_PIXELSTUDIO_PASTE_TOOLTIP                                   :{BLACK}Paste an image from the clipboard; colours are mapped to the game palette automatically
 STR_PIXELSTUDIO_UNDO                                            :{BLACK}Undo
 STR_PIXELSTUDIO_UNDO_TOOLTIP                                    :{BLACK}Undo the last stroke
 STR_PIXELSTUDIO_RESET                                           :{BLACK}Original
