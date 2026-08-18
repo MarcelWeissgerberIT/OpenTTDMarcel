@@ -424,6 +424,12 @@ enum class WindowClass : uint16_t {
 	Citizen,
 
 	/**
+	 * Industrie-Abnehmer-Dialog (Fork-Feature); %Window numbers:
+	 *   - Industrie-ID
+	 */
+	IndustryConnect,
+
+	/**
 	 * Build station; %Window numbers:
 	 *   - #TransportType::Air = #AirportPickerWidgets
 	 *   - #TransportType::Water = #DockToolbarWidgets

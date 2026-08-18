@@ -2302,6 +2302,23 @@ STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Fracht: 
 STR_AUTOCONNECT_STOPS_AUTO                                      :{BLACK}Haltestellen je Stadt: automatisch
 STR_AUTOCONNECT_STOPS_N                                         :{BLACK}Haltestellen je Stadt: {NUM}
 STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}Wie viele Bushaltestellen je Stadt gebaut werden (automatisch = nach Stadtgröße). Wirkt nur im Bus-Modus
+STR_INDCON_BUTTON                                               :{BLACK}Abnehmer verbinden
+STR_INDCON_BUTTON_TOOLTIP                                       :{BLACK}Zeigt die nächsten Industrien, die diese Fracht annehmen, und baut die Verbindung mit einem Klick
+STR_INDCON_CAPTION                                              :{WHITE}Abnehmer: {INDUSTRY}
+STR_INDCON_MODE_RAIL                                            :{BLACK}Transport: Zug
+STR_INDCON_MODE_TRUCK                                           :{BLACK}Transport: LKW
+STR_INDCON_MODE_TOOLTIP                                         :{BLACK}Zwischen Zug und LKW für die neue Verbindung umschalten
+STR_INDCON_LIST_TOOLTIP                                         :{BLACK}Abnehmer anklicken, um die Verbindung sofort zu bauen
+STR_INDCON_ROW                                                  :{BLACK}{INDUSTRY} ({NUM} Kacheln)
+STR_INDCON_PICK                                                 :{BLACK}Abnehmer anklicken, um die Verbindung zu bauen
+STR_INDCON_NONE                                                 :{BLACK}Keine Industrie gefunden, die diese Fracht annimmt
+STR_INDCON_NO_PRODUCTION                                        :{BLACK}Diese Industrie produziert keine Fracht
+STR_NEWS_CITIZEN_DEMAND_NEAR                                    :{BIG_FONT}{BLACK}Bürger von {TOWN} fordern eine Nahverkehrs-Anbindung nach {TOWN}!
+STR_NEWS_CITIZEN_DEMAND_FAR                                     :{BIG_FONT}{BLACK}Bürger von {TOWN} wünschen sich eine Fernverkehrs-Verbindung nach {TOWN}!
+STR_INDBOOST_BUTTON                                             :{BLACK}Produktion ausbauen
+STR_INDBOOST_BUTTON_TOOLTIP                                     :{BLACK}Firmengeld investieren, um die Produktion zu verdoppeln (Kosten steigen mit jeder Ausbaustufe)
+STR_INDBOOST_MAX                                                :{WHITE}Die Produktion ist bereits am Maximum
+STR_INDBOOST_NO_MONEY                                           :{WHITE}Zu wenig Geld - der Ausbau kostet {CURRENCY_LONG}
 STR_AUTOCONNECT_CARGO_TOOLTIP                                   :{BLACK}Umschalten, welche Fracht die Fahrzeuge befördern
 STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Kosten schätzen
 STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Berechnet die ungefähren Kosten, ohne etwas zu bauen

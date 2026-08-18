@@ -30,6 +30,8 @@ enum IndustryViewWidgets : WidgetID {
 	WID_IV_GOTO,     ///< Goto button.
 	WID_IV_DISPLAY,  ///< Display chain button.
 	WID_IV_GRAPH,    ///< Production history button.
+	WID_IV_CONNECT,  ///< Fork: connect to nearest acceptor button.
+	WID_IV_BOOST,    ///< Fork: invest to raise production.
 };
 
 /** Widgets of the #IndustryDirectoryWindow class. */

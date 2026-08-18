@@ -1096,6 +1096,37 @@ public:
 				break;
 			}
 
+			case WID_IV_BOOST: {
+				/* Fork: Geld investieren, Produktion verdoppeln (bis Maximum).
+				 * Kosten steigen mit jeder Ausbaustufe. */
+				Industry *ind = Industry::Get(static_cast<IndustryID>(this->window_number));
+				if (ind->prod_level >= PRODLEVEL_MAXIMUM) {
+					ShowErrorMessage(GetEncodedString(STR_INDBOOST_MAX), {}, WarningLevel::Info);
+					break;
+				}
+				Money invest = (Money)100000 * ind->prod_level / PRODLEVEL_DEFAULT;
+				const Company *comp = Company::GetIfValid(_local_company);
+				if (comp == nullptr || comp->money < invest) {
+					ShowErrorMessage(GetEncodedString(STR_INDBOOST_NO_MONEY, invest), {}, WarningLevel::Info);
+					break;
+				}
+				SubtractMoneyFromCompany(_local_company, CommandCost(ExpensesType::Construction, invest));
+				{
+					Backup<CompanyID> deity(_current_company, OWNER_DEITY);
+					Command<Commands::IndustrySetProduction>::Do(DoCommandFlag::Execute, ind->index,
+							static_cast<uint8_t>(std::min<uint>(ind->prod_level * 2, PRODLEVEL_MAXIMUM)), true, {});
+					deity.Restore();
+				}
+				this->SetDirty();
+				break;
+			}
+
+			case WID_IV_CONNECT: {
+				extern void ShowIndustryConnectWindow(IndustryID ind);
+				ShowIndustryConnectWindow(static_cast<IndustryID>(this->window_number));
+				break;
+			}
+
 			case WID_IV_DISPLAY: {
 				Industry *i = Industry::Get(this->window_number);
 				ShowIndustryCargoesWindow(i->type);
@@ -1215,6 +1246,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_industry_view_widget
 	EndContainer(),
 	NWidget(NWID_HORIZONTAL),
 		NWidget(WWT_PUSHTXTBTN, Colours::Cream, WID_IV_DISPLAY), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_INDUSTRY_DISPLAY_CHAIN, STR_INDUSTRY_DISPLAY_CHAIN_TOOLTIP),
+		NWidget(WWT_PUSHTXTBTN, Colours::Cream, WID_IV_CONNECT), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_INDCON_BUTTON, STR_INDCON_BUTTON_TOOLTIP),
+		NWidget(WWT_PUSHTXTBTN, Colours::Cream, WID_IV_BOOST), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_INDBOOST_BUTTON, STR_INDBOOST_BUTTON_TOOLTIP),
 		NWidget(WWT_PUSHTXTBTN, Colours::Cream, WID_IV_GRAPH), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_INDUSTRY_VIEW_CARGO_GRAPH, STR_INDUSTRY_VIEW_CARGO_GRAPH_TOOLTIP),
 		NWidget(WWT_RESIZEBOX, Colours::Cream),
 	EndContainer(),

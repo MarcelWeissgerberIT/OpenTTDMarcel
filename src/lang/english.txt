@@ -2333,6 +2333,23 @@ STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Cargo: P
 STR_AUTOCONNECT_STOPS_AUTO                                      :{BLACK}Bus stops per town: automatic
 STR_AUTOCONNECT_STOPS_N                                         :{BLACK}Bus stops per town: {NUM}
 STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}How many bus stops to build in each town (automatic = by town size). Only used by the bus mode
+STR_INDCON_BUTTON                                               :{BLACK}Connect to customer
+STR_INDCON_BUTTON_TOOLTIP                                       :{BLACK}Show the nearest industries accepting this cargo and build a connection with one click
+STR_INDCON_CAPTION                                              :{WHITE}Customers: {INDUSTRY}
+STR_INDCON_MODE_RAIL                                            :{BLACK}Transport: train
+STR_INDCON_MODE_TRUCK                                           :{BLACK}Transport: truck
+STR_INDCON_MODE_TOOLTIP                                         :{BLACK}Switch between train and truck for the new connection
+STR_INDCON_LIST_TOOLTIP                                         :{BLACK}Click a customer to build the connection immediately
+STR_INDCON_ROW                                                  :{BLACK}{INDUSTRY} ({NUM} tiles)
+STR_INDCON_PICK                                                 :{BLACK}Click a customer to build the connection
+STR_INDCON_NONE                                                 :{BLACK}No industry accepting this cargo found
+STR_INDCON_NO_PRODUCTION                                        :{BLACK}This industry does not produce any cargo
+STR_NEWS_CITIZEN_DEMAND_NEAR                                    :{BIG_FONT}{BLACK}Citizens of {TOWN} call for a local transport link to {TOWN}!
+STR_NEWS_CITIZEN_DEMAND_FAR                                     :{BIG_FONT}{BLACK}Citizens of {TOWN} demand a long-distance connection to {TOWN}!
+STR_INDBOOST_BUTTON                                             :{BLACK}Expand production
+STR_INDBOOST_BUTTON_TOOLTIP                                     :{BLACK}Invest company money to double this industry's production (costs rise with each expansion)
+STR_INDBOOST_MAX                                                :{WHITE}Production is already at its maximum
+STR_INDBOOST_NO_MONEY                                           :{WHITE}Not enough money - the expansion costs {CURRENCY_LONG}
 STR_AUTOCONNECT_CARGO_TOOLTIP                                   :{BLACK}Switch the cargo the vehicles will carry
 STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Estimate cost
 STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Calculates the approximate cost without building anything

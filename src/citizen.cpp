@@ -23,8 +23,11 @@
 #include "bridge_map.h"
 #include "road_func.h"
 #include "town.h"
+#include "company_func.h"
 #include "town_map.h"
 #include "station_map.h"
+#include "station_base.h"
+#include "news_func.h"
 #include "tile_map.h"
 #include "map_func.h"
 #include "viewport_func.h"
@@ -163,7 +166,7 @@ static bool RoadConnected(TileIndex from, DiagDirection d, TileIndex &neighbour)
  * Breitensuche ueber das Strassennetz ab @p start (max. @p limit Kacheln).
  * @return Karte Kachel -> Vorgaenger (start zeigt auf sich selbst).
  */
-static std::map<TileIndex, TileIndex> WalkNetwork(TileIndex start, uint limit)
+static std::map<TileIndex, TileIndex> WalkNetwork(TileIndex start, uint limit, TileIndex center = INVALID_TILE, uint radius = 0)
 {
 	std::map<TileIndex, TileIndex> prev;
 	std::queue<TileIndex> open;
@@ -176,6 +179,9 @@ static std::map<TileIndex, TileIndex> WalkNetwork(TileIndex start, uint limit)
 			TileIndex n;
 			if (!RoadConnected(t, d, n)) continue;
 			if (prev.count(n) != 0) continue;
+			/* Buerger bleiben in ihrer Stadt - keine Wanderungen ueber die
+			 * Landstrasse in die Nachbarstadt. */
+			if (center != INVALID_TILE && DistanceManhattan(center, n) > radius) continue;
 			prev[n] = t;
 			open.push(n);
 		}
@@ -245,7 +251,9 @@ static TileIndex FindSpawnRoad(const Town *t, bool parking)
  */
 static bool PlanOuting(Citizen &c, TileIndex from)
 {
-	auto net = WalkNetwork(from, NETWORK_LIMIT);
+	const Town *home_town = Town::GetIfValid(c.town);
+	TileIndex tc = home_town != nullptr ? home_town->xy : INVALID_TILE;
+	auto net = WalkNetwork(from, NETWORK_LIMIT, tc, 18);
 	if (net.size() < 4) return false;
 
 	/* Gewichte nach Monats-Schwerpunkt und Jahres-Vorsatz. */
@@ -318,7 +326,9 @@ static bool PlanOuting(Citizen &c, TileIndex from)
 /** Heimweg planen. @return false, wenn das Zuhause nicht erreichbar ist. */
 static bool PlanHomeTrip(Citizen &c, TileIndex from)
 {
-	auto net = WalkNetwork(from, NETWORK_LIMIT);
+	const Town *home_town = Town::GetIfValid(c.town);
+	TileIndex tc = home_town != nullptr ? home_town->xy : INVALID_TILE;
+	auto net = WalkNetwork(from, NETWORK_LIMIT, tc, 18);
 	if (net.count(c.home) == 0) return false;
 	c.path = TracePath(net, c.home);
 	c.pos = 0;
@@ -333,7 +343,7 @@ static void SpawnCitizen(Town *t)
 	TileIndex start = FindSpawnRoad(t, car);
 	if (start == INVALID_TILE) return;
 
-	auto net = WalkNetwork(start, NETWORK_LIMIT);
+	auto net = WalkNetwork(start, NETWORK_LIMIT, t->xy, 18);
 	if (net.size() < 6) return;
 
 	Citizen c;
@@ -390,9 +400,52 @@ static void CitizenStep(Citizen &c)
 	if (c.pos < c.path.size()) MarkTileDirtyByTile(c.path[c.pos]);
 }
 
+/**
+ * Hin und wieder ein Zeitungsartikel: Buerger unversorgter Staedte in der
+ * Naehe des aktuellen Blickpunkts wuenschen sich eine Verbindung. Bewusst
+ * selten, damit es nicht nervt.
+ */
+static void MaybePublishTransportDemand(uint64_t tick)
+{
+	if (tick % 4096 != 0 || CitizenRandom() % 2 != 0) return;
+	Window *w = GetMainWindow();
+	if (w == nullptr || w->viewport == nullptr) return;
+	Point vc = InverseRemapCoords2(w->viewport->virtual_left + w->viewport->virtual_width / 2,
+			w->viewport->virtual_top + w->viewport->virtual_height / 2);
+	TileIndex view_tile = TileVirtXY(std::max(0, vc.x), std::max(0, vc.y));
+
+	/* Die fuenf Staedte am Blickpunkt - dort schaut der Spieler ohnehin hin. */
+	std::vector<std::pair<uint, Town *>> near_towns;
+	for (Town *t : Town::Iterate()) near_towns.emplace_back(DistanceManhattan(t->xy, view_tile), t);
+	if (near_towns.size() < 2) return;
+	std::sort(near_towns.begin(), near_towns.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+	if (near_towns.size() > 5) near_towns.resize(5);
+
+	auto served = [](const Town *t) {
+		for (const Station *st : Station::Iterate()) {
+			if (st->owner == _local_company && DistanceManhattan(st->xy, t->xy) <= 12) return true;
+		}
+		return false;
+	};
+
+	for (uint attempt = 0; attempt < 6; attempt++) {
+		Town *a = near_towns[CitizenRandom() % near_towns.size()].second;
+		Town *b = near_towns[CitizenRandom() % near_towns.size()].second;
+		if (a == b) continue;
+		uint d = DistanceManhattan(a->xy, b->xy);
+		if (d < 10 || d > 120) continue;
+		if (served(a) || served(b)) continue;
+		AddNewsItem(GetEncodedString(d < 40 ? STR_NEWS_CITIZEN_DEMAND_NEAR : STR_NEWS_CITIZEN_DEMAND_FAR, a->index, b->index),
+				NewsType::General, NewsStyle::Normal, {}, a->index);
+		return;
+	}
+}
+
 void RunCitizensTick()
 {
 	uint64_t tick = TimerGameTick::counter;
+
+	MaybePublishTransportDemand(tick);
 
 	/* Bewegung: Fussgaenger jeden 3. Tick, Autos jeden Tick. */
 	for (Citizen &c : _citizens) {
@@ -440,7 +493,8 @@ void RunCitizensTick()
 			}
 			if (c.kind == CitizenKind::Car) {
 				/* Rundfahrt neu wuerfeln wie beim Spawn: Pfad hin und zurueck. */
-				auto net = WalkNetwork(c.home, NETWORK_LIMIT);
+				const Town *car_town = Town::GetIfValid(c.town);
+				auto net = WalkNetwork(c.home, NETWORK_LIMIT, car_town != nullptr ? car_town->xy : INVALID_TILE, 18);
 				TileIndex far = c.home;
 				uint best = 0;
 				for (const auto &[tile, prev] : net) {

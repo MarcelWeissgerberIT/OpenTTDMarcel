@@ -51,6 +51,7 @@
 #include "station_map.h"
 #include "roadstop_base.h"
 #include "depot_base.h"
+#include "zoom_func.h"
 #include "landscape_cmd.h"
 #include "industry.h"
 #include "water_map.h"
@@ -1777,4 +1778,319 @@ std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx,
 	}
 	Debug(misc, 0, "{}", out);
 	return out;
+}
+
+
+/* =================== Industrie-Abnehmer-Dialog (Fork) =================== */
+
+/** Bester LKW für eine Frachtart (Standardfracht oder umruestbar). */
+static EngineID FindBestTruck(CargoType cargo)
+{
+	EngineID best = EngineID::Invalid();
+	uint best_capacity = 0;
+	for (const Engine *e : Engine::IterateType(VehicleType::Road)) {
+		if (!e->company_avail.Test(_local_company)) continue;
+		if (e->VehInfo<RoadVehicleInfo>().roadtype != ROADTYPE_ROAD) continue;
+		if (e->GetDefaultCargoType() != cargo && !e->info.refit_mask.Test(cargo)) continue;
+		uint cap = e->GetDisplayDefaultCapacity();
+		if (cap > best_capacity) {
+			best_capacity = cap;
+			best = e->index;
+		}
+	}
+	return best;
+}
+
+/**
+ * Laderampe (Durchfahrt-LKW-Stop) nahe einer Industrie: bestehende
+ * gerade Strasse nutzen oder eine Strassenkachel neu anlegen.
+ */
+static TileIndex FindIndustryStopSite(const Industry *ind, Axis &axis_out, bool build_road)
+{
+	for (TileIndex tile : SpiralTileSequence(ind->location.tile, 16)) {
+		if (IsNormalRoadTile(tile)) {
+			RoadBits bits = GetRoadBits(tile, RoadTramType::Road);
+			Axis axis;
+			if (bits == ROAD_X) axis = Axis::X;
+			else if (bits == ROAD_Y) axis = Axis::Y;
+			else continue;
+			if (Command<Commands::BuildRoadStop>::Do({}, tile, 1, 1, RoadStopType::Truck, true,
+					AxisToDiagDir(axis), ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false).Succeeded()) {
+				axis_out = axis;
+				return tile;
+			}
+		}
+	}
+	if (!build_road) return INVALID_TILE;
+	for (TileIndex tile : SpiralTileSequence(ind->location.tile, 12)) {
+		if (IsNormalRoadTile(tile) || IsTileType(tile, TileType::Station)) continue;
+		for (Axis axis : {Axis::X, Axis::Y}) {
+			RoadBits want = axis == Axis::X ? ROAD_X : ROAD_Y;
+			if (Command<Commands::BuildRoad>::Do({}, tile, want, ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid()).Failed()) continue;
+			Command<Commands::BuildRoad>::Do(DoCommandFlag::Execute, tile, want, ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
+			if (Command<Commands::BuildRoadStop>::Do({}, tile, 1, 1, RoadStopType::Truck, true,
+					AxisToDiagDir(axis), ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false).Succeeded()) {
+				axis_out = axis;
+				return tile;
+			}
+		}
+	}
+	return INVALID_TILE;
+}
+
+/** Gueter-LKW-Verbindung zwischen zwei Industrien bauen. */
+static AutoConnectResult BuildTruckConnection(const Industry *ind_a, const Industry *ind_b, CargoType cargo, uint count)
+{
+	AutoConnectResult result;
+	Backup<CompanyID> cur_company(_current_company, _local_company);
+
+	EngineID engine = FindBestTruck(cargo);
+	if (engine == EngineID::Invalid()) {
+		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
+		cur_company.Restore();
+		return result;
+	}
+
+	Axis axis_a{}, axis_b{};
+	TileIndex stop_a = FindIndustryStopSite(ind_a, axis_a, true);
+	TileIndex stop_b = FindIndustryStopSite(ind_b, axis_b, true);
+	if (stop_a == INVALID_TILE || stop_b == INVALID_TILE || stop_a == stop_b) {
+		result.error = STR_AUTOCONNECT_ERR_NO_STOP_SITE;
+		cur_company.Restore();
+		return result;
+	}
+
+	std::vector<TileIndex> path = FindRoadPath(stop_a, stop_b);
+	if (path.empty()) {
+		result.error = STR_AUTOCONNECT_ERR_NO_ROAD_PATH;
+		cur_company.Restore();
+		return result;
+	}
+
+	std::map<TileIndex, RoadBits> want;
+	for (size_t i = 0; i + 1 < path.size(); i++) {
+		DiagDirection d = DiagdirBetweenTiles(path[i], path[i + 1]);
+		want[path[i]] |= DiagDirToRoadBits(d);
+		want[path[i + 1]] |= DiagDirToRoadBits(ReverseDiagDir(d));
+	}
+	for (const auto &[tile, bits] : want) {
+		RoadBits have = IsNormalRoadTile(tile) ? GetRoadBits(tile, RoadTramType::Road) : RoadBits{};
+		RoadBits missing = bits;
+		missing.Reset(have);
+		if (missing.None()) continue;
+		CommandCost c = Command<Commands::BuildRoad>::Do(DoCommandFlag::Execute, tile, missing, ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
+		if (c.Succeeded()) result.cost += c.GetCost();
+	}
+
+	for (auto [stop, axis] : {std::pair{stop_a, axis_a}, std::pair{stop_b, axis_b}}) {
+		CommandCost c = Command<Commands::BuildRoadStop>::Do(DoCommandFlags{DoCommandFlag::Execute, DoCommandFlag::NoTestTownRating}, stop, 1, 1,
+				RoadStopType::Truck, true, AxisToDiagDir(axis), ROADTYPE_ROAD, ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
+		if (c.Failed()) {
+			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
+			result.error_detail = c.GetErrorMessage().base();
+			cur_company.Restore();
+			return result;
+		}
+		result.cost += c.GetCost();
+	}
+
+	/* Depot neben dem Weg nahe Rampe A (Anschluss vor Bau getestet). */
+	TileIndex depot = INVALID_TILE;
+	for (size_t i = 0; i < std::min<size_t>(path.size(), 20) && depot == INVALID_TILE; i++) {
+		if (!IsNormalRoadTile(path[i])) continue;
+		for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
+			TileIndex cand = AddTileIndexDiffCWrap(path[i], TileIndexDiffCByDiagDir(d));
+			if (cand == INVALID_TILE || want.count(cand) != 0) continue;
+			bool need_bit = !(GetRoadBits(path[i], RoadTramType::Road) & DiagDirToRoadBits(d)).Any();
+			if (Command<Commands::BuildRoadDepot>::Do({}, cand, ROADTYPE_ROAD, ReverseDiagDir(d)).Failed()) continue;
+			if (need_bit && Command<Commands::BuildRoad>::Do({}, path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid()).Failed()) continue;
+			CommandCost c = Command<Commands::BuildRoadDepot>::Do(DoCommandFlag::Execute, cand, ROADTYPE_ROAD, ReverseDiagDir(d));
+			if (c.Failed()) continue;
+			result.cost += c.GetCost();
+			if (need_bit) {
+				CommandCost c2 = Command<Commands::BuildRoad>::Do(DoCommandFlag::Execute, path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
+				if (c2.Failed()) continue;
+				result.cost += c2.GetCost();
+			}
+			depot = cand;
+			break;
+		}
+	}
+	if (depot == INVALID_TILE) {
+		result.error = STR_AUTOCONNECT_ERR_NO_DEPOT;
+		cur_company.Restore();
+		return result;
+	}
+
+	Station *st_a = Station::GetByTile(stop_a);
+	Station *st_b = Station::GetByTile(stop_b);
+	for (uint i = 0; i < count; i++) {
+		auto [cost_v, veh_id, refit_capacity, refit_mail, cargo_capacities] =
+				Command<Commands::BuildVehicle>::Do(DoCommandFlag::Execute, depot, engine, true, cargo, ClientID::Invalid);
+		if (cost_v.Failed()) {
+			if (i == 0) {
+				result.error = STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE;
+				result.error_detail = cost_v.GetErrorMessage().base();
+				cur_company.Restore();
+				return result;
+			}
+			break;
+		}
+		result.cost += cost_v.GetCost();
+		Order oa = MakeStationOrder(st_a->index);
+		oa.SetLoadType(OrderLoadType::FullLoadAny); /* an der Quelle volladen */
+		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 0, oa);
+		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 1, MakeStationOrder(st_b->index));
+		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
+	}
+
+	cur_company.Restore();
+	result.ok = true;
+	return result;
+}
+
+/** Widgets des Abnehmer-Dialogs. */
+enum IndustryConnectWidgets : WidgetID {
+	WID_IC_CAPTION,
+	WID_IC_MODE,
+	WID_IC_LIST,
+	WID_IC_STATUS,
+};
+
+/** Abnehmer-Dialog: nahe Industrien, die die Fracht annehmen. */
+struct IndustryConnectWindow : Window {
+	static const uint MAX_ROWS = 6;
+	uint8_t mode = 0; ///< 0 = Zug, 1 = LKW.
+	CargoType cargo = INVALID_CARGO;
+	std::vector<std::pair<IndustryID, uint>> acceptors; ///< Ziel + Distanz.
+	std::string status;
+
+	IndustryConnectWindow(WindowDesc &desc, WindowNumber number) : Window(desc)
+	{
+		this->InitNested(number);
+		this->Refresh();
+	}
+
+	void Refresh()
+	{
+		this->acceptors.clear();
+		const Industry *src = Industry::GetIfValid(static_cast<IndustryID>(this->window_number));
+		if (src == nullptr) return;
+		this->cargo = INVALID_CARGO;
+		for (const auto &p : src->produced) {
+			if (IsValidCargoType(p.cargo)) { this->cargo = p.cargo; break; }
+		}
+		if (this->cargo == INVALID_CARGO) {
+			this->status = GetString(STR_INDCON_NO_PRODUCTION);
+			return;
+		}
+		for (const Industry *i : Industry::Iterate()) {
+			if (i == src || !i->IsCargoAccepted(this->cargo)) continue;
+			this->acceptors.emplace_back(i->index, DistanceManhattan(src->location.tile, i->location.tile));
+		}
+		std::sort(this->acceptors.begin(), this->acceptors.end(), [](const auto &a, const auto &b) { return a.second < b.second; });
+		if (this->acceptors.size() > MAX_ROWS) this->acceptors.resize(MAX_ROWS);
+		this->status = GetString(this->acceptors.empty() ? STR_INDCON_NONE : STR_INDCON_PICK);
+	}
+
+	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
+	{
+		switch (widget) {
+			case WID_IC_CAPTION:
+				return GetString(STR_INDCON_CAPTION, static_cast<IndustryID>(this->window_number));
+			case WID_IC_MODE:
+				return GetString(this->mode == 0 ? STR_INDCON_MODE_RAIL : STR_INDCON_MODE_TRUCK);
+			default:
+				return this->Window::GetWidgetString(widget, stringid);
+		}
+	}
+
+	void DrawWidget(const Rect &r, WidgetID widget) const override
+	{
+		if (widget == WID_IC_STATUS) {
+			DrawStringMultiLine(r, this->status, TextColour::Black);
+			return;
+		}
+		if (widget != WID_IC_LIST) return;
+		Rect tr = r.Shrink(WidgetDimensions::scaled.framerect);
+		int line = GetCharacterHeight(FontSize::Normal) + 2;
+		int y = tr.top;
+		for (const auto &[id, dist] : this->acceptors) {
+			DrawString(tr.left, tr.right, y, GetString(STR_INDCON_ROW, id, dist));
+			y += line;
+		}
+	}
+
+	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
+	{
+		int line = GetCharacterHeight(FontSize::Normal) + 2;
+		if (widget == WID_IC_LIST) {
+			size.width = std::max<uint>(size.width, ScaleGUITrad(240));
+			size.height = std::max<uint>(size.height, MAX_ROWS * line + ScaleGUITrad(4));
+		}
+		if (widget == WID_IC_STATUS) {
+			size.height = std::max<uint>(size.height, 3 * line);
+		}
+	}
+
+	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override
+	{
+		switch (widget) {
+			case WID_IC_MODE:
+				this->mode = 1 - this->mode;
+				this->SetDirty();
+				break;
+
+			case WID_IC_LIST: {
+				if (_networking) break;
+				const Industry *src = Industry::GetIfValid(static_cast<IndustryID>(this->window_number));
+				if (src == nullptr || this->cargo == INVALID_CARGO) break;
+				Rect r = this->GetWidget<NWidgetBase>(WID_IC_LIST)->GetCurrentRect().Shrink(WidgetDimensions::scaled.framerect);
+				int line = GetCharacterHeight(FontSize::Normal) + 2;
+				uint row = (pt.y - r.top) / line;
+				if (row >= this->acceptors.size()) break;
+				const Industry *dst = Industry::GetIfValid(this->acceptors[row].first);
+				if (dst == nullptr) break;
+				AutoConnectResult res = this->mode == 0
+						? BuildRailConnection(src->location.tile, dst->location.tile, 1, 0, this->cargo, false)
+						: BuildTruckConnection(src, dst, this->cargo, 2);
+				if (res.ok) {
+					this->status = GetString(STR_AUTOCONNECT_STATUS_DONE, res.cost);
+					if (res.error_detail != 0) this->status += ": " + GetString(StringID(res.error_detail));
+				} else {
+					this->status = GetString(res.error);
+					if (res.error_detail != 0) this->status += ": " + GetString(StringID(res.error_detail));
+				}
+				this->SetDirty();
+				break;
+			}
+		}
+	}
+};
+
+static constexpr std::initializer_list<NWidgetPart> _nested_industry_connect_widgets = {
+	NWidget(NWID_HORIZONTAL),
+		NWidget(WWT_CLOSEBOX, Colours::Brown),
+		NWidget(WWT_CAPTION, Colours::Brown, WID_IC_CAPTION), SetStringTip(STR_INDCON_CAPTION),
+	EndContainer(),
+	NWidget(WWT_PANEL, Colours::Brown),
+		NWidget(NWID_VERTICAL), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0), SetPadding(WidgetDimensions::unscaled.sparse),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_IC_MODE), SetFill(1, 0), SetMinimalSize(240, 14), SetToolTip(STR_INDCON_MODE_TOOLTIP),
+			NWidget(WWT_EMPTY, Colours::Invalid, WID_IC_LIST), SetFill(1, 0), SetMinimalSize(240, 90), SetToolTip(STR_INDCON_LIST_TOOLTIP),
+			NWidget(WWT_EMPTY, Colours::Invalid, WID_IC_STATUS), SetFill(1, 0), SetMinimalSize(240, 42),
+		EndContainer(),
+	EndContainer(),
+};
+
+static WindowDesc _industry_connect_desc(
+	WindowPosition::Automatic, {}, 0, 0,
+	WindowClass::IndustryConnect, WindowClass::None,
+	{},
+	_nested_industry_connect_widgets
+);
+
+/** Abnehmer-Dialog fuer eine Industrie oeffnen (Fork-Feature). */
+void ShowIndustryConnectWindow(IndustryID ind)
+{
+	AllocateWindowDescFront<IndustryConnectWindow>(_industry_connect_desc, ind.base());
 }
