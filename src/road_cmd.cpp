@@ -1726,7 +1726,7 @@ static void DrawTile_Road(TileInfo *ti)
 				uint32_t h = TileX(ti->tile) * 7919u ^ TileY(ti->tile) * 104729u;
 				RoadBits bits = GetRoadBits(ti->tile, RoadTramType::Road);
 				if (bits == ROAD_X && (h & 7) == 0 && !IsParkedCarAway(ti->tile)) {
-					AddSortableSpriteToDraw(SPR_PARKED_CAR, PAL_NONE, *ti, {{5, 11, 0}, {6, 3, 4}, {}});
+					AddSortableSpriteToDraw(SPR_PARKED_CAR, PALETTE_RECOLOUR_START + ((h >> 4) & 15), *ti, {{5, 11, 0}, {6, 3, 4}, {}});
 				}
 			}
 			DrawCitizensOnTile(ti);

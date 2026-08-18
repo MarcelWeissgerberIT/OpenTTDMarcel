@@ -29,6 +29,8 @@
 #include "map_func.h"
 #include "viewport_func.h"
 #include "window_gui.h"
+#include "company_manager_face.h"
+#include "core/random_func.hpp"
 #include "window_func.h"
 #include "strings_func.h"
 #include "zoom_func.h"
@@ -103,6 +105,22 @@ static uint CitizenAge(const Citizen &c)
 static const char *CitizenInterest(const Citizen &c)
 {
 	return _citizen_interests[CitizenHash(c.id, 4) % lengthof(_citizen_interests)];
+}
+
+/* Kleidungs-/Autofarbe: eine der 16 Spielfarben, stabil pro Person. */
+static PaletteID CitizenPalette(uint32_t id)
+{
+	return PALETTE_RECOLOUR_START + CitizenHash(id, 8) % 16;
+}
+
+/* Portraet deterministisch aus der ID - dieselbe Person, dasselbe Gesicht. */
+static CompanyManagerFace CitizenFace(const Citizen &c)
+{
+	CompanyManagerFace cmf;
+	Randomizer r;
+	r.SetSeed(CitizenHash(c.id, 6) | 1);
+	RandomiseCompanyManagerFace(cmf, r);
+	return cmf;
 }
 
 /* ---------- Monats- und Jahres-Intentionen ----------
@@ -539,8 +557,23 @@ void DrawCitizensOnTile(const TileInfo *ti)
 		int px, py;
 		DiagDirection dir;
 		CitizenTilePos(c, px, py, dir);
-		AddSortableSpriteToDraw(CitizenSprite(c, dir), PAL_NONE, *ti,
+		AddSortableSpriteToDraw(CitizenSprite(c, dir), CitizenPalette(c.id), *ti,
 				{{(int8_t)px, (int8_t)py, 0}, {3, 3, 6}, {}});
+
+		/* Sprechblase mit dem aktuellen Vorhaben ueber dem Kopf. */
+		if (c.kind != CitizenKind::Car) {
+			SpriteID bubble;
+			switch (c.goal) {
+				case CitizenGoal::Station: bubble = SPR_BUBBLE_STATION; break;
+				case CitizenGoal::Visit: bubble = SPR_BUBBLE_VISIT; break;
+				case CitizenGoal::Home: bubble = SPR_BUBBLE_HOME; break;
+				case CitizenGoal::Shopping: bubble = SPR_BUBBLE_SHOPPING; break;
+				case CitizenGoal::Move: bubble = SPR_BUBBLE_MOVE; break;
+				default: bubble = SPR_BUBBLE_STROLL; break;
+			}
+			AddSortableSpriteToDraw(bubble, PAL_NONE, *ti,
+					{{(int8_t)px, (int8_t)py, 7}, {3, 3, 3}, {}});
+		}
 	}
 }
 
@@ -583,6 +616,12 @@ struct CitizenWindow : Window {
 		const Citizen *c = FindCitizenById(this->citizen_id);
 		if (c == nullptr) return;
 		Rect tr = r.Shrink(WidgetDimensions::scaled.framerect);
+
+		/* Portraet links (Manager-Gesichter des Spiels, stabil pro Person). */
+		Rect face_r = {tr.left, tr.top, tr.left + 91, tr.top + 118};
+		DrawCompanyManagerFace(CitizenFace(*c), Colours::Grey, face_r);
+		tr.left += 100;
+
 		int line = GetCharacterHeight(FontSize::Normal) + 2;
 		int y = tr.top;
 		DrawString(tr.left, tr.right, y, GetString(STR_CITIZEN_AGE, CitizenAge(*c)));
@@ -624,8 +663,8 @@ struct CitizenWindow : Window {
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
 	{
 		if (widget != WID_CZ_PANEL) return;
-		size.width = std::max<uint>(size.width, 190);
-		size.height = std::max<uint>(size.height, 6 * (GetCharacterHeight(FontSize::Normal) + 2) + 8);
+		size.width = std::max<uint>(size.width, 300);
+		size.height = std::max<uint>(size.height, std::max(119 + 8, 6 * (GetCharacterHeight(FontSize::Normal) + 2) + 8));
 	}
 
 	/* Die Figur laeuft weiter - Fenster regelmaessig nachzeichnen. */
