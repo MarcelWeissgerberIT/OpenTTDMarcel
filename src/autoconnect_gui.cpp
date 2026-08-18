@@ -297,10 +297,15 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
  * Gerades Straßenstück in Stadtnähe finden, auf dem eine
  * Durchfahrt-Bushaltestelle gebaut werden kann.
  */
-static TileIndex FindBusStopSite(const Town *t, Axis &axis_out)
+static TileIndex FindBusStopSite(const Town *t, Axis &axis_out, const std::vector<TileIndex> &avoid = {})
 {
 	for (TileIndex tile : SpiralTileSequence(t->xy, 24)) {
 		if (!IsNormalRoadTile(tile)) continue;
+		bool too_close = false;
+		for (TileIndex a : avoid) {
+			if (DistanceManhattan(tile, a) < 5) { too_close = true; break; }
+		}
+		if (too_close) continue;
 		RoadBits bits = GetRoadBits(tile, RoadTramType::Road);
 		Axis axis;
 		if (bits == ROAD_X) {
@@ -394,8 +399,11 @@ static EngineID FindBestBus(CargoClasses cargo_class)
 	return best;
 }
 
-/** Busverbindung bauen: Straße, zwei Haltestellen, Depot, N Busse. */
-static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint count, uint8_t cargo_mode, bool estimate)
+/**
+ * Busverbindung bauen: Straße, Haltestellen, Depot, N Busse.
+ * @param stops_per_town Haltestellen je Stadt; 0 = automatisch nach Größe.
+ */
+static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint count, uint8_t cargo_mode, bool estimate, uint stops_per_town = 0)
 {
 	AutoConnectResult result;
 	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
@@ -458,6 +466,25 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 			return result;
 		}
 		result.cost += c.GetCost();
+	}
+
+	/* Zusaetzliche Haltestellen in beiden Staedten, ueber die Stadt
+	 * verteilt (Mindestabstand zueinander). Bester-Versuch: was nicht
+	 * gebaut werden kann, wird uebersprungen. */
+	std::vector<TileIndex> stops_town_a{stop_a}, stops_town_b{stop_b};
+	for (auto [t, stops] : {std::pair{town_a, &stops_town_a}, std::pair{town_b, &stops_town_b}}) {
+		uint want_stops = stops_per_town != 0 ? stops_per_town : ClampU(t->cache.population / 1200, 1, 3);
+		while (stops->size() < want_stops) {
+			Axis ax{};
+			TileIndex extra = FindBusStopSite(t, ax, *stops);
+			if (extra == INVALID_TILE) break;
+			CommandCost c = Command<Commands::BuildRoadStop>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, extra, 1, 1,
+					RoadStopType::Bus, true, AxisToDiagDir(ax), ROADTYPE_ROAD,
+					ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
+			if (c.Failed()) break;
+			result.cost += c.GetCost();
+			stops->push_back(extra);
+		}
 	}
 
 	/* Fahrzeugwahl je Index: bei "beides" abwechselnd Bus und Postwagen. */
@@ -527,11 +554,18 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		}
 		result.cost += cost_v.GetCost();
 
-		CommandCost co_a = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 0, MakeStationOrder(st_a->index));
-		if (co_a.Failed()) result.error_detail = co_a.GetErrorMessage().base();
-		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 1, MakeStationOrder(st_b->index));
+		/* Rundkurs ueber alle Halte: erst Stadt A, dann Stadt B. */
+		uint order_no = 0;
+		for (TileIndex st : stops_town_a) {
+			CommandCost co = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, order_no++, MakeStationOrder(Station::GetByTile(st)->index));
+			if (co.Failed() && order_no == 1) result.error_detail = co.GetErrorMessage().base();
+		}
+		for (TileIndex st : stops_town_b) {
+			Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, order_no++, MakeStationOrder(Station::GetByTile(st)->index));
+		}
 		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
 	}
+	(void)st_a; (void)st_b;
 
 	cur_company.Restore();
 	result.ok = true;
@@ -1429,6 +1463,7 @@ struct AutoConnectWindow : Window {
 	uint count = 2;
 	uint8_t mode = 0; ///< 0 = Flugzeuge, 1 = Busse, 2 = Zug, 3 = Schiffe.
 	uint8_t cargo = 0; ///< 0 = Passagiere, 1 = Post, 2 = beides.
+	uint8_t stops = 0; ///< Bus-Haltestellen je Stadt; 0 = automatisch.
 	IndustryID sug_a = IndustryID::Invalid(); ///< Güter-Vorschlag: Quelle.
 	IndustryID sug_b = IndustryID::Invalid(); ///< Güter-Vorschlag: Ziel.
 	CargoType sug_cargo = INVALID_CARGO; ///< Güter-Vorschlag: Frachtart.
@@ -1466,6 +1501,8 @@ struct AutoConnectWindow : Window {
 				static const StringID cargos[] = {STR_AUTOCONNECT_CARGO_PAX, STR_AUTOCONNECT_CARGO_MAIL, STR_AUTOCONNECT_CARGO_BOTH};
 				return GetString(cargos[this->cargo]);
 			}
+			case WID_AC_STOPS:
+				return this->stops == 0 ? GetString(STR_AUTOCONNECT_STOPS_AUTO) : GetString(STR_AUTOCONNECT_STOPS_N, this->stops);
 			case WID_AC_STATUS:
 				return this->status;
 			default:
@@ -1491,6 +1528,11 @@ struct AutoConnectWindow : Window {
 
 			case WID_AC_CARGO:
 				this->cargo = (this->cargo + 1) % 3;
+				this->SetDirty();
+				break;
+
+			case WID_AC_STOPS:
+				this->stops = (this->stops + 1) % 5; /* 0 = automatisch, dann 1-4. */
 				this->SetDirty();
 				break;
 
@@ -1551,7 +1593,7 @@ struct AutoConnectWindow : Window {
 				}
 				auto run = [&](bool est) {
 					switch (this->mode) {
-						case 1: return BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
+						case 1: return BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est, this->stops);
 						case 2: return BuildRailConnection(Town::Get(this->town_a)->xy, Town::Get(this->town_b)->xy, this->count, this->cargo, INVALID_CARGO, est);
 						case 3: return BuildShipConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est);
 						default: return BuildAirConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, est);
@@ -1653,6 +1695,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TOWN_B), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_PICK_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_MODE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_MODE_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CARGO), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_CARGO_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_STOPS), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_STOPS_TOOLTIP),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_DOWN), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_MINUS),
 				NWidget(WWT_TEXT, Colours::Invalid, WID_AC_COUNT), SetFill(1, 0), SetAlignment({AlignmentH::Centre, AlignmentV::Middle}),

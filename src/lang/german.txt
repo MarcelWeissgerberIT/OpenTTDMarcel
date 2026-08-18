@@ -2299,6 +2299,9 @@ STR_AUTOCONNECT_ERR_NO_SHIP_DEPOT                               :{BLACK}Kein Pla
 STR_AUTOCONNECT_CARGO_PAX                                       :{BLACK}Fracht: Passagiere
 STR_AUTOCONNECT_CARGO_MAIL                                      :{BLACK}Fracht: Post
 STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Fracht: Passagiere + Post
+STR_AUTOCONNECT_STOPS_AUTO                                      :{BLACK}Haltestellen je Stadt: automatisch
+STR_AUTOCONNECT_STOPS_N                                         :{BLACK}Haltestellen je Stadt: {NUM}
+STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}Wie viele Bushaltestellen je Stadt gebaut werden (automatisch = nach Stadtgröße). Wirkt nur im Bus-Modus
 STR_AUTOCONNECT_CARGO_TOOLTIP                                   :{BLACK}Umschalten, welche Fracht die Fahrzeuge befördern
 STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Kosten schätzen
 STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Berechnet die ungefähren Kosten, ohne etwas zu bauen

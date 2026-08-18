@@ -2330,6 +2330,9 @@ STR_AUTOCONNECT_ERR_NO_SHIP_DEPOT                               :{BLACK}No space
 STR_AUTOCONNECT_CARGO_PAX                                       :{BLACK}Cargo: Passengers
 STR_AUTOCONNECT_CARGO_MAIL                                      :{BLACK}Cargo: Mail
 STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Cargo: Passengers + mail
+STR_AUTOCONNECT_STOPS_AUTO                                      :{BLACK}Bus stops per town: automatic
+STR_AUTOCONNECT_STOPS_N                                         :{BLACK}Bus stops per town: {NUM}
+STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}How many bus stops to build in each town (automatic = by town size). Only used by the bus mode
 STR_AUTOCONNECT_CARGO_TOOLTIP                                   :{BLACK}Switch the cargo the vehicles will carry
 STR_AUTOCONNECT_ESTIMATE                                        :{BLACK}Estimate cost
 STR_AUTOCONNECT_ESTIMATE_TOOLTIP                                :{BLACK}Calculates the approximate cost without building anything

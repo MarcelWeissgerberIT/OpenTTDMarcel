@@ -617,10 +617,13 @@ struct CitizenWindow : Window {
 		if (c == nullptr) return;
 		Rect tr = r.Shrink(WidgetDimensions::scaled.framerect);
 
-		/* Portraet links (Manager-Gesichter des Spiels, stabil pro Person). */
-		Rect face_r = {tr.left, tr.top, tr.left + 91, tr.top + 118};
+		/* Portraet links (Manager-Gesichter des Spiels, stabil pro Person);
+		 * alle Masse mit der UI-Skalierung mitwachsen lassen, sonst malt
+		 * das Bild ueber Rahmen und Schliessen-Knopf. */
+		int fw = ScaleGUITrad(92), fh = ScaleGUITrad(119);
+		Rect face_r = {tr.left, tr.top, tr.left + fw - 1, tr.top + fh - 1};
 		DrawCompanyManagerFace(CitizenFace(*c), Colours::Grey, face_r);
-		tr.left += 100;
+		tr.left += fw + ScaleGUITrad(8);
 
 		int line = GetCharacterHeight(FontSize::Normal) + 2;
 		int y = tr.top;
@@ -663,8 +666,8 @@ struct CitizenWindow : Window {
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
 	{
 		if (widget != WID_CZ_PANEL) return;
-		size.width = std::max<uint>(size.width, 300);
-		size.height = std::max<uint>(size.height, std::max(119 + 8, 6 * (GetCharacterHeight(FontSize::Normal) + 2) + 8));
+		size.width = std::max<uint>(size.width, ScaleGUITrad(92 + 8) + ScaleGUITrad(210));
+		size.height = std::max<uint>(size.height, std::max<uint>(ScaleGUITrad(119 + 8), 6 * (GetCharacterHeight(FontSize::Normal) + 2) + ScaleGUITrad(8)));
 	}
 
 	/* Die Figur laeuft weiter - Fenster regelmaessig nachzeichnen. */
