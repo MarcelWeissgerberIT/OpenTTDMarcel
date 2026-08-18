@@ -25,6 +25,8 @@
 #include "strings_func.h"
 #include "engine_base.h"
 #include "roadveh.h"
+#include "house.h"
+#include "town.h"
 #include "spritecache.h"
 #include "fileio_func.h"
 #include "core/geometry_func.hpp"
@@ -56,11 +58,16 @@ enum class PsTool : uint8_t {
 	Erase,  ///< Pixel transparent machen.
 };
 
-/** Ein bearbeitbares Fahrzeug in der Liste. */
+/** Filterkategorie der Haeuser (hinter den vier Fahrzeugtypen). */
+static const uint PS_CAT_HOUSE = 4;
+
+/** Ein bearbeitbares Objekt in der Liste (Fahrzeug oder Gebaeude). */
 struct PsEntry {
-	EngineID engine;
-	VehicleType vtype;
-	std::vector<SpriteID> views; ///< Eindeutige Sprites der Blickrichtungen.
+	bool is_house = false;
+	EngineID engine{};   ///< Fahrzeug (wenn !is_house).
+	uint16_t house = 0;  ///< Basis-HouseID (wenn is_house).
+	uint category = 0;   ///< Filterindex: 0-3 Fahrzeugtyp, 4 Haus.
+	std::vector<SpriteID> views; ///< Eindeutige Sprites der Ansichten/Teile.
 };
 
 /* Standardsprite-Zugriffe je Fahrzeugtyp (0 = NewGRF-Grafik, nicht editierbar). */
@@ -88,6 +95,38 @@ static std::vector<SpriteID> PsViewsForEngine(const Engine *e)
 	return views;
 }
 
+/** Ist diese HouseID die Nordkachel (Basis) ihres Gebaeudes? */
+static bool PsIsBaseHouse(HouseID id)
+{
+	HouseID copy = id;
+	GetHouseNorthPart(copy);
+	return copy == id;
+}
+
+/** Eindeutige Gebaeudesprites eines Hauses (alle Teile und Varianten, fertig gebaut). */
+static std::vector<SpriteID> PsViewsForHouse(HouseID id)
+{
+	const HouseSpec *hs = HouseSpec::Get(id);
+	if (!hs->enabled || hs->grf_prop.HasSpriteGroups()) return {};
+
+	uint parts = 1;
+	if (hs->building_flags.Test(BuildingFlag::Size2x2)) parts = 4;
+	else if (hs->building_flags.Any(BUILDING_HAS_2_TILES)) parts = 2;
+
+	auto data = GetTownDrawTileData();
+	std::vector<SpriteID> views;
+	for (uint p = 0; p < parts; p++) {
+		for (uint v = 0; v < 4; v++) {
+			size_t index = ((size_t)(id + p) << 4) | (v << 2) | TOWN_HOUSE_COMPLETED;
+			if (index >= data.size()) return {};
+			SpriteID s = data[index].building.sprite;
+			if (s == 0) continue;
+			if (std::find(views.begin(), views.end(), s) == views.end()) views.push_back(s);
+		}
+	}
+	return views;
+}
+
 /* ---------- Dauerhafte Ablage (pixelstudio.dat im Nutzerverzeichnis) ---------- */
 
 static std::string PixelStudioFilePath()
@@ -100,22 +139,34 @@ static void PixelStudioSaveToDisk()
 {
 	std::ofstream f(PixelStudioFilePath(), std::ios::binary | std::ios::trunc);
 	if (!f.is_open()) return;
-	f.write("PXS2", 4);
+	f.write("PXS3", 4);
+	auto write_entry = [&f](uint8_t kind, uint16_t id, uint8_t view, const PixelStudioSprite &ps) {
+		f.write(reinterpret_cast<const char *>(&kind), 1);
+		f.write(reinterpret_cast<const char *>(&id), 2);
+		f.write(reinterpret_cast<const char *>(&view), 1);
+		f.write(reinterpret_cast<const char *>(&ps.width), 2);
+		f.write(reinterpret_cast<const char *>(&ps.height), 2);
+		f.write(reinterpret_cast<const char *>(&ps.x_offs), 2);
+		f.write(reinterpret_cast<const char *>(&ps.y_offs), 2);
+		f.write(reinterpret_cast<const char *>(ps.pixels.data()), ps.pixels.size());
+	};
 	for (const Engine *e : Engine::Iterate()) {
 		std::vector<SpriteID> views = PsViewsForEngine(e);
 		for (uint v = 0; v < views.size(); v++) {
 			if (!PixelStudioHasOverride(views[v])) continue;
 			PixelStudioSprite ps;
 			if (!PixelStudioReadSprite(views[v], ps)) continue;
-			uint16_t engine_id = e->index.base();
-			uint8_t view = static_cast<uint8_t>(v);
-			f.write(reinterpret_cast<const char *>(&engine_id), 2);
-			f.write(reinterpret_cast<const char *>(&view), 1);
-			f.write(reinterpret_cast<const char *>(&ps.width), 2);
-			f.write(reinterpret_cast<const char *>(&ps.height), 2);
-			f.write(reinterpret_cast<const char *>(&ps.x_offs), 2);
-			f.write(reinterpret_cast<const char *>(&ps.y_offs), 2);
-			f.write(reinterpret_cast<const char *>(ps.pixels.data()), ps.pixels.size());
+			write_entry(0, e->index.base(), static_cast<uint8_t>(v), ps);
+		}
+	}
+	for (size_t id = 0; id < HouseSpec::Specs().size(); id++) {
+		if (!PsIsBaseHouse(static_cast<HouseID>(id))) continue;
+		std::vector<SpriteID> views = PsViewsForHouse(static_cast<HouseID>(id));
+		for (uint v = 0; v < views.size(); v++) {
+			if (!PixelStudioHasOverride(views[v])) continue;
+			PixelStudioSprite ps;
+			if (!PixelStudioReadSprite(views[v], ps)) continue;
+			write_entry(1, static_cast<uint16_t>(id), static_cast<uint8_t>(v), ps);
 		}
 	}
 	f.close();
@@ -136,13 +187,20 @@ void PixelStudioLoadOverrides()
 	char magic[4];
 	f.read(magic, 4);
 	if (!f.good()) return;
-	bool v1 = std::string_view(magic, 4) == "PXS1"; /* alte Version: nur Strassenfahrzeuge */
-	if (!v1 && std::string_view(magic, 4) != "PXS2") return;
+	std::string_view m(magic, 4);
+	bool v1 = m == "PXS1"; /* nur Strassenfahrzeuge */
+	bool v3 = m == "PXS3"; /* mit Kind-Byte (Fahrzeug/Haus) */
+	if (!v1 && !v3 && m != "PXS2") return;
 
 	for (;;) {
+		uint8_t kind = 0;
 		uint16_t engine_id;
 		uint8_t view;
 		PixelStudioSprite ps;
+		if (v3) {
+			f.read(reinterpret_cast<char *>(&kind), 1);
+			if (!f.good()) break;
+		}
 		f.read(reinterpret_cast<char *>(&engine_id), 2);
 		if (!f.good()) break;
 		f.read(reinterpret_cast<char *>(&view), 1);
@@ -155,10 +213,16 @@ void PixelStudioLoadOverrides()
 		f.read(reinterpret_cast<char *>(ps.pixels.data()), ps.pixels.size());
 		if (!f.good()) break;
 
-		const Engine *e = Engine::GetIfValid(engine_id);
-		if (e == nullptr) continue;
-		if (v1 && e->type != VehicleType::Road) continue;
-		std::vector<SpriteID> views = PsViewsForEngine(e);
+		std::vector<SpriteID> views;
+		if (kind == 1) {
+			if (engine_id >= HouseSpec::Specs().size()) continue;
+			views = PsViewsForHouse(static_cast<HouseID>(engine_id));
+		} else {
+			const Engine *e = Engine::GetIfValid(engine_id);
+			if (e == nullptr) continue;
+			if (v1 && e->type != VehicleType::Road) continue;
+			views = PsViewsForEngine(e);
+		}
 		if (view >= views.size()) continue;
 		PixelStudioSetOverride(views[view], std::move(ps));
 	}
@@ -200,7 +264,7 @@ static uint8_t NearestPaletteIndex(uint8_t r, uint8_t g, uint8_t b)
 struct PixelStudioWindow : Window {
 	std::vector<PsEntry> entries; ///< Bearbeitbare Fahrzeuge.
 	std::vector<int> filtered;    ///< Sichtbare Indizes in #entries (Typ-Filter).
-	bool show_type[4] = {true, true, true, true}; ///< Zug/Strasse/Schiff/Luft.
+	bool show_type[5] = {true, true, true, true, true}; ///< Zug/Strasse/Schiff/Luft/Haus.
 	int selected = -1;            ///< Index in #entries.
 	uint view = 0;                ///< Blickrichtung 0..7.
 	PixelStudioSprite cur;        ///< Aktueller Malpuffer.
@@ -221,8 +285,23 @@ struct PixelStudioWindow : Window {
 			for (const Engine *e : Engine::IterateType(vt)) {
 				std::vector<SpriteID> views = PsViewsForEngine(e);
 				if (views.empty()) continue;
-				this->entries.push_back({e->index, vt, std::move(views)});
+				PsEntry en;
+				en.engine = e->index;
+				en.category = to_underlying(vt);
+				en.views = std::move(views);
+				this->entries.push_back(std::move(en));
 			}
+		}
+		for (size_t id = 0; id < HouseSpec::Specs().size(); id++) {
+			if (!PsIsBaseHouse(static_cast<HouseID>(id))) continue;
+			std::vector<SpriteID> views = PsViewsForHouse(static_cast<HouseID>(id));
+			if (views.empty()) continue;
+			PsEntry en;
+			en.is_house = true;
+			en.house = static_cast<uint16_t>(id);
+			en.category = PS_CAT_HOUSE;
+			en.views = std::move(views);
+			this->entries.push_back(std::move(en));
 		}
 		this->RebuildFilter();
 		if (!this->filtered.empty()) this->SelectEntry(this->filtered[0]);
@@ -232,11 +311,11 @@ struct PixelStudioWindow : Window {
 	{
 		this->filtered.clear();
 		for (int i = 0; i < (int)this->entries.size(); i++) {
-			if (this->show_type[to_underlying(this->entries[i].vtype)]) this->filtered.push_back(i);
+			if (this->show_type[this->entries[i].category]) this->filtered.push_back(i);
 		}
 		this->vscroll->SetCount(this->filtered.size());
 		/* Auswahl unsichtbar geworden? Ersten sichtbaren Eintrag nehmen. */
-		if (this->selected >= 0 && !this->show_type[to_underlying(this->entries[this->selected].vtype)]) {
+		if (this->selected >= 0 && !this->show_type[this->entries[this->selected].category]) {
 			if (!this->filtered.empty()) this->SelectEntry(this->filtered[0]);
 		}
 		this->SetDirty();
@@ -333,8 +412,10 @@ struct PixelStudioWindow : Window {
 					if (index == this->selected) {
 						GfxFillRect(r.left + 1, y, r.right - 1, y + line - 1, PC_BLACK);
 					}
+					const PsEntry &en = this->entries[index];
+					std::string name = en.is_house ? GetString(HouseSpec::Get(en.house)->building_name) : GetString(STR_ENGINE_NAME, en.engine);
 					DrawString(r.left + WidgetDimensions::scaled.frametext.left, r.right - WidgetDimensions::scaled.frametext.right, y,
-							GetString(STR_ENGINE_NAME, this->entries[index].engine), index == this->selected ? TextColour::White : TextColour::Black);
+							name, index == this->selected ? TextColour::White : TextColour::Black);
 					y += line;
 				}
 				break;
@@ -491,10 +572,10 @@ struct PixelStudioWindow : Window {
 			case WID_PS_FILTER_TRAIN:
 			case WID_PS_FILTER_ROAD:
 			case WID_PS_FILTER_SHIP:
-			case WID_PS_FILTER_AIR: {
+			case WID_PS_FILTER_AIR:
+			case WID_PS_FILTER_HOUSE: {
 				uint idx = widget - WID_PS_FILTER_TRAIN;
-				static const VehicleType map[] = {VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft};
-				this->show_type[to_underlying(map[idx])] = !this->show_type[to_underlying(map[idx])];
+				this->show_type[idx] = !this->show_type[idx];
 				this->RebuildFilter();
 				break;
 			}
@@ -620,10 +701,11 @@ struct PixelStudioWindow : Window {
 		this->SetWidgetDisabledState(WID_PS_COPY, true);
 		this->SetWidgetDisabledState(WID_PS_PASTE, true);
 #endif
-		this->SetWidgetLoweredState(WID_PS_FILTER_TRAIN, this->show_type[to_underlying(VehicleType::Train)]);
-		this->SetWidgetLoweredState(WID_PS_FILTER_ROAD, this->show_type[to_underlying(VehicleType::Road)]);
-		this->SetWidgetLoweredState(WID_PS_FILTER_SHIP, this->show_type[to_underlying(VehicleType::Ship)]);
-		this->SetWidgetLoweredState(WID_PS_FILTER_AIR, this->show_type[to_underlying(VehicleType::Aircraft)]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_TRAIN, this->show_type[0]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_ROAD, this->show_type[1]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_SHIP, this->show_type[2]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_AIR, this->show_type[3]);
+		this->SetWidgetLoweredState(WID_PS_FILTER_HOUSE, this->show_type[4]);
 		this->SetWidgetLoweredState(WID_PS_TOOL_PENCIL, this->tool == PsTool::Pencil);
 		this->SetWidgetLoweredState(WID_PS_TOOL_FILL, this->tool == PsTool::Fill);
 		this->SetWidgetLoweredState(WID_PS_TOOL_PICK, this->tool == PsTool::Pick);
@@ -651,6 +733,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_pixelstudio_widgets 
 					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_ROAD), SetStringTip(STR_PIXELSTUDIO_FILTER_ROAD, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
 					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_SHIP), SetStringTip(STR_PIXELSTUDIO_FILTER_SHIP, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
 					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_AIR), SetStringTip(STR_PIXELSTUDIO_FILTER_AIR, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
+					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_PS_FILTER_HOUSE), SetStringTip(STR_PIXELSTUDIO_FILTER_HOUSE, STR_PIXELSTUDIO_FILTER_TOOLTIP), SetFill(1, 0),
 				EndContainer(),
 				NWidget(NWID_HORIZONTAL),
 					NWidget(WWT_INSET, Colours::Grey, WID_PS_ENGINE_LIST), SetToolTip(STR_PIXELSTUDIO_LIST_TOOLTIP), SetScrollbar(WID_PS_SCROLLBAR), SetFill(0, 1),

@@ -17,6 +17,7 @@ enum PixelStudioWidgets : WidgetID {
 	WID_PS_FILTER_ROAD,  ///< Filter: Strassenfahrzeuge anzeigen.
 	WID_PS_FILTER_SHIP,  ///< Filter: Schiffe anzeigen.
 	WID_PS_FILTER_AIR,   ///< Filter: Flugzeuge anzeigen.
+	WID_PS_FILTER_HOUSE, ///< Filter: Haeuser anzeigen.
 	WID_PS_ENGINE_LIST, ///< Liste der bearbeitbaren Fahrzeuge.
 	WID_PS_SCROLLBAR,   ///< Scrollbar der Liste.
 	WID_PS_VIEW_PREV,   ///< Vorherige Blickrichtung.

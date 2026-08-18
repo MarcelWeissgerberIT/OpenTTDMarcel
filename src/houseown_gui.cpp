@@ -242,9 +242,13 @@ struct HouseInfoWindow : Window {
 		int pw = ScaleGUITrad(140);
 		{
 			DrawPixelInfo tmp_dpi;
-			if (FillDrawPixelInfo(&tmp_dpi, tr.left, tr.top, pw, tr.bottom - tr.top + 1)) {
+			int ph = tr.bottom - tr.top + 1;
+			if (FillDrawPixelInfo(&tmp_dpi, tr.left, tr.top, pw, ph)) {
 				AutoRestoreBackup dpi_backup(_cur_dpi, &tmp_dpi);
-				DrawHouseInGUI(pw / 2, tr.bottom - tr.top - ScaleGUITrad(14), GetHouseType(this->tile), 0);
+				/* Dieselbe Varianten-Wahl wie beim Kartenzeichnen, sonst
+				 * zeigt das Portraet gelegentlich das falsche Gebaeude. */
+				int view = TileHash2Bit(TileX(this->tile) * TILE_SIZE, TileY(this->tile) * TILE_SIZE);
+				DrawHouseInGUI(pw / 2, ph * 3 / 4, GetHouseType(this->tile), view);
 			}
 		}
 		tr.left += pw + ScaleGUITrad(8);

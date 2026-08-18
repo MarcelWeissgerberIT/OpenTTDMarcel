@@ -2250,11 +2250,12 @@ STR_INTRO_TOOLTIP_SCENARIO_EDITOR                               :{BLACK}Eine eig
 STR_PIXELSTUDIO_BUTTON                                          :{BLACK}Pixel-Studio
 STR_PIXELSTUDIO_BUTTON_TOOLTIP                                  :{BLACK}Fahrzeuggrafiken mit dem eingebauten Pixel-Editor bearbeiten
 STR_PIXELSTUDIO_CAPTION                                         :{WHITE}Pixel-Studio
-STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Straßenfahrzeug zum Bearbeiten wählen
+STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Fahrzeug oder Gebäude zum Bearbeiten wählen
 STR_PIXELSTUDIO_FILTER_TRAIN                                    :{BLACK}Bahn
 STR_PIXELSTUDIO_FILTER_ROAD                                     :{BLACK}Straße
 STR_PIXELSTUDIO_FILTER_SHIP                                     :{BLACK}Schiff
 STR_PIXELSTUDIO_FILTER_AIR                                      :{BLACK}Luft
+STR_PIXELSTUDIO_FILTER_HOUSE                                    :{BLACK}Haus
 STR_PIXELSTUDIO_FILTER_TOOLTIP                                  :{BLACK}Diesen Fahrzeugtyp in der Liste ein- oder ausblenden
 STR_PIXELSTUDIO_VIEW                                            :{BLACK}Ansicht {NUM}/{NUM}
 STR_PIXELSTUDIO_VIEW_TOOLTIP                                    :{BLACK}Zwischen den acht Blickrichtungen wechseln

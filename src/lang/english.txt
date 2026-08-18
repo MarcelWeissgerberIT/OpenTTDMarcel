@@ -2281,11 +2281,12 @@ STR_INTRO_TOOLTIP_SCENARIO_EDITOR                               :{BLACK}Create a
 STR_PIXELSTUDIO_BUTTON                                          :{BLACK}Pixel Studio
 STR_PIXELSTUDIO_BUTTON_TOOLTIP                                  :{BLACK}Edit vehicle graphics with an in-game pixel editor
 STR_PIXELSTUDIO_CAPTION                                         :{WHITE}Pixel Studio
-STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Pick a road vehicle to edit
+STR_PIXELSTUDIO_LIST_TOOLTIP                                    :{BLACK}Pick a vehicle or building to edit
 STR_PIXELSTUDIO_FILTER_TRAIN                                    :{BLACK}Rail
 STR_PIXELSTUDIO_FILTER_ROAD                                     :{BLACK}Road
 STR_PIXELSTUDIO_FILTER_SHIP                                     :{BLACK}Ship
 STR_PIXELSTUDIO_FILTER_AIR                                      :{BLACK}Air
+STR_PIXELSTUDIO_FILTER_HOUSE                                    :{BLACK}House
 STR_PIXELSTUDIO_FILTER_TOOLTIP                                  :{BLACK}Show or hide this vehicle type in the list
 STR_PIXELSTUDIO_VIEW                                            :{BLACK}View {NUM}/{NUM}
 STR_PIXELSTUDIO_VIEW_TOOLTIP                                    :{BLACK}Switch between the eight view directions
