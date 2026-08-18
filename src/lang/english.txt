@@ -2303,6 +2303,21 @@ STR_PIXELSTUDIO_RESET                                           :{BLACK}Original
 STR_PIXELSTUDIO_RESET_TOOLTIP                                   :{BLACK}Restore the original graphics of this view
 STR_PIXELSTUDIO_SAVE                                            :{BLACK}Save
 STR_PIXELSTUDIO_SAVE_TOOLTIP                                    :{BLACK}Apply in game and keep permanently
+STR_HOUSEOWN_CAPTION                                            :{WHITE}{STRING}
+STR_HOUSEOWN_TOWN                                               :{BLACK}Town: {ORANGE}{TOWN}
+STR_HOUSEOWN_POPULATION                                         :{BLACK}Residents: {ORANGE}{NUM}
+STR_HOUSEOWN_COMMERCIAL                                         :{BLACK}Commercial building (no residents)
+STR_HOUSEOWN_AGE                                                :{BLACK}Age: {ORANGE}{NUM} year{P "" s}
+STR_HOUSEOWN_PRICE                                              :{BLACK}Purchase price: {ORANGE}{CURRENCY_LONG}
+STR_HOUSEOWN_RENT_OUT                                           :{BLACK}Expected rent: {ORANGE}{CURRENCY_LONG}{BLACK} per month
+STR_HOUSEOWN_OWNED                                              :{BLACK}You own this building (paid {CURRENCY_LONG})
+STR_HOUSEOWN_RENT_IN                                            :{BLACK}Rental income: {ORANGE}{CURRENCY_LONG}{BLACK} per month
+STR_HOUSEOWN_BUY                                                :{BLACK}Buy building
+STR_HOUSEOWN_BUY_TOOLTIP                                        :{BLACK}Buy this building and earn monthly rent
+STR_HOUSEOWN_VIEW                                               :{BLACK}Show location
+STR_HOUSEOWN_VIEW_TOOLTIP                                       :{BLACK}Centre the main view on this building
+STR_HOUSEOWN_NO_MONEY                                           :{WHITE}Not enough money to buy this building
+STR_NEWS_HOUSEOWN_DEMOLISHED                                    :{BIG_FONT}{BLACK}Your rental building in {TOWN} was demolished by the town
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Start a multiplayer game
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select 'temperate' landscape style
@@ -2347,6 +2362,8 @@ STR_AUTOCONNECT_ERR_NO_DEPOT                                    :{BLACK}No space
 STR_AUTOCONNECT_MODE_TRAIN                                      :{BLACK}Mode: Train
 STR_AUTOCONNECT_COUNT_TRAIN                                     :{BLACK}Trains: {NUM}
 STR_AUTOCONNECT_ERR_NO_RAIL_SITE                                :{BLACK}No space for a rail station near one of the towns
+STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL                              :{BLACK}Not enough money for track plus trains - earn money or take a loan first
+STR_AUTOCONNECT_ERR_DETOUR                                      :{BLACK}Only a long detour route was found - nothing was built. Try the lorry option or clear obstacles
 STR_AUTOCONNECT_ERR_NO_RAIL_PATH                                :{BLACK}No rail route found between the towns (water in the way?)
 STR_AUTOCONNECT_MODE_SHIP                                       :{BLACK}Mode: Ships
 STR_AUTOCONNECT_COUNT_SHIP                                      :{BLACK}Ships: {NUM}

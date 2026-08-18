@@ -1005,6 +1005,25 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	bool loop = train_count > 1;
 	uint8_t numtracks = loop ? 2 : 1;
 
+	/* Geld-Vorabpruefung: gar nicht erst bauen, wenn Strecke UND Zuege
+	 * zusammen absehbar nicht bezahlbar sind. Vorher stand sonst eine
+	 * teure Strecke ohne einen einzigen Zug in der Landschaft. */
+	if (!estimate) {
+		EngineID pre_engine = FindBestTrainEngine();
+		if (pre_engine == EngineID::Invalid()) {
+			result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
+			cur_company.Restore();
+			return result;
+		}
+		Money vehicles = Engine::Get(pre_engine)->GetCost() * 2 * train_count; /* Lok + grob Waggons */
+		Money infra = (Money)DistanceManhattan(center_a, center_b) * 1000 * numtracks + 30000;
+		if (Company::Get(_local_company)->money < vehicles + infra) {
+			result.error = STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL;
+			cur_company.Restore();
+			return result;
+		}
+	}
+
 	/* Bestehende eigene Bahnhöfe in der Nähe wiederverwenden. */
 	Station *re_a = FindNearbyOwnStation(center_a, StationFacility::Train, 25);
 	Station *re_b = FindNearbyOwnStation(center_b, StationFacility::Train, 25);
@@ -1049,6 +1068,13 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	auto path = FindRailPath(site_a, site_b);
 	if (path.empty()) {
 		result.error = STR_AUTOCONNECT_ERR_NO_RAIL_PATH;
+		cur_company.Restore();
+		return result;
+	}
+	/* Nur-Umweg-Routen (z. B. einmal um die Fabrik herum) nicht bauen -
+	 * das Ergebnis aergert mehr, als es nutzt. */
+	if (path.size() > 30 + 3 * DistanceManhattan(center_a, center_b)) {
+		result.error = STR_AUTOCONNECT_ERR_DETOUR;
 		cur_company.Restore();
 		return result;
 	}
@@ -1186,6 +1212,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		}
 		result.cost += cost_v.GetCost();
 
+		uint wagons_built = 0;
 		for (uint i = 0; i < TRAIN_WAGONS; i++) {
 			EngineID wagon = pick_wagon(i);
 			if (wagon == EngineID::Invalid()) continue;
@@ -1194,6 +1221,17 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			if (cost_w.Failed()) break;
 			result.cost += cost_w.GetCost();
 			Command<Commands::MoveRailVehicle>::Do(DoCommandFlag::Execute, wagon_id, veh_id, false);
+			wagons_built++;
+		}
+		if (wagons_built == 0) {
+			/* Lok ohne Waggons transportiert nichts: verkaufen und sauber melden. */
+			Command<Commands::SellVehicle>::Do(DoCommandFlag::Execute, veh_id, true, false, ClientID::Invalid);
+			if (t == 0) {
+				result.error = STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE;
+				cur_company.Restore();
+				return result;
+			}
+			break;
 		}
 
 		Order oa = MakeStationOrder(st_a->index);

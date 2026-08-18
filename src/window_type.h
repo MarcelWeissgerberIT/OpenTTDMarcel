@@ -435,6 +435,11 @@ enum class WindowClass : uint16_t {
 	PixelStudio,
 
 	/**
+	 * Haus-Dialog (Fork): Bewohner-Infos, Kauf und Miete.
+	 */
+	HouseInfo,
+
+	/**
 	 * Build station; %Window numbers:
 	 *   - #TransportType::Air = #AirportPickerWidgets
 	 *   - #TransportType::Water = #DockToolbarWidgets

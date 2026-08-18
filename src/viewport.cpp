@@ -2518,6 +2518,12 @@ bool HandleViewportClicked(const Viewport &vp, int x, int y)
 	{
 		Point pt = TranslateXYToTileCoord(vp, x, y);
 		if (pt.x != -1 && CheckClickOnCitizen(pt.x, pt.y)) return true;
+		/* Fork: Klick auf ein Wohnhaus oeffnet den Haus-Dialog. */
+		if (pt.x != -1) {
+			extern bool ShowHouseInfoOnClick(TileIndex tile);
+			TileIndex house_tile = TileVirtXY(pt.x, pt.y);
+			if (ShowHouseInfoOnClick(house_tile)) return true;
+		}
 	}
 
 	bool result = CheckClickOnLandscape(vp, x, y);

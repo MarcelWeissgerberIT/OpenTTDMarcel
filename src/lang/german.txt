@@ -2272,6 +2272,21 @@ STR_PIXELSTUDIO_RESET                                           :{BLACK}Original
 STR_PIXELSTUDIO_RESET_TOOLTIP                                   :{BLACK}Originalgrafik dieser Ansicht wiederherstellen
 STR_PIXELSTUDIO_SAVE                                            :{BLACK}Speichern
 STR_PIXELSTUDIO_SAVE_TOOLTIP                                    :{BLACK}Im Spiel übernehmen und dauerhaft behalten
+STR_HOUSEOWN_CAPTION                                            :{WHITE}{STRING}
+STR_HOUSEOWN_TOWN                                               :{BLACK}Stadt: {ORANGE}{TOWN}
+STR_HOUSEOWN_POPULATION                                         :{BLACK}Bewohner: {ORANGE}{NUM}
+STR_HOUSEOWN_COMMERCIAL                                         :{BLACK}Gewerbegebäude (keine Bewohner)
+STR_HOUSEOWN_AGE                                                :{BLACK}Alter: {ORANGE}{NUM} Jahr{P "" e}
+STR_HOUSEOWN_PRICE                                              :{BLACK}Kaufpreis: {ORANGE}{CURRENCY_LONG}
+STR_HOUSEOWN_RENT_OUT                                           :{BLACK}Zu erwartende Miete: {ORANGE}{CURRENCY_LONG}{BLACK} pro Monat
+STR_HOUSEOWN_OWNED                                              :{BLACK}Dieses Gebäude gehört Ihnen (bezahlt: {CURRENCY_LONG})
+STR_HOUSEOWN_RENT_IN                                            :{BLACK}Mieteinnahmen: {ORANGE}{CURRENCY_LONG}{BLACK} pro Monat
+STR_HOUSEOWN_BUY                                                :{BLACK}Gebäude kaufen
+STR_HOUSEOWN_BUY_TOOLTIP                                        :{BLACK}Dieses Gebäude kaufen und monatlich Miete verdienen
+STR_HOUSEOWN_VIEW                                               :{BLACK}Ort zeigen
+STR_HOUSEOWN_VIEW_TOOLTIP                                       :{BLACK}Hauptansicht auf dieses Gebäude zentrieren
+STR_HOUSEOWN_NO_MONEY                                           :{WHITE}Nicht genug Geld, um dieses Gebäude zu kaufen
+STR_NEWS_HOUSEOWN_DEMOLISHED                                    :{BIG_FONT}{BLACK}Ihr Miethaus in {TOWN} wurde von der Stadt abgerissen
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Mehrspieler-Spiel beginnen
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landschaft mit gemäßigtem Klima auswählen
@@ -2316,6 +2331,8 @@ STR_AUTOCONNECT_ERR_NO_DEPOT                                    :{BLACK}Kein Pla
 STR_AUTOCONNECT_MODE_TRAIN                                      :{BLACK}Modus: Zug
 STR_AUTOCONNECT_COUNT_TRAIN                                     :{BLACK}Züge: {NUM}
 STR_AUTOCONNECT_ERR_NO_RAIL_SITE                                :{BLACK}Kein Platz für einen Bahnhof in der Nähe einer der Städte
+STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL                              :{BLACK}Nicht genug Geld für Strecke plus Züge - erst Geld verdienen oder Kredit aufnehmen
+STR_AUTOCONNECT_ERR_DETOUR                                      :{BLACK}Es wurde nur eine große Umweg-Route gefunden - nichts gebaut. LKW-Option probieren oder Hindernisse beseitigen
 STR_AUTOCONNECT_ERR_NO_RAIL_PATH                                :{BLACK}Keine Bahnstrecke zwischen den Städten möglich (Wasser im Weg?)
 STR_AUTOCONNECT_MODE_SHIP                                       :{BLACK}Modus: Schiffe
 STR_AUTOCONNECT_COUNT_SHIP                                      :{BLACK}Schiffe: {NUM}

@@ -30,6 +30,8 @@
 #include "string_func.h"
 #include "strings_func.h"
 #include "viewport_func.h"
+#include "town.h"
+#include "tile_map.h"
 #include "window_func.h"
 #include "timer/timer.h"
 #include "company_func.h"
@@ -394,6 +396,34 @@ static bool ConPixelTest(std::span<std::string_view> argv)
 		bool ok = PixelStudioReadSprite(base + offset, ps);
 		IConsolePrint(CC_DEFAULT, "ReadSprite({}) -> {} ({}x{})", base + offset, ok, ps.width, ps.height);
 		break;
+	}
+	return true;
+}
+
+/* Fork: Haus-Dialog-Diagnose - findet ein Haus, zentriert und oeffnet den Dialog. */
+static bool ConHouseTest(std::span<std::string_view> argv)
+{
+	extern bool ShowHouseInfoOnClick(TileIndex tile);
+	extern Money HouseOwnPriceAt(TileIndex tile);
+	extern bool HouseOwnBuy(TileIndex tile);
+	TileIndex best = INVALID_TILE;
+	Money best_price = INT64_MAX;
+	for (const Town *t : Town::Iterate()) {
+		for (TileIndex tile : SpiralTileSequence(t->xy, 14)) {
+			if (!IsTileType(tile, TileType::House)) continue;
+			Money p = HouseOwnPriceAt(tile);
+			if (p < best_price) { best_price = p; best = tile; }
+		}
+	}
+	if (best == INVALID_TILE) {
+		IConsolePrint(CC_DEFAULT, "Kein Haus gefunden.");
+		return true;
+	}
+	IConsolePrint(CC_DEFAULT, "Haus an Kachel {} (Preis {})", best.base(), (int64_t)best_price);
+	ScrollMainWindowToTile(best);
+	ShowHouseInfoOnClick(best);
+	if (argv.size() >= 2 && argv[1] == "buy") {
+		IConsolePrint(CC_DEFAULT, "Kauf: {}", HouseOwnBuy(best) ? "ok" : "fehlgeschlagen");
 	}
 	return true;
 }
@@ -3038,6 +3068,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("autoconnect",             ConAutoConnect);
 	IConsole::CmdRegister("citizenwin",              ConCitizenWindow);
 	IConsole::CmdRegister("pstest",                  ConPixelTest);
+	IConsole::CmdRegister("housetest",               ConHouseTest);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);
