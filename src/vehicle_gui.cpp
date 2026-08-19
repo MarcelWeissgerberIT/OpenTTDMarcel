@@ -44,6 +44,13 @@
 #include "train_cmd.h"
 #include "hotkeys.h"
 #include "group_cmd.h"
+#include "group.h"
+#include "autoreplace_func.h"
+#include "autoreplace_cmd.h"
+#include "error.h"
+#include "core/backup_type.hpp"
+#include "timer/timer.h"
+#include "timer/timer_game_calendar.h"
 
 #include "table/strings.h"
 
@@ -2863,6 +2870,90 @@ static void ShowVehicleDetailsWindow(const Vehicle *v)
 /* Unified vehicle GUI - Vehicle View Window */
 
 /** Vehicle view widgets. */
+/* =================== Fork: Modernisieren auf Knopfdruck ===================
+ * Der Knopf im Fahrzeugfenster legt eine Ersetzen-Regel auf das beste
+ * neuere Modell (oder das gleiche Modell fabrikneu) und schickt das
+ * Fahrzeug zum Service ins Depot - dort tauscht das normale Autoreplace,
+ * der Fahrplan bleibt vollstaendig erhalten. */
+
+/** Bestes klar besseres, baubares Nachfolgemodell (Invalid = keins). */
+static EngineID ForkFindBetterEngine(const Vehicle *v)
+{
+	const Engine *ef = Engine::Get(v->engine_type);
+	uint cap_f = ef->GetDisplayDefaultCapacity();
+	uint spd_f = ef->GetDisplayMaxSpeed();
+	uint pow_f = ef->GetPower();
+	uint best_score = v->type == VehicleType::Train ? spd_f + pow_f / 10 : cap_f * 3 + spd_f;
+	EngineID best = EngineID::Invalid();
+	for (const Engine *e : Engine::IterateType(v->type)) {
+		if (e->index == v->engine_type) continue;
+		if (!e->company_avail.Test(v->owner)) continue;
+		if (!CheckAutoreplaceValidity(v->engine_type, e->index, v->owner)) continue;
+		uint score;
+		if (v->type == VehicleType::Train) {
+			uint spd = e->GetDisplayMaxSpeed(), pw = e->GetPower();
+			if (spd < spd_f || pw < pow_f) continue;
+			score = spd + pw / 10;
+		} else {
+			if (e->GetDefaultCargoType() != ef->GetDefaultCargoType()) continue;
+			uint cap = e->GetDisplayDefaultCapacity(), spd = e->GetDisplayMaxSpeed();
+			if (cap < cap_f || spd < spd_f) continue;
+			score = cap * 3 + spd;
+		}
+		if (score > best_score) {
+			best_score = score;
+			best = e->index;
+		}
+	}
+	return best;
+}
+
+/** Fabrikneu-Tausch (gleiches Modell): Regel gilt nur bis zum Tausch. */
+struct ForkPendingRenew {
+	VehicleID vehicle;
+	EngineID engine;
+	CompanyID owner;
+	int days_left; ///< Sicherheitsfrist; danach wird die Regel entfernt.
+};
+static std::vector<ForkPendingRenew> _fork_pending_renews;
+
+static void ForkRegisterPendingRenew(VehicleID vehicle, EngineID engine, CompanyID owner)
+{
+	for (const ForkPendingRenew &p : _fork_pending_renews) {
+		if (p.vehicle == vehicle) return;
+	}
+	_fork_pending_renews.push_back({vehicle, engine, owner, 90});
+}
+
+/* Taeglich pruefen: Ist der Tausch passiert (altes Fahrzeug weg) oder die
+ * Frist abgelaufen, wird die "Modell -> gleiches Modell"-Regel entfernt,
+ * damit nicht bei jedem Depotbesuch erneut getauscht wird. */
+static const IntervalTimer<TimerGameCalendar> _fork_renew_timer = {{TimerGameCalendar::Trigger::Day, TimerGameCalendar::Priority::None}, [](auto) {
+	for (auto it = _fork_pending_renews.begin(); it != _fork_pending_renews.end();) {
+		bool done = --it->days_left <= 0;
+		if (!done) {
+			const Vehicle *v = Vehicle::GetIfValid(it->vehicle);
+			done = v == nullptr || v->engine_type != it->engine || v->owner != it->owner;
+		}
+		if (!done) {
+			++it;
+			continue;
+		}
+		EngineID engine = it->engine;
+		CompanyID owner = it->owner;
+		it = _fork_pending_renews.erase(it);
+		bool still_needed = std::any_of(_fork_pending_renews.begin(), _fork_pending_renews.end(),
+				[&](const ForkPendingRenew &p) { return p.engine == engine && p.owner == owner; });
+		if (still_needed) continue;
+		Company *c = Company::GetIfValid(owner);
+		if (c != nullptr && EngineReplacementForCompany(c, engine, ALL_GROUP) == engine) {
+			Backup<CompanyID> cur_company(_current_company, owner);
+			Command<Commands::SetAutoreplace>::Do(DoCommandFlag::Execute, ALL_GROUP, engine, EngineID::Invalid(), false);
+			cur_company.Restore();
+		}
+	}
+}};
+
 static constexpr std::initializer_list<NWidgetPart> _nested_vehicle_view_widgets = {
 	NWidget(NWID_HORIZONTAL),
 		NWidget(WWT_CLOSEBOX, Colours::Grey),
@@ -2897,6 +2988,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_vehicle_view_widgets
 			EndContainer(),
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_SHOW_ORDERS), SetMinimalSize(18, 18), SetSpriteTip(SPR_SHOW_ORDERS),
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_SHOW_DETAILS), SetMinimalSize(18, 18), SetSpriteTip(SPR_SHOW_VEHICLE_DETAILS),
+			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_MODERNIZE), SetMinimalSize(18, 18), SetSpriteTip(SPR_EMPTY /* filled later */, STR_MODERNIZE_TOOLTIP),
 			NWidget(WWT_PANEL, Colours::Grey), SetMinimalSize(18, 0), SetResize(0, 1), EndContainer(),
 		EndContainer(),
 	EndContainer(),
@@ -3066,6 +3158,15 @@ public:
 		};
 		this->GetWidget<NWidgetCore>(WID_VV_CLONE)->SetSprite(vehicle_view_clone_sprites[v->type]);
 
+		/* Fork: Sprite des Modernisieren-Knopfs je Fahrzeugtyp. */
+		static constexpr VehicleTypeIndexArray<const SpriteID> vehicle_view_modernize_sprites = {
+			SPR_REPLACE_TRAIN,
+			SPR_REPLACE_ROADVEH,
+			SPR_REPLACE_SHIP,
+			SPR_REPLACE_AIRCRAFT,
+		};
+		this->GetWidget<NWidgetCore>(WID_VV_MODERNIZE)->SetSprite(vehicle_view_modernize_sprites[v->type]);
+
 		switch (v->type) {
 			case VehicleType::Train:
 				this->GetWidget<NWidgetCore>(WID_VV_TURN_AROUND)->SetToolTip(STR_VEHICLE_VIEW_TRAIN_REVERSE_TOOLTIP);
@@ -3143,6 +3244,7 @@ public:
 		this->SetWidgetDisabledState(WID_VV_GOTO_DEPOT, !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_REFIT, !refittable_and_stopped_in_depot || !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_CLONE, !is_localcompany);
+		this->SetWidgetDisabledState(WID_VV_MODERNIZE, !is_localcompany);
 
 		/* Lower the Send To Depot button when clicking it would cause the
 		 * vehicle to NOT go to the depot. */
@@ -3370,6 +3472,28 @@ public:
 				assert(v->type == VehicleType::Train);
 				Command<Commands::ForceTrainProceed>::Post(STR_ERROR_CAN_T_MAKE_TRAIN_PASS_SIGNAL, v->tile, v->index);
 				break;
+
+			case WID_VV_MODERNIZE: { // Fork: besseres oder fabrikneues Modell beim naechsten Depotbesuch
+				if (v->owner != _local_company) break;
+				EngineID better = ForkFindBetterEngine(v);
+				EngineID target = better == EngineID::Invalid() ? v->engine_type : better;
+				if (better == EngineID::Invalid() && !IsEngineBuildable(target, v->type, v->owner)) {
+					ShowErrorMessage(GetEncodedString(STR_MODERNIZE_NOT_POSSIBLE), {}, WarningLevel::Error);
+					break;
+				}
+				if (EngineReplacementForCompany(Company::Get(v->owner), v->engine_type, ALL_GROUP) != target) {
+					Command<Commands::SetAutoreplace>::Post(ALL_GROUP, v->engine_type, target, false);
+				}
+				if (better == EngineID::Invalid()) ForkRegisterPendingRenew(v->index, v->engine_type, v->owner);
+				if (v->IsStoppedInDepot()) {
+					/* Steht schon im Depot: sofort tauschen. */
+					Command<Commands::AutoreplaceVehicle>::Post(v->index);
+				} else {
+					Command<Commands::SendVehicleToDepot>::Post(GetCmdSendToDepotMsg(v), v->index, DepotCommandFlags{DepotCommandFlag::Service}, {});
+					ShowErrorMessage(GetEncodedString(better != EngineID::Invalid() ? STR_MODERNIZE_INFO_UPGRADE : STR_MODERNIZE_INFO_RENEW), {}, WarningLevel::Info);
+				}
+				break;
+			}
 		}
 	}
 

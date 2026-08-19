@@ -23,6 +23,8 @@ enum PixelStudioWidgets : WidgetID {
 	WID_PS_VIEW_PREV,   ///< Vorherige Blickrichtung.
 	WID_PS_VIEW_LABEL,  ///< Anzeige "Ansicht x/8".
 	WID_PS_VIEW_NEXT,   ///< Naechste Blickrichtung.
+	WID_PS_ZOOM_OUT,    ///< Herauszoomen.
+	WID_PS_ZOOM_IN,     ///< Hineinzoomen.
 	WID_PS_CANVAS,      ///< Pixelraster zum Malen.
 	WID_PS_PALETTE,     ///< 16x16-Farbpalette.
 	WID_PS_COLOUR,      ///< Anzeige der gewaehlten Farbe.
@@ -30,6 +32,8 @@ enum PixelStudioWidgets : WidgetID {
 	WID_PS_TOOL_FILL,   ///< Werkzeug Fuellen.
 	WID_PS_TOOL_PICK,   ///< Werkzeug Pipette.
 	WID_PS_TOOL_ERASE,  ///< Werkzeug Radierer.
+	WID_PS_TOOL_SELECT, ///< Werkzeug Bereich markieren.
+	WID_PS_TOOL_GRADIENT, ///< Werkzeug Farbverlauf.
 	WID_PS_COPY,        ///< Ansicht als Bild in die Zwischenablage.
 	WID_PS_PASTE,       ///< Bild aus der Zwischenablage einfuegen.
 	WID_PS_UNDO,        ///< Rueckgaengig.

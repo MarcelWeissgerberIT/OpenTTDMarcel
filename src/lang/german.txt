@@ -2266,7 +2266,7 @@ STR_PIXELSTUDIO_PREV                                            :{BLACK}<
 STR_PIXELSTUDIO_NEXT                                            :{BLACK}>
 STR_PIXELSTUDIO_CANVAS_TOOLTIP                                  :{BLACK}Hier malen. Karierte Zellen sind durchsichtig
 STR_PIXELSTUDIO_PALETTE_TOOLTIP                                 :{BLACK}Spielpalette. Farben 198-205 übernehmen die Firmenfarbe
-STR_PIXELSTUDIO_COLOUR                                          :{BLACK}Farbe: {NUM}
+STR_PIXELSTUDIO_COLOUR                                          :{BLACK}Farben: {NUM} / {NUM}
 STR_PIXELSTUDIO_TOOL_PENCIL                                     :{BLACK}Stift
 STR_PIXELSTUDIO_TOOL_PENCIL_TOOLTIP                             :{BLACK}Einzelne Pixel malen (Ziehen zeichnet durch)
 STR_PIXELSTUDIO_TOOL_FILL                                       :{BLACK}Füllen
@@ -2275,6 +2275,18 @@ STR_PIXELSTUDIO_TOOL_PICK                                       :{BLACK}Pipette
 STR_PIXELSTUDIO_TOOL_PICK_TOOLTIP                               :{BLACK}Farbe aus dem Bild aufnehmen
 STR_PIXELSTUDIO_TOOL_ERASE                                      :{BLACK}Radierer
 STR_PIXELSTUDIO_TOOL_ERASE_TOOLTIP                              :{BLACK}Pixel durchsichtig machen
+STR_PIXELSTUDIO_TOOL_SELECT                                     :{BLACK}Auswahl
+STR_PIXELSTUDIO_TOOL_SELECT_TOOLTIP                             :{BLACK}Ziehen, um einen Bereich zu markieren - Füllen und Verlauf wirken dann nur dort. Ein einzelner Klick hebt die Auswahl auf
+STR_PIXELSTUDIO_TOOL_GRADIENT                                   :{BLACK}Verlauf
+STR_PIXELSTUDIO_TOOL_GRADIENT_TOOLTIP                           :{BLACK}Über das Bild ziehen, um von Farbe A nach Farbe B zu verlaufen (Rechtsklick oder Strg+Klick auf die Palette wählt Farbe B). Nur bemalte Pixel ändern sich
+STR_PIXELSTUDIO_ZOOM_IN                                         :{BLACK}+
+STR_PIXELSTUDIO_ZOOM_IN_TOOLTIP                                 :{BLACK}Hineinzoomen - Mausrad über der Leinwand geht auch; mit rechter Maustaste ziehen verschiebt den Ausschnitt
+STR_PIXELSTUDIO_ZOOM_OUT                                        :{BLACK}-
+STR_PIXELSTUDIO_ZOOM_OUT_TOOLTIP                                :{BLACK}Herauszoomen
+STR_MODERNIZE_TOOLTIP                                           :{BLACK}Fahrzeug modernisieren: Beim nächsten Depotbesuch Tausch gegen das beste neuere Modell - oder ein fabrikneues gleiches Modell. Der Fahrplan bleibt erhalten
+STR_MODERNIZE_INFO_UPGRADE                                      :{WHITE}Wird beim nächsten Depotbesuch durch ein neueres Modell ersetzt
+STR_MODERNIZE_INFO_RENEW                                        :{WHITE}Wird beim nächsten Depotbesuch gegen ein fabrikneues Fahrzeug getauscht
+STR_MODERNIZE_NOT_POSSIBLE                                      :{WHITE}Kein neueres Modell verfügbar und dieses Modell wird nicht mehr gebaut
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Kopieren
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Diese Ansicht als Bild in die Zwischenablage kopieren
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Einfügen

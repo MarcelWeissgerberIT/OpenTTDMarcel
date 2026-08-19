@@ -2297,7 +2297,7 @@ STR_PIXELSTUDIO_PREV                                            :{BLACK}<
 STR_PIXELSTUDIO_NEXT                                            :{BLACK}>
 STR_PIXELSTUDIO_CANVAS_TOOLTIP                                  :{BLACK}Paint here. Chequered cells are transparent
 STR_PIXELSTUDIO_PALETTE_TOOLTIP                                 :{BLACK}Game palette. Colours 198-205 take the company colour
-STR_PIXELSTUDIO_COLOUR                                          :{BLACK}Colour: {NUM}
+STR_PIXELSTUDIO_COLOUR                                          :{BLACK}Colours: {NUM} / {NUM}
 STR_PIXELSTUDIO_TOOL_PENCIL                                     :{BLACK}Pencil
 STR_PIXELSTUDIO_TOOL_PENCIL_TOOLTIP                             :{BLACK}Paint single pixels (drag to draw)
 STR_PIXELSTUDIO_TOOL_FILL                                       :{BLACK}Fill
@@ -2306,6 +2306,18 @@ STR_PIXELSTUDIO_TOOL_PICK                                       :{BLACK}Pick
 STR_PIXELSTUDIO_TOOL_PICK_TOOLTIP                               :{BLACK}Pick up a colour from the image
 STR_PIXELSTUDIO_TOOL_ERASE                                      :{BLACK}Erase
 STR_PIXELSTUDIO_TOOL_ERASE_TOOLTIP                              :{BLACK}Make pixels transparent
+STR_PIXELSTUDIO_TOOL_SELECT                                     :{BLACK}Select
+STR_PIXELSTUDIO_TOOL_SELECT_TOOLTIP                             :{BLACK}Drag to mark an area - Fill and Gradient then only affect it. A single click clears the selection
+STR_PIXELSTUDIO_TOOL_GRADIENT                                   :{BLACK}Gradient
+STR_PIXELSTUDIO_TOOL_GRADIENT_TOOLTIP                           :{BLACK}Drag across the image to blend from colour A to colour B (right-click or Ctrl+click the palette to set colour B). Only painted pixels change
+STR_PIXELSTUDIO_ZOOM_IN                                         :{BLACK}+
+STR_PIXELSTUDIO_ZOOM_IN_TOOLTIP                                 :{BLACK}Zoom in - the mouse wheel over the canvas works too; drag with the right mouse button to scroll
+STR_PIXELSTUDIO_ZOOM_OUT                                        :{BLACK}-
+STR_PIXELSTUDIO_ZOOM_OUT_TOOLTIP                                :{BLACK}Zoom out
+STR_MODERNIZE_TOOLTIP                                           :{BLACK}Modernise this vehicle: swap it for the best newer model - or a brand-new one of the same type - at the next depot visit. Orders are kept
+STR_MODERNIZE_INFO_UPGRADE                                      :{WHITE}Will be replaced by a new model at the next depot visit
+STR_MODERNIZE_INFO_RENEW                                        :{WHITE}Will be swapped for a brand-new vehicle at the next depot visit
+STR_MODERNIZE_NOT_POSSIBLE                                      :{WHITE}No newer model available and this model is no longer in production
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Copy
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Copy this view as an image to the clipboard
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Paste
