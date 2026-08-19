@@ -574,6 +574,16 @@ SettingsContainer &GetSettingsTree()
 		/* Build up the dynamic settings-array only once per OpenTTD session */
 		main = new SettingsContainer();
 
+		/* Fork: eigene Seite mit allen Feature-Schaltern der Marcel Edition. */
+		SettingsPage *marcel = main->Add(new SettingsPage(STR_CONFIG_SETTING_MARCEL_EDITION));
+		{
+			marcel->Add(new SettingEntry("gui.fork_citizens"));
+			marcel->Add(new SettingEntry("gui.fork_houseown"));
+			marcel->Add(new SettingEntry("gui.fork_politics"));
+			marcel->Add(new SettingEntry("gui.fork_autoconnect"));
+			marcel->Add(new SettingEntry("gui.fork_assistant"));
+		}
+
 		SettingsPage *localisation = main->Add(new SettingsPage(STR_CONFIG_SETTING_LOCALISATION));
 		{
 			localisation->Add(new SettingEntry("locale.units_velocity"));

@@ -533,6 +533,7 @@ static void TickBoardingAnims()
  * deterministisch aus der Kachel abgeleitet (kein Flackern). */
 void DrawWaitingPassengersOnTile(const TileInfo *ti)
 {
+	if (!_settings_client.gui.fork_citizens) return;
 	bool rail = IsRailStation(ti->tile) && !IsStationTileBlocked(ti->tile);
 	bool road = IsAnyRoadStopTile(ti->tile);
 	if (!rail && !road) return;
@@ -564,6 +565,7 @@ void DrawWaitingPassengersOnTile(const TileInfo *ti)
 
 void DrawBoardingAnimsOnTile(const TileInfo *ti)
 {
+	if (!_settings_client.gui.fork_citizens) return;
 	for (const BoardingAnim &a : _boarding_anims) {
 		if (a.tile != ti->tile) continue;
 		int px = a.x0 + ((int)a.x1 - (int)a.x0) * a.t / a.dur;
@@ -576,6 +578,7 @@ void DrawBoardingAnimsOnTile(const TileInfo *ti)
 
 void RunCitizensTick()
 {
+	if (!_settings_client.gui.fork_citizens) return;
 	uint64_t tick = TimerGameTick::counter;
 
 	MaybePublishTransportDemand(tick);
@@ -741,6 +744,7 @@ static SpriteID CitizenSprite(const Citizen &c, DiagDirection dir)
 
 void DrawCitizensOnTile(const TileInfo *ti)
 {
+	if (!_settings_client.gui.fork_citizens) return;
 	auto range = _citizens_by_tile.equal_range(ti->tile.base());
 	for (auto it = range.first; it != range.second; ++it) {
 		const Citizen &c = _citizens[it->second];
@@ -909,6 +913,7 @@ bool ShowCitizenWindowDebug(bool want_child)
 
 bool CheckClickOnCitizen(int world_x, int world_y)
 {
+	if (!_settings_client.gui.fork_citizens) return false;
 	const Citizen *best = nullptr;
 	uint best_d = 11; /* Fangradius in Weltkoordinaten. */
 	for (const Citizen &c : _citizens) {

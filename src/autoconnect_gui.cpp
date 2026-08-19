@@ -2338,6 +2338,7 @@ void ShowIndustryConnectWindow(IndustryID ind)
 static void AutoModernizeMonthly()
 {
 	extern bool AssistantModernizeEnabled();
+	if (!_settings_client.gui.fork_autoconnect) return;
 	if (!AssistantModernizeEnabled()) return;
 	if (_game_mode != GameMode::Normal) return;
 	if (!Company::IsValidID(_local_company)) return;

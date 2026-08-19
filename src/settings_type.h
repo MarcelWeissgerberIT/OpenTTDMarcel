@@ -215,6 +215,12 @@ enum class ViewportAutoscrolling : uint8_t {
 
 /** Settings related to the GUI and other stuff that is not saved in the savegame. */
 struct GUISettings {
+	/* Fork: Feature-Schalter der Marcel Edition. */
+	bool fork_citizens;    ///< Sichtbare Buerger, Wartemengen und Animationen.
+	bool fork_houseown;    ///< Immobilien-Modus (Haus-Dialog beim Klick).
+	bool fork_politics;    ///< Politik: Buergermeister und Schmier-Bonus.
+	bool fork_autoconnect; ///< Auto-Verbindung und Auto-Modernisierung.
+	bool fork_assistant;   ///< Persoenlicher Assistent (Automatik-Aufgaben).
 	bool sg_full_load_any; ///< new full load calculation, any cargo must be full read from pre v93 savegames
 	bool lost_vehicle_warn; ///< if a vehicle can't find its destination, show a warning
 	OrderReviewSystem order_review_system; ///< perform order reviews on vehicles

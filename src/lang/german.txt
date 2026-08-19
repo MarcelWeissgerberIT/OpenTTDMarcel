@@ -2319,6 +2319,17 @@ STR_TOWN_MAYOR_TOOLTIP                                          :{BLACK}Setzt ei
 STR_TOWN_MAYOR_NO_MONEY                                         :{WHITE}Nicht genug Geld, um einen Bürgermeister einzusetzen
 STR_ASSISTANT_LOG_MAYOR                                         :Bürgermeister in {TOWN} eingesetzt
 STR_ASSISTANT_LOG_LOST                                          :{VEHICLE} findet keinen Weg - Strecke prüfen!
+STR_CONFIG_SETTING_MARCEL_EDITION                               :{ORANGE}Marcel Edition
+STR_CONFIG_SETTING_FORK_CITIZENS                                :Bürger in Städten und an Stationen anzeigen: {STRING2}
+STR_CONFIG_SETTING_FORK_CITIZENS_HELPTEXT                       :Sichtbare Menschen mit Namen und Porträts, Wartemengen am Bahnsteig und Einsteige-Animationen. Ausschalten für den klassischen, ruhigeren Look
+STR_CONFIG_SETTING_FORK_HOUSEOWN                                :Immobilien-Modus (Häuser per Klick kaufen): {STRING2}
+STR_CONFIG_SETTING_FORK_HOUSEOWN_HELPTEXT                       :Ein Klick auf ein Wohnhaus öffnet den Info-Dialog mit Kaufen, Renovieren und Ausbauen. Bereits gekaufte Häuser bringen auch bei ausgeschalteter Option weiter Miete
+STR_CONFIG_SETTING_FORK_POLITICS                                :Politik (Bürgermeister und Schmier-Bonus): {STRING2}
+STR_CONFIG_SETTING_FORK_POLITICS_HELPTEXT                       :Der "Bürgermeister einsetzen"-Knopf im Stadtfenster und die Regel, dass bestens gestimmte Städte alle Bauten erlauben. Ausschalten für die klassischen Stadtverwaltungs-Regeln
+STR_CONFIG_SETTING_FORK_AUTOCONNECT                             :Auto-Verbindung und Auto-Modernisierung: {STRING2}
+STR_CONFIG_SETTING_FORK_AUTOCONNECT_HELPTEXT                    :Der automatische Verbindungsbauer in der Werkzeugleiste und die monatliche Fahrzeug-Modernisierung. Ausschalten, wenn du lieber alles selbst baust
+STR_CONFIG_SETTING_FORK_ASSISTANT                               :Persönlicher Assistent: {STRING2}
+STR_CONFIG_SETTING_FORK_ASSISTANT_HELPTEXT                      :Das Assistenten-Fenster mit automatischer Stadtpflege, Werbung und Fahrzeug-Erneuerung. Ausschalten pausiert seine gesamte monatliche Arbeit
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Kopieren
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Diese Ansicht als Bild in die Zwischenablage kopieren
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Einfügen

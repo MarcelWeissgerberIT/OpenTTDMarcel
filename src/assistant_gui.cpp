@@ -212,6 +212,7 @@ bool MayorInstall(Town *t)
 static std::set<VehicleID> _as_lost_reported;
 
 static const IntervalTimer<TimerGameCalendar> _as_lost_timer = {{TimerGameCalendar::Trigger::Day, TimerGameCalendar::Priority::None}, [](auto) {
+	if (!_settings_client.gui.fork_assistant) return;
 	if (_game_mode != GameMode::Normal) return;
 	if (!Company::IsValidID(_local_company)) return;
 	for (const Vehicle *v : Vehicle::Iterate()) {
@@ -256,6 +257,7 @@ static bool AsTryTownAction(Town *t, TownAction action, Money &budget, StringID 
 
 static void AssistantMonthly()
 {
+	if (!_settings_client.gui.fork_assistant) return;
 	if (_game_mode != GameMode::Normal) return;
 	if (!Company::IsValidID(_local_company)) return;
 	AssistantLoad();
@@ -264,7 +266,7 @@ static void AssistantMonthly()
 
 	/* Buergermeister-Staedte bleiben dauerhaft bestens gestimmt. */
 	MayorLoad();
-	for (TownID id : _mayor_towns) {
+	if (_settings_client.gui.fork_politics) for (TownID id : _mayor_towns) {
 		Town *t = Town::GetIfValid(id);
 		if (t != nullptr && t->ratings[_local_company] < RATING_BRIBE_MAXIMUM) {
 			t->ratings[_local_company] = RATING_BRIBE_MAXIMUM;

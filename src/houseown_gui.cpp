@@ -526,6 +526,7 @@ Money HouseOwnPriceAt(TileIndex tile)
  */
 bool ShowHouseInfoOnClick(TileIndex tile)
 {
+	if (!_settings_client.gui.fork_houseown) return false;
 	if (!IsValidTile(tile) || !IsTileType(tile, TileType::House)) return false;
 	TileIndex north = HouseNorthTile(tile);
 	AllocateWindowDescFront<HouseInfoWindow>(_houseown_desc, north.base());

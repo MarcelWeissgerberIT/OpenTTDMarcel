@@ -977,6 +977,7 @@ static CallBackFunction MenuClickBuildWater(int)
 
 static CallBackFunction ToolbarAutoConnectClick(Window *)
 {
+	if (!_settings_client.gui.fork_autoconnect) return CallBackFunction::None;
 	extern void ShowAutoConnectWindow();
 	ShowAutoConnectWindow();
 	return CallBackFunction::None;

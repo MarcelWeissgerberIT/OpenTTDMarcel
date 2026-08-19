@@ -2270,6 +2270,7 @@ struct CompanyWindow : Window
 
 			case WID_C_ASSISTANT: {
 				/* Fork: Persoenlicher Assistent. */
+				if (!_settings_client.gui.fork_assistant) break;
 				extern void ShowAssistantWindow();
 				ShowAssistantWindow();
 				break;

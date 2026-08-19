@@ -2350,6 +2350,17 @@ STR_TOWN_MAYOR_TOOLTIP                                          :{BLACK}Install 
 STR_TOWN_MAYOR_NO_MONEY                                         :{WHITE}Not enough money to install a mayor
 STR_ASSISTANT_LOG_MAYOR                                         :Installed the mayor of {TOWN}
 STR_ASSISTANT_LOG_LOST                                          :{VEHICLE} cannot find a path - check the track!
+STR_CONFIG_SETTING_MARCEL_EDITION                               :{ORANGE}Marcel Edition
+STR_CONFIG_SETTING_FORK_CITIZENS                                :Show citizens in towns and at stations: {STRING2}
+STR_CONFIG_SETTING_FORK_CITIZENS_HELPTEXT                       :Visible people with names and portraits, waiting crowds on platforms and boarding animations. Turn off for a classic, quieter look
+STR_CONFIG_SETTING_FORK_HOUSEOWN                                :Real-estate mode (click houses to buy them): {STRING2}
+STR_CONFIG_SETTING_FORK_HOUSEOWN_HELPTEXT                       :Clicking a residential building opens the info dialogue with the option to buy, renovate and extend it. Houses you already own keep earning rent even when this is off
+STR_CONFIG_SETTING_FORK_POLITICS                                :Politics (mayors and bribe bonus): {STRING2}
+STR_CONFIG_SETTING_FORK_POLITICS_HELPTEXT                       :The "install mayor" button in town windows, and towns with an excellent rating permitting all construction. Turn off for vanilla town authority rules
+STR_CONFIG_SETTING_FORK_AUTOCONNECT                             :Auto-connect and auto-modernisation: {STRING2}
+STR_CONFIG_SETTING_FORK_AUTOCONNECT_HELPTEXT                    :The automatic connection builder in the toolbar and the monthly vehicle modernisation. Turn off if you prefer building everything yourself
+STR_CONFIG_SETTING_FORK_ASSISTANT                               :Personal assistant: {STRING2}
+STR_CONFIG_SETTING_FORK_ASSISTANT_HELPTEXT                      :The assistant window with its automatic town care, advertising and vehicle renewal. Turning this off pauses all of its monthly work
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Copy
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Copy this view as an image to the clipboard
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Paste

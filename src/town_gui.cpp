@@ -136,7 +136,7 @@ public:
 	{
 		if (this->GetWidget<NWidgetBase>(WID_TV_MAYOR) != nullptr) {
 			extern bool MayorInstalled(TownID town);
-			this->SetWidgetDisabledState(WID_TV_MAYOR, !Company::IsValidID(_local_company) || MayorInstalled(this->town->index));
+			this->SetWidgetDisabledState(WID_TV_MAYOR, !_settings_client.gui.fork_politics || !Company::IsValidID(_local_company) || MayorInstalled(this->town->index));
 		}
 		this->available_actions = GetMaskOfTownActions(_local_company, this->town);
 		if (this->available_actions != displayed_actions_on_previous_painting) this->SetDirty();
@@ -499,6 +499,7 @@ public:
 			case WID_TV_MAYOR: { // Fork: Buergermeister einsetzen
 				extern bool MayorInstalled(TownID town);
 				extern bool MayorInstall(Town *t);
+				if (!_settings_client.gui.fork_politics) break;
 				if (!Company::IsValidID(_local_company)) break;
 				Town *t = Town::Get(this->window_number);
 				if (MayorInstalled(t->index)) break;
