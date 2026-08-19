@@ -2291,6 +2291,28 @@ STR_AUTOCONNECT_TERRAFORM                                       :{BLACK}Planiere
 STR_AUTOCONNECT_TERRAFORM_TOOLTIP                                :{BLACK}Gelände für Bahnhöfe und Flughäfen einebnen, wenn kein ebener Platz gefunden wird (kostet Geld, aber der Bau wird fertig)
 STR_AUTOCONNECT_BIGAIR                                          :{BLACK}Große Flughäfen
 STR_AUTOCONNECT_BIGAIR_TOOLTIP                                  :{BLACK}Größten verfügbaren Flughafentyp bevorzugen; bei Platz- oder Geldmangel wird auf kleinere ausgewichen
+STR_COMPANY_VIEW_ASSISTANT_BUTTON                               :{BLACK}Assistent...
+STR_COMPANY_VIEW_ASSISTANT_TOOLTIP                              :{BLACK}Dein persönlicher Assistent: automatisiert Fahrzeug-Erneuerung, Stadtpflege und Werbung
+STR_ASSISTANT_CAPTION                                           :{WHITE}Persönlicher Assistent
+STR_ASSISTANT_MODERNIZE                                         :{BLACK}Fahrzeuge automatisch modernisieren
+STR_ASSISTANT_MODERNIZE_TOOLTIP                                 :{BLACK}Legt einmal im Monat Ersetzen-Regeln an, damit Busse, LKW, Schiffe und Flugzeuge beim nächsten Depotbesuch auf bessere Modelle wechseln
+STR_ASSISTANT_RENEW                                             :{BLACK}Alternde Fahrzeuge automatisch erneuern
+STR_ASSISTANT_RENEW_TOOLTIP                                     :{BLACK}Tauscht Fahrzeuge gegen ein fabrikneues gleiches Modell, bevor sie verschleißen (nutzt die Auto-Erneuern-Einstellung der Firma)
+STR_ASSISTANT_RENEW_MONTHS                                      :{BLACK}{NUM} Monate vor Lebensende
+STR_ASSISTANT_TOWN_BUDGET                                       :{BLACK}Stadtpflege: {CURRENCY_LONG}/Monat
+STR_ASSISTANT_TOWN_TOOLTIP                                      :{BLACK}Monatliches Budget für gute Stimmung im Stadtrat: pflanzt Bäume und schaltet kleine Kampagnen; ein richtig feindlicher Stadtrat wird geschmiert
+STR_ASSISTANT_AD_BUDGET                                         :{BLACK}Werbung: {CURRENCY_LONG}/Monat
+STR_ASSISTANT_AD_TOOLTIP                                        :{BLACK}Monatliches Budget für Werbekampagnen in Städten mit eigenen Stationen - bringt mehr Fahrgäste und Fracht
+STR_ASSISTANT_TV                                                :{BLACK}Werbespot ansehen
+STR_ASSISTANT_TV_TOOLTIP                                        :{BLACK}Den Fernsehspot deiner Firma ansehen
+STR_ASSISTANT_LOG_EMPTY                                         :{BLACK}Noch keine Aktionen - oben Budgets einstellen
+STR_ASSISTANT_LOG_AD                                            :Werbekampagne in {TOWN}
+STR_ASSISTANT_LOG_STATUE                                        :Statue errichtet in {TOWN}
+STR_ASSISTANT_LOG_BRIBE                                         :Stadtrat von {TOWN} geschmiert
+STR_ASSISTANT_TV_CAPTION                                        :{WHITE}Firmen-TV
+STR_ASSISTANT_TV_NAME                                           :{BLACK}{COMPANY}
+STR_ASSISTANT_TV_SLOGAN1                                        :{WHITE}Reise mit {COMPANY}!
+STR_ASSISTANT_TV_SLOGAN2                                        :Jetzt einsteigen!
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Kopieren
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Diese Ansicht als Bild in die Zwischenablage kopieren
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Einfügen

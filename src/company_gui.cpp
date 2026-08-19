@@ -2075,6 +2075,7 @@ struct CompanyWindow : Window
 			case WID_C_BUILD_HQ:
 			case WID_C_RELOCATE_HQ:
 			case WID_C_EDIT_FLAG:
+			case WID_C_ASSISTANT:
 			case WID_C_VIEW_INFRASTRUCTURE:
 			case WID_C_GIVE_MONEY:
 			case WID_C_HOSTILE_TAKEOVER:
@@ -2264,6 +2265,13 @@ struct CompanyWindow : Window
 				/* Fork: Firmen-Fahne im Pixel-Studio bemalen. */
 				extern void ShowPixelStudioFlag();
 				ShowPixelStudioFlag();
+				break;
+			}
+
+			case WID_C_ASSISTANT: {
+				/* Fork: Persoenlicher Assistent. */
+				extern void ShowAssistantWindow();
+				ShowAssistantWindow();
 				break;
 			}
 

@@ -2333,6 +2333,8 @@ void ShowIndustryConnectWindow(IndustryID ind)
  * der Fahrzeuge bleiben dabei vollstaendig erhalten. */
 static void AutoModernizeMonthly()
 {
+	extern bool AssistantModernizeEnabled();
+	if (!AssistantModernizeEnabled()) return;
 	if (_game_mode != GameMode::Normal) return;
 	if (!Company::IsValidID(_local_company)) return;
 	Company *c = Company::Get(_local_company);

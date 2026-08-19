@@ -435,6 +435,16 @@ enum class WindowClass : uint16_t {
 	PixelStudio,
 
 	/**
+	 * Persoenlicher Assistent (Fork): Automatik-Aufgaben und Budgets.
+	 */
+	Assistant,
+
+	/**
+	 * Fernseher (Fork): Werbespot der eigenen Firma ansehen.
+	 */
+	AssistantTv,
+
+	/**
 	 * Haus-Dialog (Fork): Bewohner-Infos, Kauf und Miete.
 	 */
 	HouseInfo,

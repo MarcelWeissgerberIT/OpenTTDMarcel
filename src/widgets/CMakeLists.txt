@@ -15,6 +15,7 @@ add_files(
     engine_widget.h
     error_widget.h
     fios_widget.h
+    assistant_widget.h
     houseown_widget.h
     pixelstudio_widget.h
     framerate_widget.h

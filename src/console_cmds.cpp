@@ -383,6 +383,14 @@ static bool ConAutoConnect(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Assistenten-Fenster oeffnen. */
+static bool ConAssistant(std::span<std::string_view>)
+{
+	extern void ShowAssistantWindow();
+	ShowAssistantWindow();
+	return true;
+}
+
 /* Fork: Pixel-Studio-Diagnose - liest das Sprite des ersten Strassenfahrzeugs. */
 static bool ConPixelTest(std::span<std::string_view> argv)
 {
@@ -3067,6 +3075,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("scrollto",                ConScrollToTile);
 	IConsole::CmdRegister("autoconnect",             ConAutoConnect);
 	IConsole::CmdRegister("citizenwin",              ConCitizenWindow);
+	IConsole::CmdRegister("assistant",               ConAssistant);
 	IConsole::CmdRegister("pstest",                  ConPixelTest);
 	IConsole::CmdRegister("housetest",               ConHouseTest);
 	IConsole::CmdRegister("alias",                   ConAlias);

@@ -64,6 +64,7 @@ add_files(
     airport.h
     airport_cmd.h
     airport_gui.cpp
+    assistant_gui.cpp
     autoconnect_gui.cpp
     citizen.cpp
     citizen.h
