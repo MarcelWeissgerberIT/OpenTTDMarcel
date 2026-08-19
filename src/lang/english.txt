@@ -2318,6 +2318,10 @@ STR_MODERNIZE_TOOLTIP                                           :{BLACK}Modernis
 STR_MODERNIZE_INFO_UPGRADE                                      :{WHITE}Will be replaced by a new model at the next depot visit
 STR_MODERNIZE_INFO_RENEW                                        :{WHITE}Will be swapped for a brand-new vehicle at the next depot visit
 STR_MODERNIZE_NOT_POSSIBLE                                      :{WHITE}No newer model available and this model is no longer in production
+STR_AUTOCONNECT_TERRAFORM                                       :{BLACK}Landscaping
+STR_AUTOCONNECT_TERRAFORM_TOOLTIP                               :{BLACK}Level ground for stations and airports when no flat site is found (costs money, but the build completes)
+STR_AUTOCONNECT_BIGAIR                                          :{BLACK}Big airports
+STR_AUTOCONNECT_BIGAIR_TOOLTIP                                  :{BLACK}Prefer the largest available airport type; falls back to smaller ones if space or money is short
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Copy
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Copy this view as an image to the clipboard
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Paste

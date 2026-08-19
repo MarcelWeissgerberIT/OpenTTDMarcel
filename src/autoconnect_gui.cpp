@@ -118,42 +118,172 @@ struct AutoConnectResult {
 	uint32_t error_detail = 0; ///< Roh-ID der Engine-Fehlermeldung (Diagnose).
 };
 
+/* ============ Fork: Einstellungen, Staffelstart, Bau-Rollback ============ */
+
+static bool _ac_allow_terraform = true; ///< Flaechen fuer Stationen/Flughaefen planieren.
+static bool _ac_big_airports = true;    ///< Groessten verfuegbaren Flughafen bevorzugen.
+
+/** Gestaffelter Start: Fahrzeug i faehrt i*4 Tage nach dem ersten los. */
+struct AcDelayedStart {
+	VehicleID vehicle;
+	int days;
+};
+static std::vector<AcDelayedStart> _ac_delayed_starts;
+
+static void AcStartStaggered(VehicleID veh, uint index)
+{
+	if (index == 0) {
+		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh, false);
+	} else {
+		_ac_delayed_starts.push_back({veh, (int)index * 4});
+	}
+}
+
+static const IntervalTimer<TimerGameCalendar> _ac_stagger_timer = {{TimerGameCalendar::Trigger::Day, TimerGameCalendar::Priority::None}, [](auto) {
+	for (auto it = _ac_delayed_starts.begin(); it != _ac_delayed_starts.end();) {
+		const Vehicle *v = Vehicle::GetIfValid(it->vehicle);
+		if (v == nullptr) {
+			it = _ac_delayed_starts.erase(it);
+			continue;
+		}
+		if (--it->days > 0) {
+			++it;
+			continue;
+		}
+		if (v->vehstatus.Test(VehState::Stopped)) {
+			Backup<CompanyID> cur_company(_current_company, v->owner);
+			Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, it->vehicle, false);
+			cur_company.Restore();
+		}
+		it = _ac_delayed_starts.erase(it);
+	}
+}};
+
+/* Bau-Log: Bei einem Abbruch mitten im Bau werden alle bereits gebauten
+ * Kacheln wieder abgerissen, statt halbe Ruinen stehen zu lassen. */
+static std::vector<TileIndex> _ac_build_log;
+static bool _ac_log_active = false;
+
+static void AcLogBegin() { _ac_build_log.clear(); _ac_log_active = true; }
+static void AcLogEnd() { _ac_log_active = false; _ac_build_log.clear(); }
+static void AcLogTile(TileIndex t) { if (_ac_log_active) _ac_build_log.push_back(t); }
+
+static void AcRollback()
+{
+	if (!_ac_log_active) return;
+	_ac_log_active = false;
+	for (auto it = _ac_build_log.rbegin(); it != _ac_build_log.rend(); ++it) {
+		Command<Commands::LandscapeClear>::Do(DoCommandFlag::Execute, *it);
+	}
+	_ac_build_log.clear();
+}
+
 /**
- * Freie Stelle für einen kleinen Flughafen nahe der Stadt suchen.
- * @param t Stadt, in deren Nähe gebaut werden soll.
+ * Flughafentyp-Kandidaten, groesster zuerst (je nach Einstellung und
+ * Jahr/Verfuegbarkeit); AT_SMALL ist immer der letzte Rueckfall.
+ */
+static std::vector<uint8_t> AcAirportCandidates()
+{
+	std::vector<uint8_t> out;
+	if (_ac_big_airports) {
+		for (uint8_t at : {(uint8_t)AT_INTERNATIONAL, (uint8_t)AT_METROPOLITAN, (uint8_t)AT_LARGE, (uint8_t)AT_COMMUTER}) {
+			if (AirportSpec::Get(at)->IsAvailable()) out.push_back(at);
+		}
+	}
+	if (AirportSpec::Get(AT_SMALL)->IsAvailable()) out.push_back(AT_SMALL);
+	return out;
+}
+
+/**
+ * Freie Stelle für einen Flughafen des Typs nahe der Stadt suchen.
  * @return Bauplatz-Tile oder INVALID_TILE.
  */
-static TileIndex FindAirportSite(const Town *t)
+static TileIndex FindAirportSite(const Town *t, uint8_t type)
 {
 	for (TileIndex tile : SpiralTileSequence(t->xy, 40)) {
-		CommandCost res = Command<Commands::BuildAirport>::Do({}, tile, AT_SMALL, 0, NEW_STATION, false);
+		CommandCost res = Command<Commands::BuildAirport>::Do({}, tile, type, 0, NEW_STATION, false);
 		if (res.Succeeded()) return tile;
 	}
 	return INVALID_TILE;
 }
 
 /**
- * Notfall-Flughafenbau mit Landanpassung: Fläche (4x3 für AT_SMALL)
+ * Notfall-Flughafenbau mit Landanpassung: Fläche in Typ-Groesse
  * nahe der Stadt planieren und dort bauen. Nur im Execute-Modus.
  * @return Bauplatz oder INVALID_TILE.
  */
-static TileIndex BuildAirportWithTerraform(const Town *t, AutoConnectResult &result)
+static TileIndex BuildAirportWithTerraform(const Town *t, uint8_t type, Money reserve, AutoConnectResult &result)
 {
+	const AirportSpec *as = AirportSpec::Get(type);
 	uint attempts = 0;
 	for (TileIndex tile : SpiralTileSequence(t->xy, 40)) {
-		TileIndex end = AddTileIndexDiffCWrap(tile, TileIndexDiffC{3, 2});
+		TileIndex end = AddTileIndexDiffCWrap(tile, TileIndexDiffC{(int16_t)(as->size_x - 1), (int16_t)(as->size_y - 1)});
 		if (end == INVALID_TILE) continue;
-		/* Erst testen, ob die Fläche überhaupt planierbar ist. */
+		/* Erst testen, ob die Fläche überhaupt planierbar ist - und ob nach
+		 * der Planierung die Reserve (Flugzeuge) noch bezahlbar waere. Ohne
+		 * diese Bremse verbrennt die Suche das halbe Konto in Planierungen
+		 * und meldet am Ende trotzdem einen Fehlschlag. */
 		auto [tc, tmoney, ttile] = Command<Commands::LevelLand>::Do({}, end, tile, false, LevelMode::Level);
 		if (tc.Failed()) continue;
+		if (Company::Get(_local_company)->money < tc.GetCost() + reserve) return INVALID_TILE;
 		if (++attempts > 25) break; /* Kosten begrenzen */
 		auto [lc, lmoney, ltile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, end, tile, false, LevelMode::Level);
 		if (lc.Failed()) continue;
 		result.cost += lc.GetCost();
-		CommandCost c = Command<Commands::BuildAirport>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating, DoCommandFlag::Execute}, tile, AT_SMALL, 0, NEW_STATION, false);
+		CommandCost c = Command<Commands::BuildAirport>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating, DoCommandFlag::Execute}, tile, type, 0, NEW_STATION, false);
 		if (c.Succeeded()) {
 			result.cost += c.GetCost();
 			return tile;
+		}
+	}
+	return INVALID_TILE;
+}
+
+/**
+ * Flughafen nahe einer Stadt bauen: probiert die Typen von gross nach
+ * klein, erst auf passendem Gelaende, dann (falls erlaubt) mit
+ * Planierung. Gebaut wird sofort; Rueckgabe ist die Bauplatz-Kachel.
+ */
+static TileIndex AcBuildAirportNear(const Town *t, bool estimate, Money reserve, AutoConnectResult &result)
+{
+	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
+	for (uint8_t at : AcAirportCandidates()) {
+		TileIndex site = FindAirportSite(t, at);
+		if (site == INVALID_TILE) continue;
+		/* Kostenvoranschlag: Nach dem Flughafen muss die Reserve (Flugzeuge,
+		 * zweiter Flughafen) noch bezahlbar sein - sonst kleineren Typ nehmen. */
+		if (!estimate) {
+			CommandCost probe = Command<Commands::BuildAirport>::Do({}, site, at, 0, NEW_STATION, false);
+			if (probe.Succeeded() && Company::Get(_local_company)->money < probe.GetCost() + reserve) {
+				Debug(misc, 0, "AC: airport type {} too expensive with reserve", at);
+				continue;
+			}
+		}
+		CommandCost c = Command<Commands::BuildAirport>::Do(do_flags, site, at, 0, NEW_STATION, false);
+		if (c.Failed()) {
+			/* Stadtbewertung blockiert? Der Spieler hat den Bau angewiesen. */
+			c = Command<Commands::BuildAirport>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, site, at, 0, NEW_STATION, false);
+		}
+		if (c.Failed()) {
+			Debug(misc, 0, "AC: airport type {} failed at 0x{:X} err {}", at, site.base(), c.GetErrorMessage().base());
+			continue; /* z. B. zu teuer -> kleineren Typ probieren */
+		}
+		result.cost += c.GetCost();
+		AcLogTile(site);
+		return site;
+	}
+	if (!estimate && _ac_allow_terraform) {
+		for (uint8_t at : AcAirportCandidates()) {
+			TileIndex site = BuildAirportWithTerraform(t, at, reserve, result);
+			if (site == INVALID_TILE) continue;
+			if (Company::Get(_local_company)->money < reserve) {
+				/* Nach dem Bau bliebe kein Geld fuer die Flugzeuge:
+				 * wieder abreissen und einen kleineren Typ versuchen. */
+				Command<Commands::LandscapeClear>::Do(DoCommandFlag::Execute, site);
+				continue;
+			}
+			AcLogTile(site);
+			return site;
 		}
 	}
 	return INVALID_TILE;
@@ -181,7 +311,6 @@ static EngineID FindBestAircraft()
 static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint count, bool estimate)
 {
 	AutoConnectResult result;
-	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 
 	/* Sind die Städte weit genug auseinander für zwei getrennte Flughäfen? */
 	if (DistanceManhattan(town_a->xy, town_b->xy) < 12) {
@@ -191,67 +320,47 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 
 	Backup<CompanyID> cur_company(_current_company, _local_company);
 
-	/* Bestehende eigene Flughäfen in Stadtnähe wiederverwenden. */
-	Station *re_a = FindNearbyOwnStation(town_a->xy, StationFacility::Airport, 25);
-	Station *re_b = FindNearbyOwnStation(town_b->xy, StationFacility::Airport, 25);
-	if (re_a != nullptr && re_a == re_b) re_b = nullptr;
-
-	TileIndex site_a = INVALID_TILE;
-	if (re_a == nullptr) {
-		/* Flughafen A: Platz suchen und sofort bauen — erst danach für B
-		 * suchen, damit die Platzsuche für B den neuen Flughafen A kennt. */
-		site_a = FindAirportSite(town_a);
-		if (site_a == INVALID_TILE && !estimate) site_a = BuildAirportWithTerraform(town_a, result);
-		if (site_a == INVALID_TILE) {
-			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
-			cur_company.Restore();
-			return result;
-		}
-		bool built_a = !estimate && IsTileType(site_a, TileType::Station);
-		CommandCost cost_a = built_a ? CommandCost{} : Command<Commands::BuildAirport>::Do(do_flags, site_a, AT_SMALL, 0, NEW_STATION, false);
-		if (cost_a.Failed()) {
-			Debug(misc, 0, "AC: airport A failed at 0x{:X} err {}", site_a.base(), cost_a.GetErrorMessage().base());
-			/* Stadtbewertung blockiert? Der Spieler hat den Bau angewiesen. */
-			cost_a = Command<Commands::BuildAirport>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, site_a, AT_SMALL, 0, NEW_STATION, false);
-		}
-		if (cost_a.Failed()) {
-			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
-			result.error_detail = cost_a.GetErrorMessage().base();
-			cur_company.Restore();
-			return result;
-		}
-		result.cost += cost_a.GetCost();
-	}
-
-	TileIndex site_b = INVALID_TILE;
-	if (re_b == nullptr) {
-		site_b = FindAirportSite(town_b);
-		if (site_b == INVALID_TILE && !estimate) site_b = BuildAirportWithTerraform(town_b, result);
-		if (site_b == INVALID_TILE) {
-			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
-			cur_company.Restore();
-			return result;
-		}
-		bool built_b = !estimate && IsTileType(site_b, TileType::Station);
-		CommandCost cost_b = built_b ? CommandCost{} : Command<Commands::BuildAirport>::Do(do_flags, site_b, AT_SMALL, 0, NEW_STATION, false);
-		if (cost_b.Failed()) {
-			Debug(misc, 0, "AC: airport B failed at 0x{:X} err {}", site_b.base(), cost_b.GetErrorMessage().base());
-			cost_b = Command<Commands::BuildAirport>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, site_b, AT_SMALL, 0, NEW_STATION, false);
-		}
-		if (cost_b.Failed()) {
-			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
-			result.error_detail = cost_b.GetErrorMessage().base();
-			cur_company.Restore();
-			return result;
-		}
-		result.cost += cost_b.GetCost();
-	}
-
+	/* Flugzeugkosten vorab kennen: Diese Reserve bleibt beim Flughafenbau
+	 * unangetastet, sonst stehen teure Flughaefen ohne ein einziges
+	 * Flugzeug in der Landschaft. */
 	EngineID engine = FindBestAircraft();
 	if (engine == EngineID::Invalid()) {
 		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
 		cur_company.Restore();
 		return result;
+	}
+	Money aircraft_cost = Engine::Get(engine)->GetCost() * count;
+
+	/* Bestehende eigene Flughäfen in Stadtnähe wiederverwenden. */
+	Station *re_a = FindNearbyOwnStation(town_a->xy, StationFacility::Airport, 25);
+	Station *re_b = FindNearbyOwnStation(town_b->xy, StationFacility::Airport, 25);
+	if (re_a != nullptr && re_a == re_b) re_b = nullptr;
+
+	if (!estimate) AcLogBegin();
+
+	TileIndex site_a = INVALID_TILE;
+	if (re_a == nullptr) {
+		/* Flughafen A: groessten passenden Typ bauen — erst danach für B
+		 * suchen, damit die Platzsuche für B den neuen Flughafen A kennt.
+		 * Reserve: Flugzeuge + Platz fuer den zweiten (kleinen) Flughafen. */
+		site_a = AcBuildAirportNear(town_a, estimate, aircraft_cost + (re_b == nullptr ? 25000 : 0), result);
+		if (site_a == INVALID_TILE) {
+			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
+			AcRollback();
+			cur_company.Restore();
+			return result;
+		}
+	}
+
+	TileIndex site_b = INVALID_TILE;
+	if (re_b == nullptr) {
+		site_b = AcBuildAirportNear(town_b, estimate, aircraft_cost, result);
+		if (site_b == INVALID_TILE) {
+			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
+			AcRollback();
+			cur_company.Restore();
+			return result;
+		}
 	}
 
 	if (estimate) {
@@ -266,6 +375,7 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 	Station *hangar_st = st_a->airport.HasHangar() ? st_a : st_b;
 	if (!hangar_st->airport.HasHangar()) {
 		result.error = STR_AUTOCONNECT_ERR_NO_DEPOT;
+		AcRollback();
 		cur_company.Restore();
 		return result;
 	}
@@ -279,6 +389,7 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 			/* Kein Geld mehr o. Ä.: mit dem bauen, was da ist. */
 			if (i == 0) {
 				result.error = STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE;
+				AcRollback();
 				cur_company.Restore();
 				return result;
 			}
@@ -290,9 +401,10 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 		if (co_a.Failed()) result.error_detail = co_a.GetErrorMessage().base();
 		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 1, MakeStationOrder(st_b->index));
 
-		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
+		AcStartStaggered(veh_id, i);
 	}
 
+	AcLogEnd();
 	cur_company.Restore();
 	result.ok = true;
 	return result;
@@ -570,7 +682,7 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		for (TileIndex st : stops_town_b) {
 			Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, order_no++, MakeStationOrder(Station::GetByTile(st)->index));
 		}
-		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
+		AcStartStaggered(veh_id, i);
 	}
 	(void)st_a; (void)st_b;
 
@@ -581,7 +693,7 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 
 /* ------------------------- Zugverbindung (Stufe 2) -------------------- */
 
-static const uint RAIL_PLATFORM_LEN = 3; ///< Bahnsteiglänge in Kacheln.
+static const uint RAIL_PLATFORM_LEN = 5; ///< Bahnsteiglänge in Kacheln (Lok + 3 Waggons passen ganz hinein).
 
 /** Bahnhofs-Bauplatz mit Anschlussrichtungen. */
 struct RailSite {
@@ -674,13 +786,34 @@ static bool RailSiteFromStation(const Station *st, TileIndex toward, bool need_b
  * Stadt suchen. Das Anschluss-Ende wird Richtung \a toward gewählt.
  * @param need_both Ringbetrieb: beide Bahnsteig-Enden brauchen Anschluss.
  */
-static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool need_both, uint8_t numtracks)
+static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool need_both, uint8_t numtracks, bool terraform = false, AutoConnectResult *result = nullptr)
 {
 	RailSite site;
+	uint level_attempts = 0;
 	for (TileIndex tile : SpiralTileSequence(center, 30)) {
 		for (Axis axis : {Axis::X, Axis::Y}) {
 			CommandCost res = Command<Commands::BuildRailStation>::Do({}, tile, RAILTYPE_RAIL,
 					axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+			if (!res.Succeeded() && terraform && level_attempts < 40) {
+				/* Bahnhofsflaeche samt beider Ausfahrkacheln planieren
+				 * und erneut versuchen (Marcel: nicht mitten im Bau
+				 * aufgeben, sondern das Gelaende passend machen). */
+				TileIndexDiffC pre = (axis == Axis::X) ? TileIndexDiffC{-1, 0} : TileIndexDiffC{0, -1};
+				TileIndexDiffC post = (axis == Axis::X)
+						? TileIndexDiffC{(int16_t)RAIL_PLATFORM_LEN, (int16_t)(numtracks - 1)}
+						: TileIndexDiffC{(int16_t)(numtracks - 1), (int16_t)RAIL_PLATFORM_LEN};
+				TileIndex a0 = AddTileIndexDiffCWrap(tile, pre);
+				TileIndex a1 = AddTileIndexDiffCWrap(tile, post);
+				if (a0 == INVALID_TILE || a1 == INVALID_TILE) continue;
+				auto [tc, tmoney, ttile] = Command<Commands::LevelLand>::Do({}, a1, a0, false, LevelMode::Level);
+				if (tc.Failed()) continue;
+				level_attempts++;
+				auto [lc, lmoney, ltile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, a1, a0, false, LevelMode::Level);
+				if (lc.Failed()) continue;
+				if (result != nullptr) result->cost += lc.GetCost();
+				res = Command<Commands::BuildRailStation>::Do({}, tile, RAILTYPE_RAIL,
+						axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+			}
 			if (!res.Succeeded()) continue;
 
 			DiagDirection far_dir = (axis == Axis::X) ? DiagDirection::SW : DiagDirection::SE;
@@ -931,6 +1064,10 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 				return false;
 			}
 			result.cost += c.GetCost();
+			if (do_flags.Test(DoCommandFlag::Execute)) {
+				AcLogTile(path[i].first);
+				AcLogTile(path[i + 1].first);
+			}
 			continue;
 		}
 		if (bridge_heads.count(i) != 0) continue; /* Rampe liefert das Gleis */
@@ -955,6 +1092,7 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 			return false;
 		}
 		result.cost += c.GetCost();
+		if (do_flags.Test(DoCommandFlag::Execute)) AcLogTile(path[i].first);
 	}
 
 	return true;
@@ -1040,11 +1178,19 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	bool build_st_b = re_b == nullptr || !RailSiteFromStation(re_b, center_a, loop, site_b);
 	if (build_st_a) site_a = FindRailStationSite(center_a, center_b, loop, numtracks);
 	if (build_st_b) site_b = FindRailStationSite(center_b, center_a, loop, numtracks);
+	/* Kein ebener Platz? Mit Planierung erneut suchen (nur beim echten Bau). */
+	if (!estimate && _ac_allow_terraform) {
+		if (build_st_a && site_a.tile == INVALID_TILE) site_a = FindRailStationSite(center_a, center_b, loop, numtracks, true, &result);
+		if (build_st_b && site_b.tile == INVALID_TILE) site_b = FindRailStationSite(center_b, center_a, loop, numtracks, true, &result);
+	}
 	if (site_a.tile == INVALID_TILE || site_b.tile == INVALID_TILE) {
 		result.error = STR_AUTOCONNECT_ERR_NO_RAIL_SITE;
 		cur_company.Restore();
 		return result;
 	}
+
+	/* Ab hier entsteht Sichtbares: Bau-Log fuer sauberen Rueckbau fuehren. */
+	if (!estimate) AcLogBegin();
 
 	/* Bahnhöfe zuerst bauen, damit die Wegsuche sie als Hindernis kennt. */
 	for (const auto &[site, build] : {std::pair{&site_a, build_st_a}, std::pair{&site_b, build_st_b}}) {
@@ -1064,16 +1210,24 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 			result.error_detail = c.GetErrorMessage().base();
+			AcRollback();
 			cur_company.Restore();
 			return result;
 		}
 		result.cost += c.GetCost();
+		/* Neue Bahnhofsflaeche ins Bau-Log (fuer den Rueckbau-Fall). */
+		if (!estimate) {
+			uint w = (site->axis == Axis::X) ? RAIL_PLATFORM_LEN : numtracks;
+			uint h = (site->axis == Axis::X) ? numtracks : RAIL_PLATFORM_LEN;
+			for (TileIndex t : TileArea(site->tile, static_cast<uint8_t>(w), static_cast<uint8_t>(h))) AcLogTile(t);
+		}
 	}
 
 	/* Hinweg suchen und bauen. */
 	auto path = FindRailPath(site_a, site_b);
 	if (path.empty()) {
 		result.error = STR_AUTOCONNECT_ERR_NO_RAIL_PATH;
+		AcRollback();
 		cur_company.Restore();
 		return result;
 	}
@@ -1081,10 +1235,12 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	 * das Ergebnis aergert mehr, als es nutzt. */
 	if (path.size() > 30 + 3 * DistanceManhattan(center_a, center_b)) {
 		result.error = STR_AUTOCONNECT_ERR_DETOUR;
+		AcRollback();
 		cur_company.Restore();
 		return result;
 	}
 	if (!BuildRailLine(path, ReverseDiagDir(site_b.exit_dir), loop && !estimate, do_flags, result)) {
+		AcRollback();
 		cur_company.Restore();
 		return result;
 	}
@@ -1107,10 +1263,12 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		path2 = FindRailPath(from2, to2);
 		if (path2.empty()) {
 			result.error = STR_AUTOCONNECT_ERR_NO_RAIL_PATH;
+			AcRollback();
 			cur_company.Restore();
 			return result;
 		}
 		if (!BuildRailLine(path2, ReverseDiagDir(site_a.exit2_dir), !estimate, do_flags, result)) {
+			AcRollback();
 			cur_company.Restore();
 			return result;
 		}
@@ -1126,6 +1284,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	EngineID engine = FindBestTrainEngine();
 	if (engine == EngineID::Invalid()) {
 		result.error = STR_AUTOCONNECT_ERR_NO_VEHICLE;
+		AcRollback();
 		cur_company.Restore();
 		return result;
 	}
@@ -1193,11 +1352,13 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			}
 			result.cost += c1.GetCost() + c2.GetCost();
 			depot = cand;
+			AcLogTile(cand);
 			break;
 		}
 	}
 	if (depot == INVALID_TILE) {
 		result.error = STR_AUTOCONNECT_ERR_NO_DEPOT;
+		AcRollback();
 		cur_company.Restore();
 		return result;
 	}
@@ -1211,6 +1372,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		if (cost_v.Failed()) {
 			if (t == 0) {
 				result.error = STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE;
+				AcRollback();
 				cur_company.Restore();
 				return result;
 			}
@@ -1234,6 +1396,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			Command<Commands::SellVehicle>::Do(DoCommandFlag::Execute, veh_id, true, false, ClientID::Invalid);
 			if (t == 0) {
 				result.error = STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE;
+				AcRollback();
 				cur_company.Restore();
 				return result;
 			}
@@ -1245,7 +1408,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		CommandCost co_a = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 0, oa);
 		if (co_a.Failed()) result.error_detail = co_a.GetErrorMessage().base();
 		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 1, MakeStationOrder(st_b->index));
-		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
+		AcStartStaggered(veh_id, t);
 	}
 
 	/* Signale erst jetzt: eine abgebrochene Baustelle hinterlässt so
@@ -1255,6 +1418,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		if (!path2.empty()) SignalisePath(path2, result);
 	}
 
+	AcLogEnd();
 	cur_company.Restore();
 	result.ok = true;
 	return result;
@@ -1407,7 +1571,7 @@ static AutoConnectResult BuildShipConnection(Town *town_a, Town *town_b, uint co
 		CommandCost co_a = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 0, MakeStationOrder(st_a->index));
 		if (co_a.Failed()) result.error_detail = co_a.GetErrorMessage().base();
 		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 1, MakeStationOrder(st_b->index));
-		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
+		AcStartStaggered(veh_id, i);
 	}
 
 	cur_company.Restore();
@@ -1614,6 +1778,16 @@ struct AutoConnectWindow : Window {
 				break;
 			}
 
+			case WID_AC_TERRAFORM:
+				_ac_allow_terraform = !_ac_allow_terraform;
+				this->SetDirty();
+				break;
+
+			case WID_AC_BIGAIR:
+				_ac_big_airports = !_ac_big_airports;
+				this->SetDirty();
+				break;
+
 			case WID_AC_COUNT_DOWN:
 				if (this->count > 1) this->count--;
 				this->SetDirty();
@@ -1721,6 +1895,13 @@ struct AutoConnectWindow : Window {
 		this->SetDirty();
 	}
 
+	void OnPaint() override
+	{
+		this->SetWidgetLoweredState(WID_AC_TERRAFORM, _ac_allow_terraform);
+		this->SetWidgetLoweredState(WID_AC_BIGAIR, _ac_big_airports);
+		this->DrawWidgets();
+	}
+
 	void DrawWidget(const Rect &r, WidgetID widget) const override
 	{
 		/* Statuszeile mehrzeilig, damit auch lange Fehlermeldungen lesbar sind. */
@@ -1745,6 +1926,10 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_DOWN), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_MINUS),
 				NWidget(WWT_TEXT, Colours::Invalid, WID_AC_COUNT), SetFill(1, 0), SetAlignment({AlignmentH::Centre, AlignmentV::Middle}),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_UP), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_PLUS),
+			EndContainer(),
+			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
+				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_TERRAFORM), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_TERRAFORM, STR_AUTOCONNECT_TERRAFORM_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_BIGAIR), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_BIGAIR, STR_AUTOCONNECT_BIGAIR_TOOLTIP),
 			EndContainer(),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_ESTIMATE), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_ESTIMATE, STR_AUTOCONNECT_ESTIMATE_TOOLTIP),
@@ -1985,7 +2170,7 @@ static AutoConnectResult BuildTruckConnection(const Industry *ind_a, const Indus
 		oa.SetLoadType(OrderLoadType::FullLoadAny); /* an der Quelle volladen */
 		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 0, oa);
 		Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, 1, MakeStationOrder(st_b->index));
-		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, veh_id, false);
+		AcStartStaggered(veh_id, i);
 	}
 
 	cur_company.Restore();

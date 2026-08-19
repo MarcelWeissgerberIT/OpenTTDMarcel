@@ -61,6 +61,7 @@ enum CompanyFinancesWidgets : WidgetID {
 	WID_CF_EXPS_PRICE1,    ///< Column for year Y-2 expenses.
 	WID_CF_EXPS_PRICE2,    ///< Column for year Y-1 expenses.
 	WID_CF_EXPS_PRICE3,    ///< Column for year Y expenses.
+	WID_CF_SCROLLBAR,      ///< Fork: Scrollleiste, wenn die Aufstellung zu hoch wird.
 	WID_CF_TOTAL_PANEL,    ///< Panel for totals.
 	WID_CF_SEL_MAXLOAN,    ///< Selection of maxloan column.
 	WID_CF_BALANCE_VALUE,  ///< Bank balance value.

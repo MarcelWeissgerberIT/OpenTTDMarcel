@@ -48,6 +48,7 @@
 #include "timer/timer_window.h"
 #include "core/string_consumer.hpp"
 
+#include "core/backup_type.hpp"
 #include "widgets/company_widget.h"
 
 #include "table/strings.h"
@@ -307,10 +308,11 @@ static constexpr std::initializer_list<NWidgetPart> _nested_company_finances_wid
 	NWidget(NWID_SELECTION, Colours::Invalid, WID_CF_SEL_PANEL),
 		NWidget(WWT_PANEL, Colours::Grey),
 			NWidget(NWID_HORIZONTAL), SetPadding(WidgetDimensions::unscaled.framerect), SetPIP(0, WidgetDimensions::unscaled.hsep_wide, 0),
-				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_CATEGORY), SetMinimalSize(120, 0), SetFill(0, 0),
-				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_PRICE1), SetMinimalSize(86, 0), SetFill(0, 0),
-				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_PRICE2), SetMinimalSize(86, 0), SetFill(0, 0),
-				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_PRICE3), SetMinimalSize(86, 0), SetFill(0, 0),
+				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_CATEGORY), SetMinimalSize(120, 0), SetFill(0, 0), SetScrollbar(WID_CF_SCROLLBAR),
+				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_PRICE1), SetMinimalSize(86, 0), SetFill(0, 0), SetScrollbar(WID_CF_SCROLLBAR),
+				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_PRICE2), SetMinimalSize(86, 0), SetFill(0, 0), SetScrollbar(WID_CF_SCROLLBAR),
+				NWidget(WWT_EMPTY, Colours::Invalid, WID_CF_EXPS_PRICE3), SetMinimalSize(86, 0), SetFill(0, 0), SetScrollbar(WID_CF_SCROLLBAR),
+				NWidget(NWID_VSCROLLBAR, Colours::Grey, WID_CF_SCROLLBAR),
 			EndContainer(),
 		EndContainer(),
 	EndContainer(),
@@ -351,10 +353,21 @@ struct CompanyFinancesWindow : Window {
 	static Money max_money; ///< The maximum amount of money a company has had this 'run'
 	bool small = false; ///< Window is toggled to 'small'.
 	uint8_t first_visible = NUM_PERIODS - 1; ///< First visible expenses column. The last column (current) is always visible.
+	Scrollbar *vscroll = nullptr; ///< Fork: scrollt die Aufstellung, wenn sie hoeher als der Bildschirm wuerde.
+
+	/* Fork: Hoehe der Aufstellung auf den Bildschirm begrenzen - der Rest wird gescrollt. */
+	static uint ExpsPanelHeight()
+	{
+		uint total = GetTotalCategoriesHeight();
+		uint cap = std::max<uint>(12 * GetCharacterHeight(FontSize::Normal), _screen.height - ScaleGUITrad(140));
+		return std::min(total, cap);
+	}
 
 	CompanyFinancesWindow(WindowDesc &desc, CompanyID company) : Window(desc)
 	{
 		this->CreateNestedTree();
+		this->vscroll = this->GetScrollbar(WID_CF_SCROLLBAR);
+		this->vscroll->SetStepSize(GetCharacterHeight(FontSize::Normal));
 		this->SetupWidgets();
 		this->FinishInitNested(company);
 
@@ -407,13 +420,13 @@ struct CompanyFinancesWindow : Window {
 		switch (widget) {
 			case WID_CF_EXPS_CATEGORY:
 				size.width  = GetMaxCategoriesWidth();
-				size.height = GetTotalCategoriesHeight();
+				size.height = ExpsPanelHeight();
 				break;
 
 			case WID_CF_EXPS_PRICE1:
 			case WID_CF_EXPS_PRICE2:
 			case WID_CF_EXPS_PRICE3:
-				size.height = GetTotalCategoriesHeight();
+				size.height = ExpsPanelHeight();
 				[[fallthrough]];
 
 			case WID_CF_BALANCE_VALUE:
@@ -434,9 +447,14 @@ struct CompanyFinancesWindow : Window {
 	void DrawWidget(const Rect &r, WidgetID widget) const override
 	{
 		switch (widget) {
-			case WID_CF_EXPS_CATEGORY:
-				DrawCategories(r);
+			case WID_CF_EXPS_CATEGORY: {
+				DrawPixelInfo tmp_dpi;
+				if (!FillDrawPixelInfo(&tmp_dpi, r.left, r.top, r.Width(), r.Height())) break;
+				AutoRestoreBackup dpi_backup(_cur_dpi, &tmp_dpi);
+				Rect sr = {0, -(int)this->vscroll->GetPosition(), r.Width() - 1, INT_MAX / 2};
+				DrawCategories(sr);
 				break;
+			}
 
 			case WID_CF_EXPS_PRICE1:
 			case WID_CF_EXPS_PRICE2:
@@ -446,7 +464,11 @@ struct CompanyFinancesWindow : Window {
 
 				const Company *c = Company::Get(this->window_number);
 				const auto &expenses = c->yearly_expenses[NUM_PERIODS - period - 1];
-				DrawYearColumn(r, TimerGameEconomy::year - (NUM_PERIODS - period - 1), expenses);
+				DrawPixelInfo tmp_dpi;
+				if (!FillDrawPixelInfo(&tmp_dpi, r.left, r.top, r.Width(), r.Height())) break;
+				AutoRestoreBackup dpi_backup(_cur_dpi, &tmp_dpi);
+				Rect sr = {0, -(int)this->vscroll->GetPosition(), r.Width() - 1, INT_MAX / 2};
+				DrawYearColumn(sr, TimerGameEconomy::year - (NUM_PERIODS - period - 1), expenses);
 				break;
 			}
 
@@ -471,12 +493,20 @@ struct CompanyFinancesWindow : Window {
 		this->GetWidget<NWidgetStacked>(WID_CF_SEL_BUTTONS)->SetDisplayedPlane(plane);
 	}
 
+	void OnResize() override
+	{
+		if (this->vscroll != nullptr) {
+			this->vscroll->SetCapacity(this->GetWidget<NWidgetBase>(WID_CF_EXPS_CATEGORY)->current_y);
+			this->vscroll->SetCount(GetTotalCategoriesHeight());
+		}
+	}
+
 	void OnPaint() override
 	{
 		if (!this->IsShaded()) {
 			if (!this->small) {
 				/* Check that the expenses panel height matches the height needed for the layout. */
-				if (GetTotalCategoriesHeight() != this->GetWidget<NWidgetBase>(WID_CF_EXPS_CATEGORY)->current_y) {
+				if (ExpsPanelHeight() != this->GetWidget<NWidgetBase>(WID_CF_EXPS_CATEGORY)->current_y) {
 					this->SetupWidgets();
 					this->ReInit();
 					return;

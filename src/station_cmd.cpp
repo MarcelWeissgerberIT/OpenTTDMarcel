@@ -2688,6 +2688,15 @@ CommandCost CmdBuildAirport(DoCommandFlags flags, TileIndex tile, uint8_t airpor
 		}
 	}
 
+	/* Fork: Eine ausgezeichnet gestimmte Stadtverwaltung (z. B. frisch
+	 * geschmiert, Rating >= 800) verweigert weder Laerm noch Anzahl -
+	 * wer zahlt, darf bauen. */
+	if (authority_refuse_town != nullptr && Company::IsValidID(_current_company)
+			&& authority_refuse_town->ratings[_current_company] >= RATING_BRIBE_MAXIMUM) {
+		authority_refuse_message = STR_NULL;
+		authority_refuse_town = nullptr;
+	}
+
 	if (authority_refuse_message != STR_NULL) {
 		return CommandCostWithParam(authority_refuse_message, authority_refuse_town->index);
 	}

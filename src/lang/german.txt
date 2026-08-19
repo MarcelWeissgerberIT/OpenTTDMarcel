@@ -2287,6 +2287,10 @@ STR_MODERNIZE_TOOLTIP                                           :{BLACK}Fahrzeug
 STR_MODERNIZE_INFO_UPGRADE                                      :{WHITE}Wird beim nächsten Depotbesuch durch ein neueres Modell ersetzt
 STR_MODERNIZE_INFO_RENEW                                        :{WHITE}Wird beim nächsten Depotbesuch gegen ein fabrikneues Fahrzeug getauscht
 STR_MODERNIZE_NOT_POSSIBLE                                      :{WHITE}Kein neueres Modell verfügbar und dieses Modell wird nicht mehr gebaut
+STR_AUTOCONNECT_TERRAFORM                                       :{BLACK}Planieren
+STR_AUTOCONNECT_TERRAFORM_TOOLTIP                                :{BLACK}Gelände für Bahnhöfe und Flughäfen einebnen, wenn kein ebener Platz gefunden wird (kostet Geld, aber der Bau wird fertig)
+STR_AUTOCONNECT_BIGAIR                                          :{BLACK}Große Flughäfen
+STR_AUTOCONNECT_BIGAIR_TOOLTIP                                  :{BLACK}Größten verfügbaren Flughafentyp bevorzugen; bei Platz- oder Geldmangel wird auf kleinere ausgewichen
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Kopieren
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Diese Ansicht als Bild in die Zwischenablage kopieren
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Einfügen
