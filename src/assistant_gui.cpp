@@ -119,6 +119,113 @@ static void AssistantLoad()
 	_as_ad_step = std::min<int>(data[4], 10);
 }
 
+/* ---------------- Buergermeister (Politik) ----------------
+ * Einmal kraeftig investieren, und die Stadt ist dauerhaft auf der
+ * Seite der Firma: Das Rating wird monatlich auf Schmier-Maximum
+ * gehalten, womit auch Laerm- und Anzahl-Verbote entfallen
+ * (station_cmd laesst ab Rating 800 alles durch). Gemerkt wird der
+ * Posten je Kartenstand (generation_seed) in mayor.dat. */
+
+static std::set<TownID> _mayor_towns;
+
+static std::string MayorFilePath()
+{
+	return _personal_dir + "mayor.dat";
+}
+
+static void MayorLoad()
+{
+	static uint32_t loaded_seed = UINT32_MAX;
+	uint32_t seed = _settings_game.game_creation.generation_seed;
+	if (loaded_seed == seed) return;
+	loaded_seed = seed;
+	_mayor_towns.clear();
+	std::ifstream f(MayorFilePath(), std::ios::binary);
+	if (!f.is_open()) return;
+	char magic[4];
+	uint32_t file_seed = 0;
+	uint16_t count = 0;
+	f.read(magic, 4);
+	f.read(reinterpret_cast<char *>(&file_seed), 4);
+	f.read(reinterpret_cast<char *>(&count), 2);
+	if (!f.good() || std::string_view(magic, 4) != "MAY1" || file_seed != seed) return;
+	for (uint i = 0; i < count; i++) {
+		uint16_t id;
+		f.read(reinterpret_cast<char *>(&id), 2);
+		if (!f.good()) break;
+		_mayor_towns.insert(static_cast<TownID>(id));
+	}
+}
+
+static void MayorSave()
+{
+	std::ofstream f(MayorFilePath(), std::ios::binary | std::ios::trunc);
+	if (!f.is_open()) return;
+	uint32_t seed = _settings_game.game_creation.generation_seed;
+	uint16_t count = static_cast<uint16_t>(_mayor_towns.size());
+	f.write("MAY1", 4);
+	f.write(reinterpret_cast<const char *>(&seed), 4);
+	f.write(reinterpret_cast<const char *>(&count), 2);
+	for (TownID id : _mayor_towns) {
+		uint16_t raw = id.base();
+		f.write(reinterpret_cast<const char *>(&raw), 2);
+	}
+	f.close();
+#ifdef __EMSCRIPTEN__
+	EM_ASM(if (window["openttd_syncfs"]) openttd_syncfs());
+#endif
+}
+
+bool MayorInstalled(TownID town)
+{
+	MayorLoad();
+	return _mayor_towns.count(town) != 0;
+}
+
+Money MayorPrice(const Town *t)
+{
+	return 100000 + (Money)t->cache.population * 100;
+}
+
+/** Buergermeister einsetzen; false = nicht genug Geld. */
+bool MayorInstall(Town *t)
+{
+	MayorLoad();
+	if (_mayor_towns.count(t->index) != 0) return true;
+	Money price = MayorPrice(t);
+	if (Company::Get(_local_company)->money < price) return false;
+	Backup<CompanyID> cur_company(_current_company, _local_company);
+	SubtractMoneyFromCompany(_local_company, CommandCost(ExpensesType::Property, price));
+	cur_company.Restore();
+	t->ratings[_local_company] = RATING_BRIBE_MAXIMUM;
+	_mayor_towns.insert(t->index);
+	MayorSave();
+	AsLog(GetString(STR_ASSISTANT_LOG_MAYOR, t->index));
+	SetWindowDirty(WindowClass::TownAuthority, t->index.base());
+	return true;
+}
+
+/* ---------------- Verlorene Fahrzeuge melden ----------------
+ * Wenn ein Fahrzeug keinen Weg mehr findet ("lost"), traegt der
+ * Assistent das sofort ins Protokoll ein - so geht es nicht mehr im
+ * Nachrichtenstrom unter. */
+static std::set<VehicleID> _as_lost_reported;
+
+static const IntervalTimer<TimerGameCalendar> _as_lost_timer = {{TimerGameCalendar::Trigger::Day, TimerGameCalendar::Priority::None}, [](auto) {
+	if (_game_mode != GameMode::Normal) return;
+	if (!Company::IsValidID(_local_company)) return;
+	for (const Vehicle *v : Vehicle::Iterate()) {
+		if (v->owner != _local_company || !v->IsPrimaryVehicle()) continue;
+		if (v->vehicle_flags.Test(VehicleFlag::PathfinderLost)) {
+			if (_as_lost_reported.insert(v->index).second) {
+				AsLog(GetString(STR_ASSISTANT_LOG_LOST, v->index));
+			}
+		} else {
+			_as_lost_reported.erase(v->index);
+		}
+	}
+}};
+
 /* ---------------- Monatliche Arbeit des Assistenten ---------------- */
 
 /** Staedte, in denen die Firma mit einer Station praesent ist. */
@@ -154,6 +261,15 @@ static void AssistantMonthly()
 	AssistantLoad();
 
 	Backup<CompanyID> cur_company(_current_company, _local_company);
+
+	/* Buergermeister-Staedte bleiben dauerhaft bestens gestimmt. */
+	MayorLoad();
+	for (TownID id : _mayor_towns) {
+		Town *t = Town::GetIfValid(id);
+		if (t != nullptr && t->ratings[_local_company] < RATING_BRIBE_MAXIMUM) {
+			t->ratings[_local_company] = RATING_BRIBE_MAXIMUM;
+		}
+	}
 
 	/* Stadtpflege: die am schlechtesten gestimmten eigenen Staedte zuerst. */
 	Money town_budget = (Money)_as_town_step * 5000;

@@ -244,7 +244,7 @@ static TileIndex BuildAirportWithTerraform(const Town *t, uint8_t type, Money re
  * klein, erst auf passendem Gelaende, dann (falls erlaubt) mit
  * Planierung. Gebaut wird sofort; Rueckgabe ist die Bauplatz-Kachel.
  */
-static TileIndex AcBuildAirportNear(const Town *t, bool estimate, Money reserve, AutoConnectResult &result)
+static TileIndex AcBuildAirportNear(const Town *t, bool estimate, Money reserve, AutoConnectResult &result, bool &blocked_by_money)
 {
 	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 	for (uint8_t at : AcAirportCandidates()) {
@@ -256,6 +256,7 @@ static TileIndex AcBuildAirportNear(const Town *t, bool estimate, Money reserve,
 			CommandCost probe = Command<Commands::BuildAirport>::Do({}, site, at, 0, NEW_STATION, false);
 			if (probe.Succeeded() && Company::Get(_local_company)->money < probe.GetCost() + reserve) {
 				Debug(misc, 0, "AC: airport type {} too expensive with reserve", at);
+				blocked_by_money = true;
 				continue;
 			}
 		}
@@ -277,6 +278,7 @@ static TileIndex AcBuildAirportNear(const Town *t, bool estimate, Money reserve,
 			TileIndex site = BuildAirportWithTerraform(t, at, reserve, result);
 			if (site == INVALID_TILE) continue;
 			if (Company::Get(_local_company)->money < reserve) {
+				blocked_by_money = true;
 				/* Nach dem Bau bliebe kein Geld fuer die Flugzeuge:
 				 * wieder abreissen und einen kleineren Typ versuchen. */
 				Command<Commands::LandscapeClear>::Do(DoCommandFlag::Execute, site);
@@ -343,9 +345,10 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 		/* Flughafen A: groessten passenden Typ bauen — erst danach für B
 		 * suchen, damit die Platzsuche für B den neuen Flughafen A kennt.
 		 * Reserve: Flugzeuge + Platz fuer den zweiten (kleinen) Flughafen. */
-		site_a = AcBuildAirportNear(town_a, estimate, aircraft_cost + (re_b == nullptr ? 25000 : 0), result);
+		bool blocked_a = false;
+		site_a = AcBuildAirportNear(town_a, estimate, aircraft_cost + (re_b == nullptr ? 25000 : 0), result, blocked_a);
 		if (site_a == INVALID_TILE) {
-			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
+			result.error = blocked_a ? STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL : STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
 			AcRollback();
 			cur_company.Restore();
 			return result;
@@ -354,9 +357,10 @@ static AutoConnectResult BuildAirConnection(Town *town_a, Town *town_b, uint cou
 
 	TileIndex site_b = INVALID_TILE;
 	if (re_b == nullptr) {
-		site_b = AcBuildAirportNear(town_b, estimate, aircraft_cost, result);
+		bool blocked_b = false;
+		site_b = AcBuildAirportNear(town_b, estimate, aircraft_cost, result, blocked_b);
 		if (site_b == INVALID_TILE) {
-			result.error = STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
+			result.error = blocked_b ? STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL : STR_AUTOCONNECT_ERR_NO_AIRPORT_SITE;
 			AcRollback();
 			cur_company.Restore();
 			return result;

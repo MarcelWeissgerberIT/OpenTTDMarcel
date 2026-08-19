@@ -2344,6 +2344,12 @@ STR_ASSISTANT_TV_CAPTION                                        :{WHITE}Company 
 STR_ASSISTANT_TV_NAME                                           :{BLACK}{COMPANY}
 STR_ASSISTANT_TV_SLOGAN1                                        :{WHITE}Travel with {COMPANY}!
 STR_ASSISTANT_TV_SLOGAN2                                        :Hop on now!
+STR_TOWN_MAYOR_BUTTON                                           :{BLACK}Install mayor ({CURRENCY_LONG})
+STR_TOWN_MAYOR_DONE                                             :{BLACK}Mayor: your company
+STR_TOWN_MAYOR_TOOLTIP                                          :{BLACK}Install a company-friendly mayor: the town permanently allows all construction and stays in excellent spirits - no more bribing needed
+STR_TOWN_MAYOR_NO_MONEY                                         :{WHITE}Not enough money to install a mayor
+STR_ASSISTANT_LOG_MAYOR                                         :Installed the mayor of {TOWN}
+STR_ASSISTANT_LOG_LOST                                          :{VEHICLE} cannot find a path - check the track!
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Copy
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Copy this view as an image to the clipboard
 STR_PIXELSTUDIO_PASTE                                           :{BLACK}Paste

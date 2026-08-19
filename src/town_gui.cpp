@@ -134,6 +134,10 @@ public:
 
 	void OnPaint() override
 	{
+		if (this->GetWidget<NWidgetBase>(WID_TV_MAYOR) != nullptr) {
+			extern bool MayorInstalled(TownID town);
+			this->SetWidgetDisabledState(WID_TV_MAYOR, !Company::IsValidID(_local_company) || MayorInstalled(this->town->index));
+		}
 		this->available_actions = GetMaskOfTownActions(_local_company, this->town);
 		if (this->available_actions != displayed_actions_on_previous_painting) this->SetDirty();
 		displayed_actions_on_previous_painting = this->available_actions;
@@ -375,6 +379,13 @@ public:
 	{
 		if (widget == WID_TV_CAPTION) return GetString(this->town->larger_town ? STR_TOWN_VIEW_CITY_CAPTION : STR_TOWN_VIEW_TOWN_CAPTION, this->town->index);
 
+		if (widget == WID_TV_MAYOR) {
+			extern bool MayorInstalled(TownID town);
+			extern Money MayorPrice(const Town *t);
+			if (MayorInstalled(this->town->index)) return GetString(STR_TOWN_MAYOR_DONE);
+			return GetString(STR_TOWN_MAYOR_BUTTON, MayorPrice(this->town));
+		}
+
 		return this->Window::GetWidgetString(widget, stringid);
 	}
 
@@ -484,6 +495,19 @@ public:
 			case WID_TV_SHOW_AUTHORITY: // town authority
 				ShowTownAuthorityWindow(this->window_number);
 				break;
+
+			case WID_TV_MAYOR: { // Fork: Buergermeister einsetzen
+				extern bool MayorInstalled(TownID town);
+				extern bool MayorInstall(Town *t);
+				if (!Company::IsValidID(_local_company)) break;
+				Town *t = Town::Get(this->window_number);
+				if (MayorInstalled(t->index)) break;
+				if (!MayorInstall(t)) {
+					ShowErrorMessage(GetEncodedString(STR_TOWN_MAYOR_NO_MONEY), {}, WarningLevel::Error);
+				}
+				this->SetDirty();
+				break;
+			}
 
 			case WID_TV_CHANGE_NAME: // rename
 				ShowQueryString(GetString(STR_TOWN_NAME, this->window_number), STR_TOWN_VIEW_RENAME_TOWN_BUTTON, MAX_LENGTH_TOWN_NAME_CHARS, this, CS_ALPHANUMERAL, {QueryStringFlag::EnableDefault, QueryStringFlag::LengthIsInChars});
@@ -626,6 +650,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_town_game_view_widge
 		EndContainer(),
 	EndContainer(),
 	NWidget(WWT_PANEL, Colours::Brown, WID_TV_INFO), SetMinimalSize(260, 32), SetResize(1, 0), SetFill(1, 0), EndContainer(),
+	NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_TV_MAYOR), SetMinimalSize(260, 12), SetResize(1, 0), SetFill(1, 0), SetToolTip(STR_TOWN_MAYOR_TOOLTIP),
 	NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
 		NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_TV_SHOW_AUTHORITY), SetMinimalSize(80, 12), SetFill(1, 1), SetResize(1, 0), SetStringTip(STR_TOWN_VIEW_LOCAL_AUTHORITY_BUTTON, STR_TOWN_VIEW_LOCAL_AUTHORITY_TOOLTIP),
 		NWidget(WWT_TEXTBTN, Colours::Brown, WID_TV_CATCHMENT), SetMinimalSize(40, 12), SetFill(1, 1), SetResize(1, 0), SetStringTip(STR_BUTTON_CATCHMENT, STR_TOOLTIP_CATCHMENT),
