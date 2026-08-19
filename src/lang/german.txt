@@ -2320,15 +2320,15 @@ STR_TOWN_MAYOR_NO_MONEY                                         :{WHITE}Nicht ge
 STR_ASSISTANT_LOG_MAYOR                                         :Bürgermeister in {TOWN} eingesetzt
 STR_ASSISTANT_LOG_LOST                                          :{VEHICLE} findet keinen Weg - Strecke prüfen!
 STR_CONFIG_SETTING_MARCEL_EDITION                               :{ORANGE}Marcel Edition
-STR_CONFIG_SETTING_FORK_CITIZENS                                :Bürger in Städten und an Stationen anzeigen: {STRING2}
+STR_CONFIG_SETTING_FORK_CITIZENS                                :Bürger in Städten und an Stationen anzeigen: {STRING}
 STR_CONFIG_SETTING_FORK_CITIZENS_HELPTEXT                       :Sichtbare Menschen mit Namen und Porträts, Wartemengen am Bahnsteig und Einsteige-Animationen. Ausschalten für den klassischen, ruhigeren Look
-STR_CONFIG_SETTING_FORK_HOUSEOWN                                :Immobilien-Modus (Häuser per Klick kaufen): {STRING2}
+STR_CONFIG_SETTING_FORK_HOUSEOWN                                :Immobilien-Modus (Häuser per Klick kaufen): {STRING}
 STR_CONFIG_SETTING_FORK_HOUSEOWN_HELPTEXT                       :Ein Klick auf ein Wohnhaus öffnet den Info-Dialog mit Kaufen, Renovieren und Ausbauen. Bereits gekaufte Häuser bringen auch bei ausgeschalteter Option weiter Miete
-STR_CONFIG_SETTING_FORK_POLITICS                                :Politik (Bürgermeister und Schmier-Bonus): {STRING2}
+STR_CONFIG_SETTING_FORK_POLITICS                                :Politik (Bürgermeister und Schmier-Bonus): {STRING}
 STR_CONFIG_SETTING_FORK_POLITICS_HELPTEXT                       :Der "Bürgermeister einsetzen"-Knopf im Stadtfenster und die Regel, dass bestens gestimmte Städte alle Bauten erlauben. Ausschalten für die klassischen Stadtverwaltungs-Regeln
-STR_CONFIG_SETTING_FORK_AUTOCONNECT                             :Auto-Verbindung und Auto-Modernisierung: {STRING2}
+STR_CONFIG_SETTING_FORK_AUTOCONNECT                             :Auto-Verbindung und Auto-Modernisierung: {STRING}
 STR_CONFIG_SETTING_FORK_AUTOCONNECT_HELPTEXT                    :Der automatische Verbindungsbauer in der Werkzeugleiste und die monatliche Fahrzeug-Modernisierung. Ausschalten, wenn du lieber alles selbst baust
-STR_CONFIG_SETTING_FORK_ASSISTANT                               :Persönlicher Assistent: {STRING2}
+STR_CONFIG_SETTING_FORK_ASSISTANT                               :Persönlicher Assistent: {STRING}
 STR_CONFIG_SETTING_FORK_ASSISTANT_HELPTEXT                      :Das Assistenten-Fenster mit automatischer Stadtpflege, Werbung und Fahrzeug-Erneuerung. Ausschalten pausiert seine gesamte monatliche Arbeit
 STR_PIXELSTUDIO_COPY                                            :{BLACK}Kopieren
 STR_PIXELSTUDIO_COPY_TOOLTIP                                    :{BLACK}Diese Ansicht als Bild in die Zwischenablage kopieren
@@ -2452,9 +2452,9 @@ STR_AUTOCONNECT_SUGGEST_RESULT                                  :{BLACK}Vorschla
 STR_AUTOCONNECT_SUGGEST_NONE                                    :{BLACK}Kein lohnender Güter-Vorschlag gefunden
 
 # Citizen info window (fork feature, city life 3.0)
-STR_CITIZEN_CAPTION                                             :{WHITE}{RAW_STRING}
+STR_CITIZEN_CAPTION                                             :{WHITE}{STRING}
 STR_CITIZEN_AGE                                                 :{BLACK}Alter: {NUM} Jahre
-STR_CITIZEN_INTEREST                                            :{BLACK}Interesse: {RAW_STRING}
+STR_CITIZEN_INTEREST                                            :{BLACK}Interesse: {STRING}
 STR_CITIZEN_HOME                                                :{BLACK}Wohnt in: {TOWN}
 STR_CITIZEN_GOAL_STATION                                        :{BLACK}Vorhaben: geht zum Bahnhof
 STR_CITIZEN_GOAL_VISIT                                          :{BLACK}Vorhaben: besucht Freunde
@@ -3569,7 +3569,7 @@ STR_SAVELOAD_DELETE_BUTTON                                      :{BLACK}Löschen
 STR_SAVELOAD_DELETE_TOOLTIP                                     :{BLACK}Lösche gewählten Spielstand
 STR_SAVELOAD_SAVE_BUTTON                                        :{BLACK}Speichern
 STR_SAVELOAD_SAVE_TOOLTIP                                       :{BLACK}Speichere das Spiel unter dem gewählten Namen
-STR_SAVELOAD_CLOUD_STATUS                                       :{BLACK}{RAW_STRING}
+STR_SAVELOAD_CLOUD_STATUS                                       :{BLACK}{STRING}
 STR_SAVELOAD_CLOUD_SYNC                                         :{BLACK}Cloud-Sicherung
 STR_SAVELOAD_CLOUD_SYNC_TOOLTIP                                 :{BLACK}Spielstände und Einstellungen jetzt in die Cloud hochladen
 STR_SAVELOAD_CLOUD_ACCOUNT                                      :{BLACK}Konto...
@@ -6212,3 +6212,98 @@ STR_BADGE_CONFIG_FILTERS                                        :{WHITE}Kennzeic
 STR_BADGE_CONFIG_PREVIEW                                        :Vorschaubild
 STR_BADGE_CONFIG_NAME                                           :Name
 STR_BADGE_FILTER_ANY_LABEL                                      :{G "Beliebiger" "Beliebige" "Beliebiges" "Beliebige"} {STRING}
+
+##### Fork: fehlende Uebersetzungen nachgetragen (2026-08-19) #####
+
+STR_LANDSCAPING_MENU_PLACE_OBJECT                               :Objekt platzieren
+STR_ABOUT_MENU_ENTER_SCREENSAVER_MODE                           :Bildschirmschoner-Modus umschalten
+STR_GRAPH_INDUSTRY_RANGE_PRODUCED_TOOLTIP                       :Diagramm der von dieser Industrie produzierten Fracht umschalten
+STR_GRAPH_INDUSTRY_RANGE_TRANSPORTED_TOOLTIP                    :Diagramm der von dieser Industrie abtransportierten Fracht umschalten
+STR_GRAPH_INDUSTRY_RANGE_DELIVERED_TOOLTIP                      :Diagramm der an diese Industrie gelieferten Fracht umschalten
+STR_GRAPH_INDUSTRY_RANGE_WAITING_TOOLTIP                        :Diagramm der bei dieser Industrie wartenden Fracht umschalten
+STR_GRAPH_TOWN_RANGE_PRODUCED_TOOLTIP                           :Diagramm der von dieser Stadt produzierten Fracht umschalten
+STR_GRAPH_TOWN_RANGE_TRANSPORTED_TOOLTIP                        :Diagramm der aus dieser Stadt abtransportierten Fracht umschalten
+STR_GRAPH_TOWN_RANGE_DELIVERED                                  :Geliefert
+STR_GRAPH_TOWN_RANGE_DELIVERED_TOOLTIP                          :Diagramm der an diese Stadt gelieferten Fracht umschalten
+STR_CONFIG_SETTING_TRAIN_FLIP_REVERSE                           :Züge dürfen beim Wenden umdrehen: {STRING}
+STR_CONFIG_SETTING_TRAIN_FLIP_REVERSE_HELPTEXT                  :Legt fest, wo Züge zum Richtungswechsel umdrehen dürfen. Bei „Überall" drehen Züge an jeder Stelle um. Bei „Nur am Streckenende" drehen Züge in Bahnhöfen nicht um, wenn eine Weiterfahrt möglich ist. Bei „Nie" drehen Züge nicht um und fahren bei Bedarf rückwärts - mit verringerter Geschwindigkeit, wenn das letzte Fahrzeug keinen Führerstand hat
+STR_CONFIG_SETTING_TRAIN_FLIP_REVERSE_ALL                       :Überall
+STR_CONFIG_SETTING_TRAIN_FLIP_REVERSE_END_OF_LINE_ONLY          :Nur am Streckenende
+STR_CONFIG_SETTING_TRAIN_FLIP_REVERSE_NONE                      :Nie
+STR_CONFIG_SETTING_CARGO_AGING_RATE                             :Wertverfall der Fracht skalieren: {STRING}
+STR_CONFIG_SETTING_CARGO_AGING_RATE_HELPTEXT                    :Bestimmt, wie schnell geladene Fracht mit der Zeit an Wert verliert
+STR_CONFIG_SETTING_CARGO_AGING_RATE_VALUE                       :{NUM}{NBSP}%
+STR_CONFIG_SETTING_CARGO_AGING_RATE_ZERO                        :Kein Wertverfall
+STR_CONFIG_SETTING_AVERAGE_HEIGHT                               :Durchschnittliche Höhe: {STRING}
+STR_CONFIG_SETTING_AVERAGE_HEIGHT_HELPTEXT                      :Wählt die durchschnittliche Geländehöhe. „Automatisch" nutzt den Standard des gewählten Klimas: „Tiefland" für subtropisch, „Normal" für gemäßigt und Spielzeugland, „Hochebenen" für subarktisch.
+STR_CONFIG_SETTING_AVERAGE_HEIGHT_AUTO                          :Automatisch
+STR_CONFIG_SETTING_AVERAGE_HEIGHT_LOWLANDS                      :Tiefland
+STR_CONFIG_SETTING_AVERAGE_HEIGHT_NORMAL                        :Normal
+STR_CONFIG_SETTING_AVERAGE_HEIGHT_PLATEAUS                      :Hochebenen
+STR_CONFIG_SETTING_DEFAULT_RAIL_ROAD_TYPE                       :Vorausgewählter Gleis-, Straßen- und Straßenbahntyp (nach Spielstart/-laden): {STRING}
+STR_CONFIG_SETTING_DEFAULT_RAIL_ROAD_TYPE_HELPTEXT              :Gleis-, Straßen- und Straßenbahntyp, der nach dem Starten oder Laden eines Spiels vorausgewählt ist. „Ältester verfügbarer" wählt den ältesten Typ, „Neuester verfügbarer" den neuesten und „Meistgenutzter" den derzeit am häufigsten verwendeten Typ
+STR_CONFIG_SETTING_DEFAULT_RAIL_ROAD_TYPE_FIRST                 :Ältester verfügbarer
+STR_CONFIG_SETTING_DEFAULT_RAIL_ROAD_TYPE_LAST                  :Neuester verfügbarer
+STR_CONFIG_SETTING_DEFAULT_RAIL_ROAD_TYPE_MOST_USED             :Meistgenutzter
+STR_CONFIG_SETTING_AIRCRAFT_RANGE                               :Maximale Reichweite von Flugzeugen aktivieren: {STRING}
+STR_CONFIG_SETTING_AIRCRAFT_RANGE_HELPTEXT                      :Wenn aktiviert, können NewGRFs die maximale Reichweite von Flugzeugen begrenzen
+STR_NETWORK_CLIENT_LIST_ADMIN_COMPANY_ALLOW_ANY                 :Alle Spieler zulassen
+STR_NETWORK_CLIENT_LIST_ADMIN_COMPANY_ALLOW_LISTED              :Nur gelistete Spieler zulassen
+STR_PICKER_DEFAULT_COLLECTION                                   :Standard-Sammlung
+STR_PICKER_SELECT_COLLECTION_TOOLTIP                            :Eine Sammlung auswählen
+STR_PICKER_COLLECTION_ADD                                       :Hinzufügen
+STR_PICKER_COLLECTION_ADD_TOOLTIP                               :Eine neue Sammlung anlegen
+STR_PICKER_COLLECTION_RENAME                                    :Umbenennen
+STR_PICKER_COLLECTION_RENAME_TOOLTIP                            :Eine Sammlung umbenennen
+STR_PICKER_COLLECTION_DELETE                                    :Löschen
+STR_PICKER_COLLECTION_DELETE_TOOLTIP                            :Eine Sammlung löschen
+STR_PICKER_COLLECTION_RENAME_QUERY                              :Diese Sammlung umbenennen
+STR_PICKER_COLLECTION_DELETE_QUERY                              :Sammlung löschen
+STR_PICKER_COLLECTION_DELETE_QUERY_TEXT                         :{YELLOW}Soll diese Sammlung wirklich gelöscht werden?
+STR_PICKER_COLLECTION_DELETE_QUERY_DISABLED_TEXT                :{YELLOW}Soll diese Sammlung wirklich gelöscht werden? Sie enthält Einträge aus deaktivierten NewGRFs!
+STR_PICKER_STATION_COLLECTION_TOOLTIP                           :Eine Sammlung von Bahnhöfen zur Anzeige auswählen
+STR_PICKER_WAYPOINT_COLLECTION_TOOLTIP                          :Eine Sammlung von Wegpunkten zur Anzeige auswählen
+STR_PICKER_ROADSTOP_BUS_COLLECTION_TOOLTIP                      :Eine Sammlung von Bushaltestellen zur Anzeige auswählen
+STR_PICKER_ROADSTOP_TRUCK_COLLECTION_TOOLTIP                    :Eine Sammlung von LKW-Ladestellen zur Anzeige auswählen
+STR_PICKER_OBJECT_COLLECTION_TOOLTIP                            :Eine Sammlung von Objekten zur Anzeige auswählen
+STR_PICKER_HOUSE_COLLECTION_TOOLTIP                             :Eine Sammlung von Häusern zur Anzeige auswählen
+STR_TERRAFORM_TOOLTIP_PLACE_ROUGH_AREAS_ON_LANDSCAPE            :{BLACK}Unebenes Gelände platzieren.{}Strg+Klick entfernt unebenes Gelände
+STR_TERRAFORM_TOOLTIP_LOWER_A_CORNER_OF_LAND                    :{BLACK}Eine Geländeecke oder Fläche absenken. Bei Größe 1x1 mit Klicken+Ziehen die erste gewählte Ecke absenken und die gewählte Fläche auf die neue Höhe einebnen. Strg+Klicken+Ziehen wählt die Fläche diagonal. Umschalt zeigt nur den Kostenvoranschlag
+STR_TERRAFORM_TOOLTIP_RAISE_A_CORNER_OF_LAND                    :{BLACK}Eine Geländeecke oder Fläche anheben. Bei Größe 1x1 mit Klicken+Ziehen die erste gewählte Ecke anheben und die gewählte Fläche auf die neue Höhe einebnen. Strg+Klicken+Ziehen wählt die Fläche diagonal. Umschalt zeigt nur den Kostenvoranschlag
+STR_SAVELOAD_NEW_DIRECTORY_BUTTON                               :{BLACK}Neuer Ordner
+STR_SAVELOAD_NEW_DIRECTORY_TOOLTIP                              :{BLACK}Einen neuen Ordner am aktuellen Ort anlegen
+STR_SAVELOAD_NEW_DIRECTORY_QUERY_CAPTION                        :{WHITE}Namen für den neuen Ordner eingeben
+STR_MAPGEN_AVERAGE_HEIGHT                                       :{BLACK}Durchschnittliche Höhe:
+STR_PURCHASE_SORT_DETAILS_COST                                  :{CURRENCY_LONG}
+STR_PURCHASE_SORT_DETAILS_SPEED                                 :{VELOCITY}
+STR_PURCHASE_SORT_DETAILS_POWER                                 :{POWER}
+STR_PURCHASE_SORT_DETAILS_MAX_TE                                :{FORCE}
+STR_PURCHASE_SORT_DETAILS_INTRO_DATE                            :{NUM}
+STR_PURCHASE_SORT_DETAILS_RUNNINGCOST_YEAR                      :{CURRENCY_LONG}/Jahr
+STR_PURCHASE_SORT_DETAILS_RUNNINGCOST_PERIOD                    :{CURRENCY_LONG}/Periode
+STR_PURCHASE_SORT_DETAILS_RELIABILITY                           :{COMMA}{NBSP}%
+STR_PURCHASE_SORT_DETAILS_POWER_VS_RUNNING_COST                 :{DECIMAL}
+STR_PURCHASE_SORT_DETAILS_AIRCRAFT_RANGE                        :{COMMA} Felder
+STR_PURCHASE_SORT_DETAILS_CAPACITY                              :{COMMA}
+STR_ENGINE_PREVIEW_CAPTION_COUNT                                :{WHITE}Nachricht vom Fahrzeughersteller ({COMMA} von {COMMA})
+STR_ENGINE_PREVIEW_PREVIOUS                                     :Zurück
+STR_ENGINE_PREVIEW_PREVIOUS_TOOLTIP                             :Klicken, um zum vorherigen neuen Fahrzeug zu wechseln
+STR_ENGINE_PREVIEW_NEXT                                         :Weiter
+STR_ENGINE_PREVIEW_NEXT_TOOLTIP                                 :Klicken, um zum nächsten neuen Fahrzeug zu wechseln
+STR_ENGINE_PREVIEW_ENGINE_LIST                                  :{COMMA}: {ENGINE}
+STR_ENGINE_PREVIEW_ENGINE_LIST_TOOLTIP                          :Klicken, um zu einem neuen Fahrzeug zu springen
+STR_VEHICLE_INFO_RELIABILITY_BREAKDOWNS                         :{BLACK}Zuverlässigkeit: {LTBLUE}{COMMA}{NBSP}% (max: {COMMA}{NBSP}%)  {BLACK}Pannen seit letzter Wartung: {LTBLUE}{COMMA}
+STR_ORDER_CONDITIONAL_DRIVING_BACKWARDS                         :Fährt rückwärts mit verringerter Geschwindigkeit
+STR_ORDERS_DELETE_ALL_BUTTON                                    :{BLACK}Alle löschen
+STR_ERROR_CANNOT_CREATE_DIRECTORY                               :Ordner kann nicht angelegt werden...
+STR_ERROR_DIRECTORY_NAME_IN_USE                                 :Eine Datei oder ein Ordner mit diesem Namen existiert bereits
+STR_ERROR_DIRECTORY_ILLEGAL_NAME                                :Der Ordnername darf keine Sonderzeichen enthalten
+STR_ERROR_DIRECTORY_LEADING_DOT                                 :Der Ordnername darf nicht mit einem Punkt beginnen
+STR_ERROR_DIRECTORY_PERMISSION_DENIED                           :Keine Berechtigung, hier einen Ordner anzulegen
+STR_ERROR_MUST_DEMOLISH_RIVER_FIRST                             :Der Fluss muss zuerst entfernt werden
+STR_ERROR_UNABLE_TO_FIND_LOCAL_HANGAR                           :Kein Hangar in der Nähe gefunden
+STR_ERROR_BRIDGE_TOO_LOW_FOR_TRAIN_DEPOT                        :Die Brücke ist {HEIGHT} zu niedrig für ein Zugdepot
+STR_ERROR_BRIDGE_TOO_LOW_FOR_ROADVEH_DEPOT                      :Die Brücke ist {HEIGHT} zu niedrig für ein Straßenfahrzeugdepot
+STR_ERROR_BRIDGE_TOO_LOW_FOR_SHIP_DEPOT                         :Die Brücke ist {HEIGHT} zu niedrig für ein Schiffsdepot
+STR_ERROR_BRIDGE_TOO_LOW_FOR_OBJECT                             :Die Brücke ist {HEIGHT} zu niedrig für ein Objekt
+STR_TOOLBAR_ROADTYPE_VELOCITY                                   :{STRING} {YELLOW}({VELOCITY})
