@@ -84,7 +84,8 @@ struct StatusBarWindow : Window {
 		Dimension d;
 		switch (widget) {
 			case WID_S_LEFT:
-				d = GetStringBoundingBox(GetString(STR_JUST_DATE_LONG, GetParamMaxValue(TimerGameCalendar::DateAtStartOfYear(CalendarTime::MAX_YEAR).base())));
+				/* Fork: Platz fuer die Zeitraffer-Stufe hinter dem Datum. */
+				d = GetStringBoundingBox(GetString(STR_STATUSBAR_FFWD, GetParamMaxValue(TimerGameCalendar::DateAtStartOfYear(CalendarTime::MAX_YEAR).base()), 16));
 				break;
 
 			case WID_S_RIGHT: {
@@ -109,8 +110,14 @@ struct StatusBarWindow : Window {
 		tr.top = CentreBounds(r.top, r.bottom, GetCharacterHeight(FontSize::Normal));
 		switch (widget) {
 			case WID_S_LEFT:
-				/* Draw the date */
-				DrawString(tr, GetString(STR_JUST_DATE_LONG, TimerGameCalendar::date), TextColour::White, AlignmentH::Centre);
+				/* Draw the date (Fork: bei Zeitraffer mit Stufen-Anzeige) */
+				if (_game_speed == 100) {
+					DrawString(tr, GetString(STR_JUST_DATE_LONG, TimerGameCalendar::date), TextColour::White, AlignmentH::Centre);
+				} else if (_game_speed == 0) {
+					DrawString(tr, GetString(STR_STATUSBAR_FFWD_MAX, TimerGameCalendar::date), TextColour::White, AlignmentH::Centre);
+				} else {
+					DrawString(tr, GetString(STR_STATUSBAR_FFWD, TimerGameCalendar::date, _game_speed / 100), TextColour::White, AlignmentH::Centre);
+				}
 				break;
 
 			case WID_S_RIGHT: {

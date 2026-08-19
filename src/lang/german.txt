@@ -2313,6 +2313,8 @@ STR_ASSISTANT_TV_CAPTION                                        :{WHITE}Firmen-T
 STR_ASSISTANT_TV_NAME                                           :{BLACK}{COMPANY}
 STR_ASSISTANT_TV_SLOGAN1                                        :{WHITE}Reise mit {COMPANY}!
 STR_ASSISTANT_TV_SLOGAN2                                        :Jetzt einsteigen!
+STR_STATUSBAR_FFWD                                              :{WHITE}{DATE_LONG} {YELLOW}» {NUM}x
+STR_STATUSBAR_FFWD_MAX                                          :{WHITE}{DATE_LONG} {YELLOW}» MAX
 STR_TOWN_MAYOR_BUTTON                                           :{BLACK}Bürgermeister einsetzen ({CURRENCY_LONG})
 STR_TOWN_MAYOR_DONE                                             :{BLACK}Bürgermeister: Ihre Firma
 STR_TOWN_MAYOR_TOOLTIP                                          :{BLACK}Setzt einen firmenfreundlichen Bürgermeister ein: Die Stadt erlaubt dauerhaft alle Bauten und bleibt bestens gestimmt - Schmieren ist nicht mehr nötig

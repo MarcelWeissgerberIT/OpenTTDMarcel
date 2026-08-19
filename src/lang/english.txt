@@ -2344,6 +2344,8 @@ STR_ASSISTANT_TV_CAPTION                                        :{WHITE}Company 
 STR_ASSISTANT_TV_NAME                                           :{BLACK}{COMPANY}
 STR_ASSISTANT_TV_SLOGAN1                                        :{WHITE}Travel with {COMPANY}!
 STR_ASSISTANT_TV_SLOGAN2                                        :Hop on now!
+STR_STATUSBAR_FFWD                                              :{WHITE}{DATE_LONG} {YELLOW}» {NUM}x
+STR_STATUSBAR_FFWD_MAX                                          :{WHITE}{DATE_LONG} {YELLOW}» MAX
 STR_TOWN_MAYOR_BUTTON                                           :{BLACK}Install mayor ({CURRENCY_LONG})
 STR_TOWN_MAYOR_DONE                                             :{BLACK}Mayor: your company
 STR_TOWN_MAYOR_TOOLTIP                                          :{BLACK}Install a company-friendly mayor: the town permanently allows all construction and stays in excellent spirits - no more bribing needed

@@ -1929,6 +1929,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_company_widgets = {
 					NWidget(NWID_VERTICAL), SetPIPRatio(0, 0, 1), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0),
 						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_C_VIEW_INFRASTRUCTURE), SetStringTip(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON, STR_COMPANY_VIEW_INFRASTRUCTURE_TOOLTIP),
 						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_C_EDIT_FLAG), SetStringTip(STR_COMPANY_VIEW_EDIT_FLAG_BUTTON, STR_COMPANY_VIEW_EDIT_FLAG_TOOLTIP),
+						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_C_ASSISTANT), SetStringTip(STR_COMPANY_VIEW_ASSISTANT_BUTTON, STR_COMPANY_VIEW_ASSISTANT_TOOLTIP),
 					EndContainer(),
 				EndContainer(),
 

@@ -235,7 +235,17 @@ static CallBackFunction ToolbarFastForwardClick(Window *)
 {
 	if (_networking) return CallBackFunction::None; // no fast forward in network game
 
-	ChangeGameSpeed(_game_speed == 100);
+	/* Fork: Zeitraffer in Stufen statt nur an/aus -
+	 * 2x -> 4x -> 8x -> 16x -> Maximum -> aus. Die aktuelle Stufe
+	 * zeigt die Statusleiste neben dem Datum. */
+	switch (_game_speed) {
+		case 100: _game_speed = 200; break;
+		case 200: _game_speed = 400; break;
+		case 400: _game_speed = 800; break;
+		case 800: _game_speed = 1600; break;
+		case 1600: _game_speed = 0; break; /* Maximum */
+		default: _game_speed = 100; break; /* aus */
+	}
 
 	SndClickBeep();
 	return CallBackFunction::None;
