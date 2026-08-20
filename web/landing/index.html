@@ -451,7 +451,15 @@
     url.searchParams.set('lang', lang);
     history.replaceState(null, '', url);
   }
+  /* Stripe-Zahlung: Payment-Link aus dem Stripe-Dashboard hier eintragen
+   * (https://buy.stripe.com/...). Solange leer, zeigen die Kauf-Knoepfe
+   * den "Shop oeffnet bald"-Hinweis. */
+  var STRIPE_LINK = '';
   function showShopNote(second) {
+    if (STRIPE_LINK) {
+      window.location.href = STRIPE_LINK;
+      return;
+    }
     document.getElementById(second ? 'shopnote2' : 'shopnote').classList.add('show');
   }
   (function () {
