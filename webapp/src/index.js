@@ -93,7 +93,7 @@ async function getSessionUser(env, request) {
 	}
 	if (token === null) return null;
 	const row = await env.DB.prepare(
-		`SELECT u.id, u.email, u.verified_at, s.id AS session_id, s.expires_at
+		`SELECT u.id, u.email, u.verified_at, u.is_admin, s.id AS session_id, s.expires_at
 		 FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?`)
 		.bind(token).first();
 	if (!row) return null;
@@ -250,6 +250,90 @@ async function handleSettingsPut(request, env, cors) {
 	return json({ ok: true }, 200, cors);
 }
 
+/* ---------- Stripe-Webhook + Kauf-Verwaltung ---------- */
+
+/* Stripe signiert jeden Webhook-Aufruf (Header "Stripe-Signature":
+ * t=<unix>,v1=<hmac>). Ohne gültige Signatur wird nichts gespeichert. */
+async function verifyStripeSignature(payload, sigHeader, secret) {
+	if (!sigHeader) return false;
+	let t = null;
+	const v1s = [];
+	for (const part of sigHeader.split(',')) {
+		const [k, v] = part.split('=', 2);
+		if (k.trim() === 't') t = v;
+		if (k.trim() === 'v1') v1s.push(v);
+	}
+	if (!t || v1s.length === 0) return false;
+	if (Math.abs(Date.now() / 1000 - parseInt(t, 10)) > 600) return false;
+	const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
+		{ name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+	const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${t}.${payload}`));
+	const expected = toHex(mac);
+	return v1s.some(v => {
+		if (v.length !== expected.length) return false;
+		let diff = 0;
+		for (let i = 0; i < v.length; i++) diff |= v.charCodeAt(i) ^ expected.charCodeAt(i);
+		return diff === 0;
+	});
+}
+
+async function upsertPurchase(env, session, status) {
+	const cd = session.customer_details || {};
+	await env.DB.prepare(
+		`INSERT INTO purchases (checkout_session, payment_intent, email, name, amount, currency, status, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(checkout_session) DO UPDATE SET payment_intent = excluded.payment_intent,
+		   email = excluded.email, name = excluded.name, amount = excluded.amount,
+		   currency = excluded.currency, status = excluded.status, updated_at = excluded.updated_at`)
+		.bind(session.id, session.payment_intent || null, cd.email || null, cd.name || null,
+			session.amount_total ?? null, session.currency || null, status, Date.now(), Date.now()).run();
+}
+
+async function handleStripeWebhook(request, env) {
+	/* Kein CORS: der Aufruf kommt von Stripe-Servern, nicht aus dem Browser. */
+	if (!env.STRIPE_WEBHOOK_SECRET) return new Response('webhook secret not configured', { status: 503 });
+	const payload = await request.text();
+	const ok = await verifyStripeSignature(payload, request.headers.get('Stripe-Signature'), env.STRIPE_WEBHOOK_SECRET);
+	if (!ok) return new Response('bad signature', { status: 400 });
+
+	let event;
+	try { event = JSON.parse(payload); } catch { return new Response('bad payload', { status: 400 }); }
+	const obj = event.data && event.data.object;
+	if (!obj) return new Response('ok', { status: 200 });
+
+	switch (event.type) {
+		case 'checkout.session.completed':
+			await upsertPurchase(env, obj, obj.payment_status === 'paid' ? 'paid' : 'pending');
+			break;
+		case 'checkout.session.async_payment_succeeded':
+			await upsertPurchase(env, obj, 'paid');
+			break;
+		case 'checkout.session.async_payment_failed':
+			await upsertPurchase(env, obj, 'failed');
+			break;
+		case 'charge.refunded':
+			if (obj.payment_intent) {
+				await env.DB.prepare('UPDATE purchases SET status = ?, updated_at = ? WHERE payment_intent = ?')
+					.bind('refunded', Date.now(), obj.payment_intent).run();
+			}
+			break;
+		default:
+			/* Unbekannte Ereignisse quittieren, sonst wiederholt Stripe sie endlos. */
+			break;
+	}
+	return new Response('ok', { status: 200 });
+}
+
+async function handleAdminPurchases(request, env, cors) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	if (user.is_admin !== 1) return json({ error: 'forbidden' }, 403, cors);
+	const rows = await env.DB.prepare(
+		`SELECT checkout_session, payment_intent, email, name, amount, currency, status, created_at, updated_at
+		 FROM purchases ORDER BY created_at DESC LIMIT 200`).all();
+	return json({ ok: true, purchases: rows.results || [] }, 200, cors);
+}
+
 export default {
 	async fetch(request, env) {
 		const url = new URL(request.url);
@@ -276,6 +360,8 @@ export default {
 			if (url.pathname === '/api/saves/delete' && request.method === 'DELETE') return await handleSaveDelete(request, env, cors, url);
 			if (url.pathname === '/api/settings' && request.method === 'GET') return await handleSettingsGet(request, env, cors);
 			if (url.pathname === '/api/settings' && request.method === 'PUT') return await handleSettingsPut(request, env, cors);
+			if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') return await handleStripeWebhook(request, env);
+			if (url.pathname === '/api/admin/purchases' && request.method === 'GET') return await handleAdminPurchases(request, env, cors);
 		} catch (e) {
 			/* Diagnose-Detail, solange Phase 2 stabilisiert wird. */
 			return json({ error: 'server_error', detail: String(e && e.message || e).slice(0, 200) }, 500, cors);

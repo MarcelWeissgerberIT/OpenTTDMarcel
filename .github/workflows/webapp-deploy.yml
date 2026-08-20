@@ -47,6 +47,16 @@ jobs:
       - name: Deploy worker
         run: npx wrangler deploy
 
+      - name: Stripe-Webhook-Secret setzen (falls vorhanden)
+        env:
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        run: |
+          if [ -n "$STRIPE_WEBHOOK_SECRET" ]; then
+            echo "$STRIPE_WEBHOOK_SECRET" | npx wrangler secret put STRIPE_WEBHOOK_SECRET
+          else
+            echo "Kein STRIPE_WEBHOOK_SECRET in den GitHub-Secrets - Webhook antwortet mit 503."
+          fi
+
       - name: Verify API health
         run: |
           sleep 5
@@ -83,6 +93,24 @@ jobs:
             sleep 5
           done
           echo "Worker-Version wurde nicht aktuell"; exit 1
+
+      - name: Verify Stripe webhook + admin endpoint
+        run: |
+          API=https://openttd-api.marcelweissgerber81.workers.dev
+          # Nach dem Deploy kann kurz noch die alte Version (404) antworten - mit Wiederholung.
+          for i in $(seq 1 12); do
+            # Webhook: 503 solange kein Secret gesetzt ist, 400 bei ungueltiger Signatur.
+            wh=$(curl -s -o /dev/null -w "%{http_code}" -X POST -d '{}' "$API/api/stripe/webhook")
+            # Admin-Liste ohne Login muss 401 liefern.
+            ad=$(curl -s -o /dev/null -w "%{http_code}" "$API/api/admin/purchases")
+            if { [ "$wh" = "503" ] || [ "$wh" = "400" ]; } && [ "$ad" = "401" ]; then
+              echo "Webhook-Endpunkt OK (HTTP $wh), Admin-Endpunkt OK (HTTP 401 ohne Login)"
+              exit 0
+            fi
+            echo "Noch nicht bereit (Webhook $wh, Admin $ad), warte 5s ($i/12)..."
+            sleep 5
+          done
+          echo "Neue Endpunkte antworten nicht wie erwartet"; exit 1
 
       - name: Verify auth flow end-to-end
         run: |

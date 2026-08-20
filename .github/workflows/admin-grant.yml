@@ -1,0 +1,60 @@
+name: Admin Grant
+
+# Vergibt (oder entzieht) Verwaltungs-Rechte fuer ein Webapp-Konto.
+# Nur manuell ausloesbar; die E-Mail steht bewusst nicht im Repository.
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'E-Mail des Webapp-Kontos'
+        required: true
+        type: string
+      revoke:
+        description: 'Rechte entziehen statt vergeben'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: admin-grant
+
+jobs:
+  grant:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GRANT_EMAIL: ${{ inputs.email }}
+      REVOKE: ${{ inputs.revoke }}
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Inject D1 database id
+        run: |
+          DB_ID=$(npx wrangler d1 list --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);const db=j.find(x=>x.name==='openttd-web');if(!db){console.error('db not found');process.exit(1)};console.log(db.uuid)})")
+          sed -i "s/^database_id = .*/database_id = \"$DB_ID\"/" wrangler.toml
+
+      - name: Admin-Kennzeichen setzen
+        run: |
+          # E-Mail gegen SQL-Sonderzeichen absichern (einfache Anfuegungszeichen verdoppeln).
+          EMAIL_SQL=$(printf '%s' "$GRANT_EMAIL" | tr '[:upper:]' '[:lower:]' | sed "s/'/''/g")
+          FLAG=1; [ "$REVOKE" = "true" ] && FLAG=0
+          npx wrangler d1 execute openttd-web --remote --json --command \
+            "UPDATE users SET is_admin = $FLAG WHERE email = '$EMAIL_SQL'" | tee /tmp/result.json
+          CHANGED=$(node -e "const j=require('/tmp/result.json');console.log(j[0].meta.changes)")
+          if [ "$CHANGED" = "1" ]; then
+            echo "OK: is_admin=$FLAG gesetzt."
+          else
+            echo "FEHLER: Kein Konto mit dieser E-Mail gefunden (erst in der Webapp registrieren)."
+            exit 1
+          fi
