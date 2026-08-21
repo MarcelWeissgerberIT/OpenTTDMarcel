@@ -2453,6 +2453,16 @@ STR_AUTOCONNECT_CARGO_MAIL                                      :{BLACK}Cargo: M
 STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Cargo: Passengers + mail
 STR_AUTOCONNECT_STOPS_AUTO                                      :{BLACK}Bus stops per town: automatic
 STR_AUTOCONNECT_STOPS_N                                         :{BLACK}Bus stops per town: {NUM}
+STR_AUTOCONNECT_TRAINLEN                                        :{BLACK}Train length: {ORANGE}{NUM} tiles{BLACK} ({NUM} wagons)
+STR_AUTOCONNECT_TRAINLEN_TOOLTIP                                :{BLACK}Platform length for new rail links; the train gets engine plus wagons to match
+STR_AUTOCONNECT_RECOMMEND                                       :{BLACK} (suggested: {ORANGE}{NUM}{BLACK})
+STR_AUTOCONNECT_RECOMMEND_TOOLTIP                               :{BLACK}Suggested vehicle count from the route distance - click to apply it
+STR_AUTOCONNECT_LINE_START                                      :{BLACK}Town line: pick towns...
+STR_AUTOCONNECT_LINE_N                                          :{BLACK}Town line: {ORANGE}{NUM} towns{BLACK} - build ready
+STR_AUTOCONNECT_LINE_PICKING                                    :{BLACK}Picking... {ORANGE}{NUM} towns{BLACK} - same town again = done
+STR_AUTOCONNECT_LINE_HINT                                       :{BLACK}Click towns on the map one by one (up to 8); clicking a chosen town again finishes the line
+STR_AUTOCONNECT_LINE_TOOLTIP                                    :{BLACK}Plan a bus line through up to 8 towns: click the button, then click each town on the map
+STR_AUTOCONNECT_LINE_BUS_ONLY                                   :{BLACK}The town line is built with buses - set mode to buses
 STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}How many bus stops to build in each town (automatic = by town size). Only used by the bus mode
 STR_INDCON_BUTTON                                               :{BLACK}Connect to customer
 STR_INDCON_BUTTON_TOOLTIP                                       :{BLACK}Show the nearest industries accepting this cargo and build a connection with one click

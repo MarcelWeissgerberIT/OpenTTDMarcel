@@ -526,42 +526,67 @@ static EngineID FindBestBus(CargoClasses cargo_class)
  * Busverbindung bauen: Straße, Haltestellen, Depot, N Busse.
  * @param stops_per_town Haltestellen je Stadt; 0 = automatisch nach Größe.
  */
-static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint count, uint8_t cargo_mode, bool estimate, uint stops_per_town = 0)
+/* Fork: Bus-Linie ueber 2 bis 8 Staedte - je Stadt Haltestellen (Bestand
+ * wird wiederverwendet), Strasse zwischen aufeinanderfolgenden Staedten,
+ * ein Depot am ersten Wegstueck, und alle Fahrzeuge fahren die Halte als
+ * Rundkurs ab. Die klassische Zwei-Staedte-Verbindung ist der Sonderfall. */
+static AutoConnectResult BuildRoadLine(const std::vector<Town *> &towns, uint count, uint8_t cargo_mode, bool estimate, uint stops_per_town = 0)
 {
 	AutoConnectResult result;
 	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 	Backup<CompanyID> cur_company(_current_company, _local_company);
 
-	/* Bestehende eigene Haltestellen in Stadtnähe wiederverwenden. */
-	Station *re_a = FindNearbyOwnStation(town_a->xy, StationFacility::BusStop, 20);
-	Station *re_b = FindNearbyOwnStation(town_b->xy, StationFacility::BusStop, 20);
-	if (re_a != nullptr && re_a == re_b) re_b = nullptr;
-	bool build_a = re_a == nullptr || re_a->bus_stops == nullptr;
-	bool build_b = re_b == nullptr || re_b->bus_stops == nullptr;
-
-	Axis axis_a{}, axis_b{};
-	TileIndex stop_a = build_a ? FindBusStopSite(town_a, axis_a) : re_a->bus_stops->xy;
-	TileIndex stop_b = build_b ? FindBusStopSite(town_b, axis_b) : re_b->bus_stops->xy;
-	if (stop_a == INVALID_TILE || stop_b == INVALID_TILE) {
-		result.error = STR_AUTOCONNECT_ERR_NO_STOP_SITE;
-		cur_company.Restore();
-		return result;
+	/* Je Stadt: bestehende eigene Haltestelle wiederverwenden oder Platz suchen. */
+	struct LineStop {
+		Town *town;
+		TileIndex tile;
+		Axis axis;
+		bool build;
+	};
+	std::vector<LineStop> line;
+	for (Town *t : towns) {
+		Station *re = FindNearbyOwnStation(t->xy, StationFacility::BusStop, 20);
+		bool reuse = re != nullptr && re->bus_stops != nullptr;
+		if (reuse) {
+			/* Dieselbe Station darf nicht fuer zwei Staedte der Linie stehen. */
+			for (const LineStop &s : line) {
+				if (s.tile == re->bus_stops->xy) { reuse = false; break; }
+			}
+		}
+		if (reuse) {
+			line.push_back({t, re->bus_stops->xy, Axis::X, false});
+		} else {
+			Axis ax{};
+			TileIndex site = FindBusStopSite(t, ax);
+			if (site == INVALID_TILE) {
+				result.error = STR_AUTOCONNECT_ERR_NO_STOP_SITE;
+				cur_company.Restore();
+				return result;
+			}
+			line.push_back({t, site, ax, true});
+		}
 	}
 
-	std::vector<TileIndex> path = FindRoadPath(stop_a, stop_b);
-	if (path.empty()) {
-		result.error = STR_AUTOCONNECT_ERR_NO_ROAD_PATH;
-		cur_company.Restore();
-		return result;
+	/* Wege zwischen aufeinanderfolgenden Staedten suchen; den
+	 * Strassenbedarf aller Teilstuecke vereinigen. */
+	std::map<TileIndex, RoadBits> want;
+	std::vector<TileIndex> first_path;
+	for (size_t leg = 0; leg + 1 < line.size(); leg++) {
+		std::vector<TileIndex> path = FindRoadPath(line[leg].tile, line[leg + 1].tile);
+		if (path.empty()) {
+			result.error = STR_AUTOCONNECT_ERR_NO_ROAD_PATH;
+			cur_company.Restore();
+			return result;
+		}
+		for (size_t i = 0; i + 1 < path.size(); i++) {
+			DiagDirection d = DiagdirBetweenTiles(path[i], path[i + 1]);
+			want[path[i]] |= DiagDirToRoadBits(d);
+			want[path[i + 1]] |= DiagDirToRoadBits(ReverseDiagDir(d));
+		}
+		if (leg == 0) first_path = std::move(path);
 	}
 
 	/* Straße entlang des Wegs bauen: je Kachel die nötigen Halbstücke. */
-	std::map<TileIndex, RoadBits> want;
-	for (size_t i = 0; i + 1 < path.size(); i++) {
-		DiagDirection d = DiagdirBetweenTiles(path[i], path[i + 1]);
-		want[path[i]] |= DiagDirToRoadBits(d);
-		want[path[i + 1]] |= DiagDirToRoadBits(ReverseDiagDir(d));
-	}
 	for (const auto &[tile, bits] : want) {
 		RoadBits have = IsNormalRoadTile(tile) ? GetRoadBits(tile, RoadTramType::Road) : RoadBits{};
 		RoadBits missing = bits;
@@ -572,14 +597,14 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 	}
 
 	/* Haltestellen bauen (nur wo keine wiederverwendet wird). */
-	for (auto [stop, axis, build] : {std::tuple{stop_a, axis_a, build_a}, std::tuple{stop_b, axis_b, build_b}}) {
-		if (!build) continue;
-		CommandCost c = Command<Commands::BuildRoadStop>::Do(do_flags, stop, 1, 1,
-				RoadStopType::Bus, true, AxisToDiagDir(axis), ROADTYPE_ROAD,
+	for (const LineStop &s : line) {
+		if (!s.build) continue;
+		CommandCost c = Command<Commands::BuildRoadStop>::Do(do_flags, s.tile, 1, 1,
+				RoadStopType::Bus, true, AxisToDiagDir(s.axis), ROADTYPE_ROAD,
 				ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
 		if (c.Failed()) {
-			c = Command<Commands::BuildRoadStop>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, stop, 1, 1,
-					RoadStopType::Bus, true, AxisToDiagDir(axis), ROADTYPE_ROAD,
+			c = Command<Commands::BuildRoadStop>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, s.tile, 1, 1,
+					RoadStopType::Bus, true, AxisToDiagDir(s.axis), ROADTYPE_ROAD,
 					ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
 		}
 		if (c.Failed()) {
@@ -591,23 +616,25 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		result.cost += c.GetCost();
 	}
 
-	/* Zusaetzliche Haltestellen in beiden Staedten, ueber die Stadt
-	 * verteilt (Mindestabstand zueinander). Bester-Versuch: was nicht
-	 * gebaut werden kann, wird uebersprungen. */
-	std::vector<TileIndex> stops_town_a{stop_a}, stops_town_b{stop_b};
-	for (auto [t, stops] : {std::pair{town_a, &stops_town_a}, std::pair{town_b, &stops_town_b}}) {
-		uint want_stops = stops_per_town != 0 ? stops_per_town : ClampU(t->cache.population / 1200, 1, 3);
-		while (stops->size() < want_stops) {
+	/* Zusaetzliche Haltestellen je Stadt, ueber die Stadt verteilt
+	 * (Mindestabstand zueinander). Bester-Versuch: was nicht gebaut
+	 * werden kann, wird uebersprungen. */
+	std::vector<std::vector<TileIndex>> town_stops;
+	for (const LineStop &s : line) {
+		std::vector<TileIndex> stops{s.tile};
+		uint want_stops = stops_per_town != 0 ? stops_per_town : ClampU(s.town->cache.population / 1200, 1, 3);
+		while (stops.size() < want_stops) {
 			Axis ax{};
-			TileIndex extra = FindBusStopSite(t, ax, *stops);
+			TileIndex extra = FindBusStopSite(s.town, ax, stops);
 			if (extra == INVALID_TILE) break;
 			CommandCost c = Command<Commands::BuildRoadStop>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, extra, 1, 1,
 					RoadStopType::Bus, true, AxisToDiagDir(ax), ROADTYPE_ROAD,
 					ROADSTOP_CLASS_DFLT, 0, NEW_STATION, false);
 			if (c.Failed()) break;
 			result.cost += c.GetCost();
-			stops->push_back(extra);
+			stops.push_back(extra);
 		}
+		town_stops.push_back(std::move(stops));
 	}
 
 	/* Fahrzeugwahl je Index: bei "beides" abwechselnd Bus und Postwagen. */
@@ -632,22 +659,22 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		return result;
 	}
 
-	/* Depot neben dem Weg nahe Haltestelle A. Anschluss wird vor dem Bau
-	 * getestet, damit kein Depot ohne Ausfahrt entsteht. */
+	/* Depot neben dem Weg nahe der ersten Haltestelle. Anschluss wird vor
+	 * dem Bau getestet, damit kein Depot ohne Ausfahrt entsteht. */
 	TileIndex depot = INVALID_TILE;
-	for (size_t i = 0; i < std::min<size_t>(path.size(), 20) && depot == INVALID_TILE; i++) {
-		if (!IsNormalRoadTile(path[i])) continue; /* Haltestellen usw. überspringen */
+	for (size_t i = 0; i < std::min<size_t>(first_path.size(), 20) && depot == INVALID_TILE; i++) {
+		if (!IsNormalRoadTile(first_path[i])) continue; /* Haltestellen usw. überspringen */
 		for (DiagDirection d = DiagDirection::Begin; d < DiagDirection::End; d++) {
-			TileIndex cand = AddTileIndexDiffCWrap(path[i], TileIndexDiffCByDiagDir(d));
+			TileIndex cand = AddTileIndexDiffCWrap(first_path[i], TileIndexDiffCByDiagDir(d));
 			if (cand == INVALID_TILE || want.count(cand) != 0) continue;
-			bool need_bit = !(GetRoadBits(path[i], RoadTramType::Road) & DiagDirToRoadBits(d)).Any();
+			bool need_bit = !(GetRoadBits(first_path[i], RoadTramType::Road) & DiagDirToRoadBits(d)).Any();
 			if (Command<Commands::BuildRoadDepot>::Do({}, cand, ROADTYPE_ROAD, ReverseDiagDir(d)).Failed()) continue;
-			if (need_bit && Command<Commands::BuildRoad>::Do({}, path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid()).Failed()) continue;
+			if (need_bit && Command<Commands::BuildRoad>::Do({}, first_path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid()).Failed()) continue;
 			CommandCost c = Command<Commands::BuildRoadDepot>::Do(DoCommandFlag::Execute, cand, ROADTYPE_ROAD, ReverseDiagDir(d));
 			if (c.Failed()) continue;
 			result.cost += c.GetCost();
 			if (need_bit) {
-				CommandCost c2 = Command<Commands::BuildRoad>::Do(DoCommandFlag::Execute, path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
+				CommandCost c2 = Command<Commands::BuildRoad>::Do(DoCommandFlag::Execute, first_path[i], DiagDirToRoadBits(d), ROADTYPE_ROAD, DisallowedRoadDirections{}, TownID::Invalid());
 				if (c2.Failed()) continue; /* Depot bleibt verwaist - naechster Kandidat */
 				result.cost += c2.GetCost();
 			}
@@ -660,9 +687,6 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		cur_company.Restore();
 		return result;
 	}
-
-	Station *st_a = Station::GetByTile(stop_a);
-	Station *st_b = Station::GetByTile(stop_b);
 
 	for (uint i = 0; i < count; i++) {
 		auto [cost_v, veh_id, refit_capacity, refit_mail, cargo_capacities] =
@@ -677,27 +701,32 @@ static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint co
 		}
 		result.cost += cost_v.GetCost();
 
-		/* Rundkurs ueber alle Halte: erst Stadt A, dann Stadt B. */
+		/* Rundkurs ueber alle Halte, Stadt fuer Stadt entlang der Linie. */
 		uint order_no = 0;
-		for (TileIndex st : stops_town_a) {
-			CommandCost co = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, order_no++, MakeStationOrder(Station::GetByTile(st)->index));
-			if (co.Failed() && order_no == 1) result.error_detail = co.GetErrorMessage().base();
-		}
-		for (TileIndex st : stops_town_b) {
-			Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, order_no++, MakeStationOrder(Station::GetByTile(st)->index));
+		for (const auto &stops : town_stops) {
+			for (TileIndex st : stops) {
+				CommandCost co = Command<Commands::InsertOrder>::Do(DoCommandFlag::Execute, veh_id, order_no++, MakeStationOrder(Station::GetByTile(st)->index));
+				if (co.Failed() && order_no == 1) result.error_detail = co.GetErrorMessage().base();
+			}
 		}
 		AcStartStaggered(veh_id, i);
 	}
-	(void)st_a; (void)st_b;
 
 	cur_company.Restore();
 	result.ok = true;
 	return result;
 }
 
+static AutoConnectResult BuildRoadConnection(Town *town_a, Town *town_b, uint count, uint8_t cargo_mode, bool estimate, uint stops_per_town = 0)
+{
+	return BuildRoadLine({town_a, town_b}, count, cargo_mode, estimate, stops_per_town);
+}
+
 /* ------------------------- Zugverbindung (Stufe 2) -------------------- */
 
-static const uint RAIL_PLATFORM_LEN = 5; ///< Bahnsteiglänge in Kacheln (Lok + 3 Waggons passen ganz hinein).
+/* Fork: einstellbare Zuglänge - Bahnsteiglänge in Kacheln (3-7);
+ * der Zug bekommt Lok + (Länge - 2) Waggons und passt ganz hinein. */
+static uint _ac_train_len = 5;
 
 /** Bahnhofs-Bauplatz mit Anschlussrichtungen. */
 struct RailSite {
@@ -786,7 +815,7 @@ static bool RailSiteFromStation(const Station *st, TileIndex toward, bool need_b
 }
 
 /**
- * Platz für einen Bahnhof (1 Gleis, RAIL_PLATFORM_LEN Kacheln) nahe der
+ * Platz für einen Bahnhof (1 Gleis, _ac_train_len Kacheln) nahe der
  * Stadt suchen. Das Anschluss-Ende wird Richtung \a toward gewählt.
  * @param need_both Ringbetrieb: beide Bahnsteig-Enden brauchen Anschluss.
  */
@@ -797,15 +826,15 @@ static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool nee
 	for (TileIndex tile : SpiralTileSequence(center, 30)) {
 		for (Axis axis : {Axis::X, Axis::Y}) {
 			CommandCost res = Command<Commands::BuildRailStation>::Do({}, tile, RAILTYPE_RAIL,
-					axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+					axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 			if (!res.Succeeded() && terraform && level_attempts < 40) {
 				/* Bahnhofsflaeche samt beider Ausfahrkacheln planieren
 				 * und erneut versuchen (Marcel: nicht mitten im Bau
 				 * aufgeben, sondern das Gelaende passend machen). */
 				TileIndexDiffC pre = (axis == Axis::X) ? TileIndexDiffC{-1, 0} : TileIndexDiffC{0, -1};
 				TileIndexDiffC post = (axis == Axis::X)
-						? TileIndexDiffC{(int16_t)RAIL_PLATFORM_LEN, (int16_t)(numtracks - 1)}
-						: TileIndexDiffC{(int16_t)(numtracks - 1), (int16_t)RAIL_PLATFORM_LEN};
+						? TileIndexDiffC{(int16_t)_ac_train_len, (int16_t)(numtracks - 1)}
+						: TileIndexDiffC{(int16_t)(numtracks - 1), (int16_t)_ac_train_len};
 				TileIndex a0 = AddTileIndexDiffCWrap(tile, pre);
 				TileIndex a1 = AddTileIndexDiffCWrap(tile, post);
 				if (a0 == INVALID_TILE || a1 == INVALID_TILE) continue;
@@ -816,13 +845,13 @@ static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool nee
 				if (lc.Failed()) continue;
 				if (result != nullptr) result->cost += lc.GetCost();
 				res = Command<Commands::BuildRailStation>::Do({}, tile, RAILTYPE_RAIL,
-						axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+						axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 			}
 			if (!res.Succeeded()) continue;
 
 			DiagDirection far_dir = (axis == Axis::X) ? DiagDirection::SW : DiagDirection::SE;
 			TileIndex far_end = tile;
-			for (uint i = 1; i < RAIL_PLATFORM_LEN; i++) {
+			for (uint i = 1; i < _ac_train_len; i++) {
 				far_end = AddTileIndexDiffCWrap(far_end, TileIndexDiffCByDiagDir(far_dir));
 				if (far_end == INVALID_TILE) break;
 			}
@@ -1025,6 +1054,23 @@ static void BuildLoopSignal(TileIndex tile, DiagDirection entry_edge, DiagDirect
 }
 
 /**
+ * Den fernen Brückenkopf schrittweise heben/senken, bis er auf der Höhe
+ * des nahen Kopfs liegt - ohne das Tal oder Wasser dazwischen anzutasten
+ * (das scheiterte mit "Brückenköpfe nicht auf der selben Höhe").
+ */
+static void AcMatchBridgeHead(TileIndex near_head, TileIndex far_head, AutoConnectResult &result)
+{
+	for (int guard = 0; guard < 8; guard++) {
+		int dh = (int)TileHeight(near_head) - (int)TileHeight(far_head);
+		if (dh == 0) break;
+		auto [c, money, tile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute,
+				far_head, far_head, false, dh > 0 ? LevelMode::Raise : LevelMode::Lower);
+		if (c.Failed()) break;
+		result.cost += c.GetCost();
+	}
+}
+
+/**
  * Eine Gleislinie entlang eines A*-Pfads bauen (inkl. Brücken).
  * @param final_exit_edge Kante der letzten Kachel Richtung Ziel-Bahnsteig.
  * @param signals Einseitige Pfadsignale in Fahrtrichtung setzen (Ringbetrieb).
@@ -1052,14 +1098,27 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 			}
 			CommandCost c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
 					TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
-			if (c.Failed() && i > 0 && do_flags.Test(DoCommandFlag::Execute)) {
-				/* Rampen-Hang unpassend: beide Brueckenkoepfe planieren. */
-				auto [l1, m1, t1] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i].first, path[i - 1].first, false, LevelMode::Level);
-				if (l1.Succeeded()) result.cost += l1.GetCost();
-				auto [l2, m2, t2] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i + 1].first, path[i].first, false, LevelMode::Level);
-				if (l2.Succeeded()) result.cost += l2.GetCost();
+			if (c.Failed() && do_flags.Test(DoCommandFlag::Execute)) {
+				/* Rampen-Hang unpassend: nahen Kopf auf Vorgängerhöhe
+				 * einebnen und den fernen Kopf einzeln angleichen -
+				 * NICHT die Fläche dazwischen planieren, das scheitert
+				 * über Wasser und tiefen Tälern. */
+				if (i > 0) {
+					auto [l1, m1, t1] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i].first, path[i - 1].first, false, LevelMode::Level);
+					if (l1.Succeeded()) result.cost += l1.GetCost();
+				}
+				AcMatchBridgeHead(path[i].first, path[i + 1].first, result);
 				c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
 						TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
+				if (c.Failed()) {
+					/* Letzte Rettung auf trockenem Land: Zwischenraum einebnen. */
+					auto [l2, m2, t2] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i + 1].first, path[i].first, false, LevelMode::Level);
+					if (l2.Succeeded()) {
+						result.cost += l2.GetCost();
+						c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
+								TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
+					}
+				}
 				Debug(misc, 0, "AC: bridge retry at 0x{:X} -> {}", path[i].first.base(), c.Succeeded() ? 1 : 0);
 			}
 			if (c.Failed()) {
@@ -1146,7 +1205,7 @@ static void BuildStationFan(TileIndex exit_tile, DiagDirection exit_dir, DiagDir
  */
 static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex center_b, uint train_count, uint8_t cargo_mode, CargoType freight, bool estimate)
 {
-	static const uint TRAIN_WAGONS = 3; ///< Waggons je Zug.
+	const uint TRAIN_WAGONS = _ac_train_len - 2; ///< Waggons je Zug (aus der Zuglänge).
 	AutoConnectResult result;
 	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 	Backup<CompanyID> cur_company(_current_company, _local_company);
@@ -1200,7 +1259,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	for (const auto &[site, build] : {std::pair{&site_a, build_st_a}, std::pair{&site_b, build_st_b}}) {
 		if (!build) continue;
 		CommandCost c = Command<Commands::BuildRailStation>::Do(do_flags, site->tile,
-				RAILTYPE_RAIL, site->axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+				RAILTYPE_RAIL, site->axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 		if (c.Failed()) {
 			Town *dbg = ClosestTownFromTile(site->tile, _settings_game.economy.dist_local_authority);
 			Debug(misc, 0, "AC: rail station refused at 0x{:X} err {} town {} rating {}",
@@ -1209,7 +1268,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 					dbg != nullptr ? dbg->ratings[_local_company] : -9999);
 			/* Der Spieler hat den Bau angewiesen - Stadtbewertung nicht blockieren lassen. */
 			c = Command<Commands::BuildRailStation>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, site->tile,
-					RAILTYPE_RAIL, site->axis, numtracks, RAIL_PLATFORM_LEN, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+					RAILTYPE_RAIL, site->axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 		}
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
@@ -1221,8 +1280,8 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		result.cost += c.GetCost();
 		/* Neue Bahnhofsflaeche ins Bau-Log (fuer den Rueckbau-Fall). */
 		if (!estimate) {
-			uint w = (site->axis == Axis::X) ? RAIL_PLATFORM_LEN : numtracks;
-			uint h = (site->axis == Axis::X) ? numtracks : RAIL_PLATFORM_LEN;
+			uint w = (site->axis == Axis::X) ? _ac_train_len : numtracks;
+			uint h = (site->axis == Axis::X) ? numtracks : _ac_train_len;
 			for (TileIndex t : TileArea(site->tile, static_cast<uint8_t>(w), static_cast<uint8_t>(h))) AcLogTile(t);
 		}
 	}
@@ -1681,7 +1740,37 @@ struct AutoConnectWindow : Window {
 	IndustryID sug_b = IndustryID::Invalid(); ///< Güter-Vorschlag: Ziel.
 	CargoType sug_cargo = INVALID_CARGO; ///< Güter-Vorschlag: Frachtart.
 	WidgetID picking_for = 0; ///< Widget, für das gerade eine Stadt gewählt wird (0 = keins).
+	std::vector<TownID> line; ///< Städte-Linie (2-8 Städte, nur Busse).
+	bool picking_line = false; ///< Gerade dabei, Linien-Städte zu wählen.
 	std::string status;
+
+	/**
+	 * Taktungs-Vorschlag: empfohlene Fahrzeuganzahl aus der Entfernung -
+	 * je Verkehrsmittel unterschiedlich (Busse dicht, Flugzeuge weit).
+	 * @return 0, wenn noch keine Städte gewählt sind.
+	 */
+	uint RecommendedCount() const
+	{
+		uint dist = 0;
+		if (this->line.size() >= 2) {
+			for (size_t i = 0; i + 1 < this->line.size(); i++) {
+				const Town *ta = Town::GetIfValid(this->line[i]);
+				const Town *tb = Town::GetIfValid(this->line[i + 1]);
+				if (ta == nullptr || tb == nullptr) return 0;
+				dist += DistanceManhattan(ta->xy, tb->xy);
+			}
+		} else if (this->town_a != TownID::Invalid() && this->town_b != TownID::Invalid() && this->town_a != this->town_b) {
+			dist = DistanceManhattan(Town::Get(this->town_a)->xy, Town::Get(this->town_b)->xy);
+		} else {
+			return 0;
+		}
+		switch (this->mode) {
+			case 1: return ClampU(dist / 12, 2, 10); /* Busse */
+			case 2: return ClampU(dist / 45 + 1, 1, 4); /* Züge */
+			case 3: return ClampU(dist / 30 + 1, 1, 6); /* Schiffe */
+			default: return ClampU(dist / 70 + 1, 1, 4); /* Flugzeuge */
+		}
+	}
 
 	AutoConnectWindow(WindowDesc &desc, WindowNumber number) : Window(desc)
 	{
@@ -1704,8 +1793,16 @@ struct AutoConnectWindow : Window {
 				return this->town_b == TownID::Invalid() ? GetString(STR_AUTOCONNECT_PICK_TOWN_B) : GetString(STR_AUTOCONNECT_TOWN_NAME, this->town_b);
 			case WID_AC_COUNT: {
 				static const StringID counts[] = {STR_AUTOCONNECT_COUNT, STR_AUTOCONNECT_COUNT_BUS, STR_AUTOCONNECT_COUNT_TRAIN, STR_AUTOCONNECT_COUNT_SHIP};
-				return GetString(counts[this->mode], this->count);
+				std::string s = GetString(counts[this->mode], this->count);
+				uint rec = this->RecommendedCount();
+				if (rec > 0 && rec != this->count) s += GetString(STR_AUTOCONNECT_RECOMMEND, rec);
+				return s;
 			}
+			case WID_AC_TRAINLEN:
+				return GetString(STR_AUTOCONNECT_TRAINLEN, _ac_train_len, _ac_train_len - 2);
+			case WID_AC_LINE:
+				if (this->picking_line) return GetString(STR_AUTOCONNECT_LINE_PICKING, (uint)this->line.size());
+				return this->line.empty() ? GetString(STR_AUTOCONNECT_LINE_START) : GetString(STR_AUTOCONNECT_LINE_N, (uint)this->line.size());
 			case WID_AC_MODE: {
 				static const StringID modes[] = {STR_AUTOCONNECT_MODE_AIR, STR_AUTOCONNECT_MODE_BUS, STR_AUTOCONNECT_MODE_TRAIN, STR_AUTOCONNECT_MODE_SHIP};
 				return GetString(modes[this->mode]);
@@ -1746,6 +1843,37 @@ struct AutoConnectWindow : Window {
 
 			case WID_AC_STOPS:
 				this->stops = (this->stops + 1) % 5; /* 0 = automatisch, dann 1-4. */
+				this->SetDirty();
+				break;
+
+			case WID_AC_TRAINLEN:
+				_ac_train_len = _ac_train_len >= 7 ? 3 : _ac_train_len + 1;
+				this->SetDirty();
+				break;
+
+			case WID_AC_COUNT: {
+				/* Klick auf die Anzahl uebernimmt den Taktungs-Vorschlag. */
+				uint rec = this->RecommendedCount();
+				if (rec > 0) {
+					this->count = rec;
+					this->SetDirty();
+				}
+				break;
+			}
+
+			case WID_AC_LINE:
+				if (this->picking_line) {
+					/* Zweiter Klick auf den Knopf beendet die Auswahl. */
+					this->picking_line = false;
+					ResetObjectToPlace();
+					this->status = GetString(STR_AUTOCONNECT_STATUS_PICK);
+				} else {
+					this->line.clear();
+					this->picking_line = true;
+					this->picking_for = 0;
+					SetObjectToPlace(SPR_CURSOR_TOWN, PAL_NONE, HT_RECT, this->window_class, this->window_number);
+					this->status = GetString(STR_AUTOCONNECT_LINE_HINT);
+				}
 				this->SetDirty();
 				break;
 
@@ -1809,12 +1937,32 @@ struct AutoConnectWindow : Window {
 					ShowErrorMessage(GetEncodedString(STR_AUTOCONNECT_ERR_SINGLEPLAYER), {}, WarningLevel::Info);
 					break;
 				}
-				if (this->town_a == TownID::Invalid() || this->town_b == TownID::Invalid() || this->town_a == this->town_b) {
+				bool use_line = this->line.size() >= 2;
+				if (use_line) {
+					if (this->mode != 1) {
+						this->status = GetString(STR_AUTOCONNECT_LINE_BUS_ONLY);
+						this->SetDirty();
+						break;
+					}
+					bool valid = true;
+					for (TownID id : this->line) if (Town::GetIfValid(id) == nullptr) valid = false;
+					if (!valid) {
+						this->line.clear();
+						this->status = GetString(STR_AUTOCONNECT_STATUS_NEED_TOWNS);
+						this->SetDirty();
+						break;
+					}
+				} else if (this->town_a == TownID::Invalid() || this->town_b == TownID::Invalid() || this->town_a == this->town_b) {
 					this->status = GetString(STR_AUTOCONNECT_STATUS_NEED_TOWNS);
 					this->SetDirty();
 					break;
 				}
 				auto run = [&](bool est) {
+					if (use_line) {
+						std::vector<Town *> towns;
+						for (TownID id : this->line) towns.push_back(Town::Get(id));
+						return BuildRoadLine(towns, this->count, this->cargo, est, this->stops);
+					}
 					switch (this->mode) {
 						case 1: return BuildRoadConnection(Town::Get(this->town_a), Town::Get(this->town_b), this->count, this->cargo, est, this->stops);
 						case 2: return BuildRailConnection(Town::Get(this->town_a)->xy, Town::Get(this->town_b)->xy, this->count, this->cargo, INVALID_CARGO, est);
@@ -1823,7 +1971,7 @@ struct AutoConnectWindow : Window {
 					}
 				};
 
-				if (!estimate) {
+				if (!estimate && !use_line) {
 					/* Gibt es die Verbindung schon? Dann nur Fahrzeuge ergaenzen. */
 					static const VehicleType kinds[] = {VehicleType::Aircraft, VehicleType::Road, VehicleType::Train, VehicleType::Ship};
 					const Vehicle *link = FindExistingLink(Town::Get(this->town_a), Town::Get(this->town_b), kinds[this->mode]);
@@ -1885,6 +2033,21 @@ struct AutoConnectWindow : Window {
 	{
 		Town *t = CalcClosestTownFromTile(tile);
 		if (t == nullptr) return;
+		if (this->picking_line) {
+			/* Städte-Linie: nacheinander anklicken; dieselbe Stadt erneut
+			 * oder die achte Stadt beendet die Auswahl. */
+			bool already = std::find(this->line.begin(), this->line.end(), t->index) != this->line.end();
+			if (!already) this->line.push_back(t->index);
+			if (already || this->line.size() >= 8) {
+				this->picking_line = false;
+				ResetObjectToPlace();
+				this->status = GetString(STR_AUTOCONNECT_STATUS_PICK);
+			} else {
+				this->status = GetString(STR_AUTOCONNECT_LINE_HINT);
+			}
+			this->SetDirty();
+			return;
+		}
 		if (this->picking_for == WID_AC_TOWN_A) this->town_a = t->index;
 		if (this->picking_for == WID_AC_TOWN_B) this->town_b = t->index;
 		this->picking_for = 0;
@@ -1896,6 +2059,7 @@ struct AutoConnectWindow : Window {
 	void OnPlaceObjectAbort() override
 	{
 		this->picking_for = 0;
+		this->picking_line = false;
 		this->SetDirty();
 	}
 
@@ -1926,9 +2090,11 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_MODE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_MODE_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CARGO), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_CARGO_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_STOPS), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_STOPS_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TRAINLEN), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_TRAINLEN_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_LINE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_LINE_TOOLTIP),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_DOWN), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_MINUS),
-				NWidget(WWT_TEXT, Colours::Invalid, WID_AC_COUNT), SetFill(1, 0), SetAlignment({AlignmentH::Centre, AlignmentV::Middle}),
+				NWidget(WWT_TEXT, Colours::Invalid, WID_AC_COUNT), SetFill(1, 0), SetAlignment({AlignmentH::Centre, AlignmentV::Middle}), SetToolTip(STR_AUTOCONNECT_RECOMMEND_TOOLTIP),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_UP), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_PLUS),
 			EndContainer(),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),

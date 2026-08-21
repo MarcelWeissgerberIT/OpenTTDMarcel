@@ -2422,6 +2422,16 @@ STR_AUTOCONNECT_CARGO_MAIL                                      :{BLACK}Fracht: 
 STR_AUTOCONNECT_CARGO_BOTH                                      :{BLACK}Fracht: Passagiere + Post
 STR_AUTOCONNECT_STOPS_AUTO                                      :{BLACK}Haltestellen je Stadt: automatisch
 STR_AUTOCONNECT_STOPS_N                                         :{BLACK}Haltestellen je Stadt: {NUM}
+STR_AUTOCONNECT_TRAINLEN                                        :{BLACK}Zuglänge: {ORANGE}{NUM} Felder{BLACK} ({NUM} Waggons)
+STR_AUTOCONNECT_TRAINLEN_TOOLTIP                                :{BLACK}Bahnsteiglänge für neue Zugverbindungen; der Zug bekommt passend Lok plus Waggons
+STR_AUTOCONNECT_RECOMMEND                                       :{BLACK} (Empfehlung: {ORANGE}{NUM}{BLACK})
+STR_AUTOCONNECT_RECOMMEND_TOOLTIP                               :{BLACK}Empfohlene Fahrzeuganzahl aus der Streckenlänge - Klick übernimmt sie
+STR_AUTOCONNECT_LINE_START                                      :{BLACK}Städte-Linie: Städte wählen...
+STR_AUTOCONNECT_LINE_N                                          :{BLACK}Städte-Linie: {ORANGE}{NUM} Städte{BLACK} - bereit zum Bauen
+STR_AUTOCONNECT_LINE_PICKING                                    :{BLACK}Auswahl läuft... {ORANGE}{NUM} Städte{BLACK} - gleiche Stadt erneut = fertig
+STR_AUTOCONNECT_LINE_HINT                                       :{BLACK}Städte nacheinander auf der Karte anklicken (bis zu 8); Klick auf eine gewählte Stadt beendet die Linie
+STR_AUTOCONNECT_LINE_TOOLTIP                                    :{BLACK}Bus-Linie durch bis zu 8 Städte planen: Knopf anklicken, dann die Städte auf der Karte
+STR_AUTOCONNECT_LINE_BUS_ONLY                                   :{BLACK}Die Städte-Linie wird mit Bussen gebaut - Modus auf Busse stellen
 STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}Wie viele Bushaltestellen je Stadt gebaut werden (automatisch = nach Stadtgröße). Wirkt nur im Bus-Modus
 STR_INDCON_BUTTON                                               :{BLACK}Abnehmer verbinden
 STR_INDCON_BUTTON_TOOLTIP                                       :{BLACK}Zeigt die nächsten Industrien, die diese Fracht annehmen, und baut die Verbindung mit einem Klick

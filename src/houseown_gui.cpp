@@ -208,7 +208,7 @@ bool HouseOwnMayDemolish(TileIndex tile)
 	if (owned->warned == 0) {
 		owned->warned = today;
 		HouseOwnSave();
-		Town *t = ClosestTownFromTile(north, UINT_MAX);
+		Town *t = Town::GetByTile(north);
 		if (t != nullptr) {
 			AddTileNewsItem(GetEncodedString(STR_NEWS_HOUSEOWN_DECAY_WARNING, t->index, age),
 					NewsType::General, north);
@@ -217,6 +217,30 @@ bool HouseOwnMayDemolish(TileIndex tile)
 		return false;
 	}
 	return today >= owned->warned + HOUSEOWN_WARN_GRACE_DAYS;
+}
+
+/* Konsolen-Diagnose (housetest why): Zustand aller gekauften Haeuser. */
+std::string HouseOwnDebugWhy()
+{
+	HouseOwnLoad();
+	std::string out;
+	for (const OwnedHouse &h : _owned_houses) {
+		if (h.seed != CurrentSeed()) continue;
+		TileIndex tile(h.tile);
+		bool is_house = IsValidTile(tile) && IsTileType(tile, TileType::House);
+		out += fmt::format("Kachel {}: haus={} typ={}/{}", h.tile, is_house ? 1 : 0, is_house ? GetHouseType(tile) : 0, h.house_type);
+		if (is_house) {
+			Town *t = Town::GetByTile(tile);
+			out += fmt::format(" alter={} warned={} heute={} wachs={} rebuild={} minlife={}",
+					GetHouseAge(tile).base(), h.warned, TimerGameCalendar::date.base(),
+					t != nullptr && t->flags.Test(TownFlag::IsGrowing) ? 1 : 0,
+					t != nullptr ? t->time_until_rebuild : 0,
+					HouseSpec::Get(GetHouseType(tile))->minimum_life);
+		}
+		out += "; ";
+	}
+	if (out.empty()) out = "Keine gekauften Haeuser.";
+	return out;
 }
 
 /* Konsolen-Diagnose (housetest decay/overdue): Haus kuenstlich altern
@@ -229,6 +253,18 @@ void HouseOwnDebugDecay(TileIndex tile, bool overdue)
 	if (owned != nullptr && overdue) {
 		owned->warned = TimerGameCalendar::date.base() - (HOUSEOWN_WARN_GRACE_DAYS + 30);
 		HouseOwnSave();
+		/* Abriss-Lotterie der Stadt kurzschliessen, damit der Test nicht
+		 * jahrelang auf --time_until_rebuild == 0 warten muss. WICHTIG:
+		 * Town::GetByTile, nicht ClosestTownFromTile - die geografisch
+		 * naechste Stadt kann eine andere sein als die Besitzer-Stadt. */
+		Town *t2 = Town::GetByTile(tile);
+		if (t2 != nullptr) {
+			t2->time_until_rebuild = 1;
+			/* Haus-Erneuerung laeuft nur in wachsenden Staedten (Vanilla);
+			 * fuer den Test das Flag setzen (UpdateTownGrowth setzt es
+			 * monatlich ohnehin neu). */
+			t2->flags.Set(TownFlag::IsGrowing);
+		}
 	}
 	MarkTileDirtyByTile(tile);
 	SetWindowClassesDirty(WindowClass::HouseInfo);

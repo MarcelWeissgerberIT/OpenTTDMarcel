@@ -285,6 +285,10 @@
 <li>Schlägt der Bau unterwegs fehl, wird alles bereits Gebaute <b>automatisch zurückgebaut</b> - keine Ruinen.</li>
 <li><b>Netz prüfen</b> findet Fahrzeuge ohne Aufträge, verirrte Fahrzeuge und unbenutzte Stationen. <b>Fracht-Vorschlag</b> schlägt eine rentable Industrie-Verbindung vor und baut sie beim zweiten Klick.</li>
 <li>Mehrere neue Fahrzeuge starten gestaffelt (4 Tage Abstand) statt als Kolonne.</li>
+<li><b>Zuglänge:</b> die Zeile „Zuglänge" schaltet die Bahnsteiglänge von 3 bis 7 Feldern durch - der Zug bekommt passend Lok plus Waggons.</li>
+<li><b>Taktungs-Empfehlung:</b> neben der Fahrzeugzahl steht eine Empfehlung aus der Streckenlänge - ein Klick auf die Zahl übernimmt sie.</li>
+<li><b>Städte-Linie:</b> „Städte-Linie: Städte wählen..." anklicken, dann bis zu 8 Städte auf der Karte - Klick auf eine gewählte Stadt beendet die Auswahl. „Verbindung bauen!" errichtet eine komplette Bus-Linie durch alle Städte mit gemeinsamem Fahrplan.</li>
+<li>Brücken mit ungleich hohen Köpfen werden jetzt automatisch angeglichen statt mit „Brückenköpfe nicht auf der selben Höhe" abzubrechen.</li>
 </ul></span><span class="en">
 <p>The connection assistant builds complete routes with one click: stations, tracks, depot, vehicles, orders.</p>
 <ul>
@@ -296,6 +300,10 @@
 <li>If a build fails midway, everything already built is <b>demolished automatically</b> - no ruins.</li>
 <li><b>Check network</b> finds vehicles without orders, lost vehicles and unused stations. <b>Cargo suggestion</b> proposes a profitable industry link and builds it on the second click.</li>
 <li>Multiple new vehicles start staggered (4 days apart) instead of in a convoy.</li>
+<li><b>Train length:</b> the "Train length" row cycles the platform length from 3 to 7 tiles - the train gets a matching engine plus wagons.</li>
+<li><b>Frequency suggestion:</b> next to the vehicle count you see a suggestion based on route distance - click the number to apply it.</li>
+<li><b>Town line:</b> click "Town line: pick towns...", then up to 8 towns on the map - clicking a chosen town again finishes the selection. "Build connection!" creates a complete bus line through all towns with a shared schedule.</li>
+<li>Bridges with unequal head heights are now levelled automatically instead of failing with "bridgeheads not at the same height".</li>
 </ul></span></div>
 </div>
 <div class="win tan" id="assistant">
@@ -349,16 +357,16 @@
 <ul>
 <li>Der Dialog zeigt Stadt, Bewohner, Alter, ein Porträt des Hauses und den Kaufpreis.</li>
 <li><b>Kaufen:</b> ab dann kassierst du monatlich Miete (erscheint in den Finanzen unter „Sonstiges"). Dafür zahlst du 1-5 % Unterhalt pro Jahr.</li>
-<li>Deine Häuser sind <b>vor Abriss geschützt</b> und tragen deine Firmen-Fahne.</li>
-<li><b>Renovieren</b> (15 % vom Kaufpreis) macht das Haus 10 Jahre jünger.</li>
+<li>Deine Häuser tragen deine Firmen-Fahne. Die Stadt darf sie erst <b>ab 75 Jahren Hausalter</b> abreißen - und auch dann bekommst du zuerst eine <b>Warnung mit einem Jahr Frist</b> (Meldung im Spiel, rote Zeile im Haus-Dialog).</li>
+<li><b>Renovieren</b> (15 % vom Kaufpreis) macht das Haus 10 Jahre jünger und nimmt die Abriss-Warnung vom Tisch. Rechtzeitig renovieren = Haus gerettet.</li>
 <li><b>Ausbauen</b> ersetzt es gegen Geld durch ein größeres Gebäude - mehr Bewohner, mehr Miete.</li>
 </ul></span><span class="en">
 <p>Every residential building is an investment. Click a building:</p>
 <ul>
 <li>The dialogue shows town, residents, age, a portrait of the house and the price.</li>
 <li><b>Buy:</b> from then on you collect monthly rent (appears in finances under "Other"). In return you pay 1-5% upkeep per year.</li>
-<li>Your houses are <b>protected from demolition</b> and fly your company flag.</li>
-<li><b>Renovate</b> (15% of the price) makes the house 10 years younger.</li>
+<li>Your houses fly your company flag. The town may only demolish them <b>once they are 75 years old</b> - and even then you first get a <b>warning with a one-year grace period</b> (in-game message, red line in the house dialogue).</li>
+<li><b>Renovate</b> (15% of the price) makes the house 10 years younger and cancels the demolition warning. Renovate in time = house saved.</li>
 <li><b>Extend</b> replaces it with a bigger building for money - more residents, more rent.</li>
 </ul></span></div>
 </div>
@@ -369,11 +377,13 @@
 <li><b>Schmieren wirkt:</b> Ist dein Rating bei einer Stadt auf Schmier-Maximum (mehrmals erfolgreich bestechen), erlaubt die Verwaltung <b>alle</b> Bauten - auch laute Groß-Flughäfen.</li>
 <li><b>Bürgermeister einsetzen</b> (Knopf im Stadtfenster, 100.000 £ + 100 £ je Einwohner): Die Stadt ist dauerhaft auf deiner Seite - bestes Rating jeden Monat, alle Bauten erlaubt, nie wieder nachschmieren.</li>
 <li>Der Assistent hält deine Bürgermeister-Städte automatisch bei Laune.</li>
+<li><b>Stadt gründen:</b> Das Städte-Icon in der Werkzeugleiste öffnet ein Menü mit „Stadt gründen" - Namen wählen, Straßenlayout aussuchen, auf die Karte klicken, fertig ist deine eigene Stadt.</li>
 </ul></span><span class="en">
 <ul>
 <li><b>Bribes work:</b> once your rating with a town is at bribe maximum (bribe successfully a few times), the council permits <b>all</b> construction - noisy mega-airports included.</li>
 <li><b>Install a mayor</b> (button in the town window, £100,000 + £100 per citizen): the town is permanently on your side - top rating every month, everything permitted, no more bribing.</li>
 <li>The assistant keeps your mayor towns happy automatically.</li>
+<li><b>Found a town:</b> the towns icon in the toolbar opens a menu with "Found town" - pick a name and road layout, click the map, and your own town is born.</li>
 </ul></span></div>
 </div>
 <div class="win" id="vehicles">
@@ -395,13 +405,15 @@
   <div class="body"><span class="de">
 <ul>
 <li>Der <b>Doppelpfeil</b> in der Werkzeugleiste schaltet in Stufen: 2x → 4x → 8x → 16x → Maximum → aus.</li>
-<li>Die aktive Stufe steht gelb neben dem Datum in der Statusleiste („» 8x" bzw. „» MAX").</li>
+<li>Die aktive Stufe steht direkt <b>auf dem Zeitraffer-Knopf</b> (schwarzes Feld mit „4x"/„MAX") und gelb neben dem Datum in der Statusleiste.</li>
+<li>Das Spiel läuft jetzt auch <b>weiter, wenn der Tab im Hintergrund</b> ist - Fabriken produzieren, Züge fahren, während du etwas anderes machst.</li>
 <li><span class="kbd">Tab</span> gedrückt halten = Maximum, solange gehalten.</li>
 <li>Es gibt <b>kein Spielende</b> mehr - 2030/2050 laufen einfach weiter.</li>
 </ul></span><span class="en">
 <ul>
 <li>The <b>double arrow</b> in the toolbar cycles through speeds: 2x → 4x → 8x → 16x → maximum → off.</li>
-<li>The active level shows in yellow next to the date in the status bar ("» 8x" or "» MAX").</li>
+<li>The active level shows right <b>on the fast-forward button</b> (black badge with "4x"/"MAX") and in yellow next to the date in the status bar.</li>
+<li>The game now <b>keeps running while the tab is in the background</b> - factories produce and trains roll while you do something else.</li>
 <li>Hold <span class="kbd">Tab</span> = maximum while held.</li>
 <li>There is <b>no game over</b> any more - 2030/2050 simply keep going.</li>
 </ul></span></div>

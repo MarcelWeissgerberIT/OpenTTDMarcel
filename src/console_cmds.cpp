@@ -437,6 +437,10 @@ static bool ConHouseTest(std::span<std::string_view> argv)
 	if (argv.size() >= 2 && argv[1] == "buy") {
 		IConsolePrint(CC_DEFAULT, "Kauf: {}", HouseOwnBuy(best) ? "ok" : "fehlgeschlagen");
 	}
+	if (argv.size() >= 2 && argv[1] == "why") {
+		extern std::string HouseOwnDebugWhy();
+		IConsolePrint(CC_DEFAULT, "{}", HouseOwnDebugWhy());
+	}
 	if (argv.size() >= 2 && (argv[1] == "decay" || argv[1] == "overdue")) {
 		/* Diagnose Abriss-Schutz: kaufen (falls noetig) und altern lassen. */
 		extern void HouseOwnDebugDecay(TileIndex tile, bool overdue);

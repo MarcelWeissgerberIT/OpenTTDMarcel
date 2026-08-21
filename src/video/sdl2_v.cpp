@@ -833,9 +833,26 @@ void VideoDriver_SDL_Base::LoopOnce()
 #endif
 }
 
+#ifdef __EMSCRIPTEN__
+/* Fork: Hintergrund-Tick. Browser drosseln requestAnimationFrame in
+ * inaktiven Tabs auf null und das Spiel stand still. Ein Web-Worker-Timer
+ * (os/emscripten/pre.js) ruft diese Funktion auf, solange der Tab
+ * verborgen ist, und treibt so die Hauptschleife weiter an. */
+static void (*_em_bg_loop)(void *) = nullptr;
+static void *_em_bg_arg = nullptr;
+
+extern "C" void EMSCRIPTEN_KEEPALIVE openttd_background_tick()
+{
+	if (_exit_game || _em_bg_loop == nullptr) return;
+	_em_bg_loop(_em_bg_arg);
+}
+#endif
+
 void VideoDriver_SDL_Base::MainLoop()
 {
 #ifdef __EMSCRIPTEN__
+	_em_bg_loop = &VideoDriver_SDL_Base::EmscriptenLoop;
+	_em_bg_arg = this;
 	/* Run the main loop event-driven, based on RequestAnimationFrame. */
 	emscripten_set_main_loop_arg(&this->EmscriptenLoop, this, 0, 1);
 #else

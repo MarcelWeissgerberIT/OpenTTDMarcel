@@ -1,3 +1,21 @@
+/* Fork: Das Spiel laeuft auch weiter, wenn der Tab nicht aktiv ist.
+ * Browser drosseln requestAnimationFrame und Seiten-Timer in inaktiven
+ * Tabs; ein Timer in einem Web-Worker wird nicht gedrosselt und stoesst
+ * die Hauptschleife dann von aussen an (openttd_background_tick). */
+(function () {
+    if (typeof Worker === 'undefined' || typeof document === 'undefined') return;
+    try {
+        var src = 'setInterval(function(){postMessage(0);},33);';
+        var w = new Worker(URL.createObjectURL(new Blob([src], {type: 'text/javascript'})));
+        w.onmessage = function () {
+            if (!document.hidden) return; /* Tab aktiv: RequestAnimationFrame uebernimmt. */
+            try {
+                if (Module['calledRun'] && Module['_openttd_background_tick']) Module['_openttd_background_tick']();
+            } catch (e) { /* Spiel (noch) nicht bereit. */ }
+        };
+    } catch (e) { /* Ohne Worker bleibt das bisherige Verhalten. */ }
+})();
+
 /* Sound läuft über SDL-Audio (OpenSFX ist gebündelt); Musik bleibt aus. */
 Module.arguments.push('-mnull', '-vsdl');
 Module['websocket'] = { url: function(host, port, proto) {
