@@ -414,11 +414,15 @@ static bool ConHouseTest(std::span<std::string_view> argv)
 	extern bool ShowHouseInfoOnClick(TileIndex tile);
 	extern Money HouseOwnPriceAt(TileIndex tile);
 	extern bool HouseOwnBuy(TileIndex tile);
+	/* Fuer den Abriss-Test nur bewohnte Haeuser: Sonderbauten wie die
+	 * Statue haben teils eine zu hohe Mindest-Lebensdauer. */
+	bool want_residents = argv.size() >= 2 && (argv[1] == "decay" || argv[1] == "overdue");
 	TileIndex best = INVALID_TILE;
 	Money best_price = INT64_MAX;
 	for (const Town *t : Town::Iterate()) {
 		for (TileIndex tile : SpiralTileSequence(t->xy, 14)) {
 			if (!IsTileType(tile, TileType::House)) continue;
+			if (want_residents && HouseSpec::Get(GetHouseType(tile))->population == 0) continue;
 			Money p = HouseOwnPriceAt(tile);
 			if (p < best_price) { best_price = p; best = tile; }
 		}
@@ -432,6 +436,13 @@ static bool ConHouseTest(std::span<std::string_view> argv)
 	ShowHouseInfoOnClick(best);
 	if (argv.size() >= 2 && argv[1] == "buy") {
 		IConsolePrint(CC_DEFAULT, "Kauf: {}", HouseOwnBuy(best) ? "ok" : "fehlgeschlagen");
+	}
+	if (argv.size() >= 2 && (argv[1] == "decay" || argv[1] == "overdue")) {
+		/* Diagnose Abriss-Schutz: kaufen (falls noetig) und altern lassen. */
+		extern void HouseOwnDebugDecay(TileIndex tile, bool overdue);
+		HouseOwnBuy(best);
+		HouseOwnDebugDecay(best, argv[1] == "overdue");
+		IConsolePrint(CC_DEFAULT, "Haus gealtert (Alter 200{}).", argv[1] == "overdue" ? ", Warnfrist abgelaufen" : "");
 	}
 	return true;
 }

@@ -103,14 +103,24 @@ void VideoDriver::StopGameThread()
 
 void VideoDriver::Tick()
 {
-	if (!this->is_game_threaded && std::chrono::steady_clock::now() >= this->next_game_tick) {
-		this->GameLoop();
+	if (!this->is_game_threaded) {
+		/* Fork: mehrere Spielticks je Aufruf erlauben. Ohne Game-Thread
+		 * (Emscripten/Browser) kommt Tick() nur einmal je Frame an - ein
+		 * einzelner Spieltick je Frame deckelt den Zeitraffer bei ~2x,
+		 * egal welche Stufe gewaehlt ist. Das Zeitbudget haelt die
+		 * Oberflaeche dabei bedienbar. */
+		auto budget = std::chrono::steady_clock::now() + std::chrono::milliseconds(24);
+		while (std::chrono::steady_clock::now() >= this->next_game_tick) {
+			this->GameLoop();
 
-		/* For things like dedicated server, don't run a separate draw-tick. */
-		if (!this->HasGUI()) {
-			::InputLoop();
-			::UpdateWindows();
-			this->next_draw_tick = this->next_game_tick;
+			/* For things like dedicated server, don't run a separate draw-tick. */
+			if (!this->HasGUI()) {
+				::InputLoop();
+				::UpdateWindows();
+				this->next_draw_tick = this->next_game_tick;
+			}
+
+			if (std::chrono::steady_clock::now() >= budget) break;
 		}
 	}
 

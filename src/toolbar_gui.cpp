@@ -248,6 +248,7 @@ static CallBackFunction ToolbarFastForwardClick(Window *)
 	}
 
 	SndClickBeep();
+	SetWindowDirty(WindowClass::MainToolbar, 0);
 	return CallBackFunction::None;
 }
 
@@ -2058,6 +2059,18 @@ struct MainToolbarWindow : Window {
 		this->SetWidgetDisabledState(WID_TN_STORY, StoryPage::GetNumItems() == 0);
 
 		this->DrawWidgets();
+	}
+
+	void DrawWidget(const Rect &r, WidgetID widget) const override
+	{
+		/* Fork: aktive Zeitraffer-Stufe direkt auf dem Knopf zeigen -
+		 * als dunkles Badge, sonst geht gelber Text auf den gelben
+		 * Pfeilen des Knopfsprites unter. */
+		if (widget != WID_TN_FAST_FORWARD || _game_speed == 100) return;
+		std::string txt = _game_speed == 0 ? "MAX" : fmt::format("{}x", _game_speed / 100);
+		int h = GetCharacterHeight(FontSize::Small);
+		GfxFillRect(r.left + 1, r.bottom - h, r.right - 1, r.bottom - 1, PC_BLACK);
+		DrawString(r.left, r.right, r.bottom - h, txt, TextColour::Yellow, AlignmentH::Centre, false, FontSize::Small);
 	}
 
 	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override

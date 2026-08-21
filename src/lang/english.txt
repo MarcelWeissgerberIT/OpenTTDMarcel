@@ -2395,6 +2395,8 @@ STR_HOUSEOWN_VIEW                                               :{BLACK}Show loc
 STR_HOUSEOWN_VIEW_TOOLTIP                                       :{BLACK}Centre the main view on this building
 STR_HOUSEOWN_NO_MONEY                                           :{WHITE}Not enough money to buy this building
 STR_NEWS_HOUSEOWN_DEMOLISHED                                    :{BIG_FONT}{BLACK}Your rental building in {TOWN} was demolished by the town
+STR_NEWS_HOUSEOWN_DECAY_WARNING                                 :{BIG_FONT}{BLACK}Dilapidated: your building in {TOWN} is {NUM} years old. The town plans to demolish it in a year - renovate it to keep it!
+STR_HOUSEOWN_DECAY_WARNED                                       :{RED}Demolition announced - renovate now!
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Start a multiplayer game
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select 'temperate' landscape style

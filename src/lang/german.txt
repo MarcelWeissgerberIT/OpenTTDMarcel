@@ -2364,6 +2364,8 @@ STR_HOUSEOWN_VIEW                                               :{BLACK}Ort zeig
 STR_HOUSEOWN_VIEW_TOOLTIP                                       :{BLACK}Hauptansicht auf dieses Gebäude zentrieren
 STR_HOUSEOWN_NO_MONEY                                           :{WHITE}Nicht genug Geld, um dieses Gebäude zu kaufen
 STR_NEWS_HOUSEOWN_DEMOLISHED                                    :{BIG_FONT}{BLACK}Ihr Miethaus in {TOWN} wurde von der Stadt abgerissen
+STR_NEWS_HOUSEOWN_DECAY_WARNING                                 :{BIG_FONT}{BLACK}Baufällig: Ihr Gebäude in {TOWN} ist {NUM} Jahre alt. Die Stadt plant den Abriss in einem Jahr - jetzt renovieren und das Haus retten!
+STR_HOUSEOWN_DECAY_WARNED                                       :{RED}Abriss angekündigt - jetzt renovieren!
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Mehrspieler-Spiel beginnen
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landschaft mit gemäßigtem Klima auswählen

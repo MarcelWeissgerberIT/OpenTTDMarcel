@@ -63,7 +63,13 @@ struct OwnedHouse {
 	uint16_t house_type; ///< HouseID beim Kauf (Abriss-Erkennung).
 	int64_t price;      ///< Gezahlter Kaufpreis.
 	int64_t rent;       ///< Monatsmiete.
+	int64_t warned = 0; ///< Datum der Abriss-Warnung (0 = keine ausstehend).
 };
+
+/** Ab diesem Hausalter darf die Stadt ein gekauftes Haus abreissen. */
+static constexpr int HOUSEOWN_DEMOLITION_AGE = 75;
+/** So viele Tage nach der Warnung bleibt Zeit zum Renovieren. */
+static constexpr int64_t HOUSEOWN_WARN_GRACE_DAYS = 365;
 static std::vector<OwnedHouse> _owned_houses;
 static bool _owned_loaded = false;
 static std::unordered_set<uint32_t> _owned_tiles; ///< Nordkacheln der aktuellen Karte (fuer die Fahne).
@@ -96,13 +102,14 @@ static void HouseOwnSave()
 {
 	std::ofstream f(HouseOwnFilePath(), std::ios::binary | std::ios::trunc);
 	if (!f.is_open()) return;
-	f.write("HOW1", 4);
+	f.write("HOW2", 4);
 	for (const OwnedHouse &h : _owned_houses) {
 		f.write(reinterpret_cast<const char *>(&h.seed), 4);
 		f.write(reinterpret_cast<const char *>(&h.tile), 4);
 		f.write(reinterpret_cast<const char *>(&h.house_type), 2);
 		f.write(reinterpret_cast<const char *>(&h.price), 8);
 		f.write(reinterpret_cast<const char *>(&h.rent), 8);
+		f.write(reinterpret_cast<const char *>(&h.warned), 8);
 	}
 	f.close();
 #ifdef __EMSCRIPTEN__
@@ -118,7 +125,9 @@ static void HouseOwnLoad()
 	if (!f.is_open()) return;
 	char magic[4];
 	f.read(magic, 4);
-	if (!f.good() || std::string_view(magic, 4) != "HOW1") return;
+	/* HOW1 (ohne Warn-Datum) wird weiter gelesen, gespeichert wird HOW2. */
+	bool v2 = f.good() && std::string_view(magic, 4) == "HOW2";
+	if (!f.good() || (!v2 && std::string_view(magic, 4) != "HOW1")) return;
 	for (;;) {
 		OwnedHouse h;
 		f.read(reinterpret_cast<char *>(&h.seed), 4);
@@ -127,6 +136,7 @@ static void HouseOwnLoad()
 		f.read(reinterpret_cast<char *>(&h.house_type), 2);
 		f.read(reinterpret_cast<char *>(&h.price), 8);
 		f.read(reinterpret_cast<char *>(&h.rent), 8);
+		if (v2) f.read(reinterpret_cast<char *>(&h.warned), 8);
 		if (!f.good()) break;
 		_owned_houses.push_back(h);
 	}
@@ -166,14 +176,62 @@ static uint HouseUpkeepPct(uint32_t tile)
 	return 1 + tile % 5;
 }
 
-/** Fork: Gekaufte Haeuser reisst die Stadt nicht ab (town_cmd.cpp fragt hier an). */
-bool HouseOwnIsProtected(TileIndex tile)
+/**
+ * Fork: town_cmd.cpp fragt hier an, bevor die Stadt ein Haus fuer die
+ * Erneuerung abreisst. Nicht gekaufte Haeuser: immer erlaubt (Vanilla).
+ * Gekaufte Haeuser: erst ab HOUSEOWN_DEMOLITION_AGE Jahren, und auch dann
+ * kommt zuerst eine Warnung mit einem Jahr Frist - wer rechtzeitig
+ * renoviert (Alter sinkt unter die Grenze), behaelt das Haus.
+ */
+bool HouseOwnMayDemolish(TileIndex tile)
 {
 	HouseOwnLoad();
-	if (_owned_tiles.empty()) return false;
+	if (_owned_tiles.empty()) return true;
 	HouseID house = GetHouseType(tile);
 	TileIndex north = tile + GetHouseNorthPart(house);
-	return _owned_tiles.contains(north.base());
+	if (!_owned_tiles.contains(north.base())) return true;
+	OwnedHouse *owned = FindOwned(north);
+	if (owned == nullptr) return true;
+
+	auto age = GetHouseAge(north).base();
+	if (age < HOUSEOWN_DEMOLITION_AGE) {
+		/* Renoviert oder noch jung genug - eine alte Warnung verfaellt. */
+		if (owned->warned != 0) {
+			owned->warned = 0;
+			HouseOwnSave();
+			SetWindowClassesDirty(WindowClass::HouseInfo);
+		}
+		return false;
+	}
+
+	int64_t today = TimerGameCalendar::date.base();
+	if (owned->warned == 0) {
+		owned->warned = today;
+		HouseOwnSave();
+		Town *t = ClosestTownFromTile(north, UINT_MAX);
+		if (t != nullptr) {
+			AddTileNewsItem(GetEncodedString(STR_NEWS_HOUSEOWN_DECAY_WARNING, t->index, age),
+					NewsType::General, north);
+		}
+		SetWindowClassesDirty(WindowClass::HouseInfo);
+		return false;
+	}
+	return today >= owned->warned + HOUSEOWN_WARN_GRACE_DAYS;
+}
+
+/* Konsolen-Diagnose (housetest decay/overdue): Haus kuenstlich altern
+ * lassen, um Warnung und Abriss ohne 75 Spieljahre testen zu koennen. */
+void HouseOwnDebugDecay(TileIndex tile, bool overdue)
+{
+	Tile t(tile);
+	t.m5() = 200;
+	OwnedHouse *owned = FindOwned(tile);
+	if (owned != nullptr && overdue) {
+		owned->warned = TimerGameCalendar::date.base() - (HOUSEOWN_WARN_GRACE_DAYS + 30);
+		HouseOwnSave();
+	}
+	MarkTileDirtyByTile(tile);
+	SetWindowClassesDirty(WindowClass::HouseInfo);
 }
 
 /** Naechstgroesseres 1x1-Standardgebaeude gleicher Klimafamilie (Ausbau-Ziel). */
@@ -390,6 +448,10 @@ struct HouseInfoWindow : Window {
 				const HouseSpec *up_hs = HouseSpec::Get(up);
 				DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_UPGRADE_INFO,
 						HouseUpgradeCost(cur_hs, up_hs), up_hs->population - cur_hs->population));
+				y += line;
+			}
+			if (owned->warned != 0) {
+				DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_DECAY_WARNED));
 			}
 		} else {
 			DrawString(tr.left, tr.right, y, GetString(STR_HOUSEOWN_PRICE, HousePrice(hs)));
@@ -441,6 +503,13 @@ struct HouseInfoWindow : Window {
 				/* Verjuengen: Hausalter liegt in m5 (Jahre seit Fertigstellung). */
 				Tile t(this->tile);
 				t.m5() = static_cast<uint8_t>(std::max(0, (int)t.m5() - 10));
+				/* Eine Abriss-Warnung ist mit der Renovierung vom Tisch;
+				 * ist das Haus danach immer noch zu alt, warnt die Stadt
+				 * neu und die Jahresfrist beginnt von vorn. */
+				if (owned->warned != 0) {
+					owned->warned = 0;
+					HouseOwnSave();
+				}
 				MarkTileDirtyByTile(this->tile);
 				this->SetDirty();
 				break;
