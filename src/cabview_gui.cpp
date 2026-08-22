@@ -75,12 +75,15 @@ struct CabObject {
 	HouseID house = INVALID_HOUSE_ID; ///< Haus-Sprite, falls Haus.
 	uint8_t view = 0;                 ///< Blickrichtung des Haus-Sprites.
 	uint8_t tree = 0;                 ///< Baumart, falls Wald.
+	PixelColour ground{PC_GRASS_LAND}; ///< Boden dieser Kachel.
 };
 
 /** Ein abgetasteter Punkt der Strecke. */
 struct CabSample {
 	CabObject left;                   ///< Was links neben der Strecke steht.
 	CabObject right;                  ///< Was rechts steht.
+	CabObject left2;                  ///< Zweite Reihe links (mehr Landschaft).
+	CabObject right2;                 ///< Zweite Reihe rechts.
 	CabTile ahead = CabTile::Ground;  ///< Was auf der Strecke selbst liegt.
 	PixelColour ground{PC_GRASS_LAND}; ///< Bodenfarbe der Streckenkachel.
 	StationID station = StationID::Invalid(); ///< Bahnhof voraus (fuer das Schild).
@@ -144,7 +147,7 @@ static CabTile ClassifyTile(TileIndex t, PixelColour *ground = nullptr)
 static CabObject ReadObject(TileIndex t)
 {
 	CabObject o;
-	o.what = ClassifyTile(t);
+	o.what = ClassifyTile(t, &o.ground);
 	if (o.what == CabTile::House) {
 		o.house = GetHouseType(t);
 		o.view = TileHash2Bit(TileX(t) * TILE_SIZE, TileY(t) * TILE_SIZE);
@@ -221,17 +224,30 @@ struct CabViewWindow : Window {
 			}
 			TileIndex l = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(lft));
 			TileIndex r = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(rgt));
-			if (l != INVALID_TILE) s.left = ReadObject(l);
-			if (r != INVALID_TILE) s.right = ReadObject(r);
+			if (l != INVALID_TILE) {
+				s.left = ReadObject(l);
+				TileIndex l2 = AddTileIndexDiffCWrap(l, TileIndexDiffCByDiagDir(lft));
+				if (l2 != INVALID_TILE) s.left2 = ReadObject(l2);
+			}
+			if (r != INVALID_TILE) {
+				s.right = ReadObject(r);
+				TileIndex r2 = AddTileIndexDiffCWrap(r, TileIndexDiffCByDiagDir(rgt));
+				if (r2 != INVALID_TILE) s.right2 = ReadObject(r2);
+			}
 		}
 		return out;
 	}
 
-	/** Perspektive: Bildschirmzeile des Bodens in Tiefe d. */
-	int GroundY(const Rect &r, float d) const
+	/**
+	 * Perspektive: Bildschirmzeile des Bodens in Tiefe d. Der Hoehenversatz
+	 * macht Kuppen und Senken der Strecke sichtbar - bergauf wandert der
+	 * Boden nach oben, bergab nach unten.
+	 */
+	int GroundY(const Rect &r, float d, int height = 0) const
 	{
 		float t = 1.0f / (1.0f + d * 0.42f);
-		return this->horizon + (int)((r.bottom - this->horizon) * t);
+		int y = this->horizon + (int)((r.bottom - this->horizon) * t);
+		return y - (int)(height * 26 * t);
 	}
 
 	/** Perspektive: halbe Streckenbreite in Tiefe d. */
@@ -247,17 +263,17 @@ struct CabViewWindow : Window {
 	 * Groesse kommt ueber die Zoomstufe (DrawSprite nimmt sie entgegen,
 	 * DrawHouseInGUI ueber _gui_zoom).
 	 */
-	void DrawSideObject(const Rect &r, const CabObject &o, float d, bool left_side, bool flying = false) const
+	void DrawSideObject(const Rect &r, const CabObject &o, float d, bool left_side, bool flying, float spread, int height) const
 	{
 		if (o.what == CabTile::Ground || o.what == CabTile::Water) return;
 		/* Ganz nahe ist man schon vorbei, ganz fern nur noch Pixelmatsch. */
 		if (d < 1.0f || d > 13.0f) return;
 		float t = 1.0f / (1.0f + d * 0.42f);
 		/* Die Sprites sollen auf dem Boden stehen, nicht darueber schweben. */
-		int ground = this->GroundY(r, d) + (int)(8 * t);
+		int ground = this->GroundY(r, d, height) + (int)(8 * t);
 		int cx = (r.left + r.right) / 2;
 		float hw = this->HalfWidth(r, d);
-		int x = left_side ? (int)(cx - hw * 2.0f) : (int)(cx + hw * 2.0f);
+		int x = left_side ? (int)(cx - hw * spread) : (int)(cx + hw * spread);
 		ZoomLevel zoom = CabZoom(d, flying);
 
 		switch (o.what) {
@@ -300,6 +316,40 @@ struct CabViewWindow : Window {
 				break;
 			}
 			default: break;
+		}
+	}
+
+	/**
+	 * Wegrand-Details, die das Tempo spuerbar machen: Oberleitungsmasten
+	 * an Gleisen, sonst Leitpfosten an der Strasse.
+	 */
+	void DrawWayside(const Rect &r, const Vehicle *v, int d, int height) const
+	{
+		if (v->type != VehicleType::Train && v->type != VehicleType::Road) return;
+		if (d % 2 != 0 || d > 12) return;
+		float dd = (float)d;
+		float t = 1.0f / (1.0f + dd * 0.42f);
+		int ground = this->GroundY(r, dd, height);
+		int cx = (r.left + r.right) / 2;
+		float hw = this->HalfWidth(r, dd);
+		int post = (int)((v->type == VehicleType::Train ? 90 : 34) * t);
+		if (post < 3) return;
+		int w = std::max(1, (int)(4 * t));
+
+		for (int side = 0; side < 2; side++) {
+			int x = side == 0 ? cx - (int)(hw * 1.35f) : cx + (int)(hw * 1.35f);
+			if (v->type == VehicleType::Train) {
+				/* Mast mit kurzem Ausleger zum Gleis hin. */
+				GfxFillRect(x - w, ground - post, x + w, ground, PC_DARK_GREY);
+				int reach = (int)(hw * 0.35f);
+				int dir = side == 0 ? 1 : -1;
+				GfxFillRect(std::min(x, x + dir * reach), ground - post,
+						std::max(x, x + dir * reach), ground - post + std::max(1, w / 2), PC_DARK_GREY);
+			} else {
+				/* Leitpfosten mit dunklem Kopf. */
+				GfxFillRect(x - w, ground - post, x + w, ground, PC_WHITE);
+				GfxFillRect(x - w, ground - post, x + w, ground - post + std::max(1, post / 4), PC_BLACK);
+			}
 		}
 	}
 
@@ -439,13 +489,22 @@ struct CabViewWindow : Window {
 		for (int d = CAB_DEPTH - 1; d >= 0; d--) {
 			const CabSample &s = scan[d];
 			if (!s.valid) continue;
-			int y_far = this->GroundY(r, (float)d + 1);
-			int y_near = this->GroundY(r, (float)d);
+			const CabSample &next = (d + 1 < CAB_DEPTH) ? scan[d + 1] : s;
+			int y_far = this->GroundY(r, (float)d + 1, next.height);
+			int y_near = this->GroundY(r, (float)d, s.height);
 			if (y_near <= y_far) continue;
-			/* Entferntes wird blasser - billiger Tiefendunst. */
+			/* Boden in drei Baendern: links, Strecke, rechts - so bekommt
+			 * die Landschaft Struktur statt einer einzigen Farbflaeche. */
+			float hw_mid = this->HalfWidth(r, (float)d);
+			int edge_l = cx - (int)(hw_mid * 3.0f);
+			int edge_r = cx + (int)(hw_mid * 3.0f);
 			PixelColour col = s.ground;
-			if (d > 14) col = PC_ROUGH_LAND;
-			GfxFillRect(r.left, y_far, r.right, y_near, col);
+			PixelColour col_l = s.left.ground;
+			PixelColour col_r = s.right.ground;
+			if (d > 14) { col = PC_ROUGH_LAND; col_l = PC_ROUGH_LAND; col_r = PC_ROUGH_LAND; }
+			GfxFillRect(r.left, y_far, edge_l, y_near, col_l);
+			GfxFillRect(edge_l, y_far, edge_r, y_near, col);
+			GfxFillRect(edge_r, y_far, r.right, y_near, col_r);
 			/* Jede zweite Kachel etwas dunkler; der Wechsel wandert mit dem
 			 * Tempo und macht die Fahrt ueberhaupt erst sichtbar. */
 			if (d < 12 && ((d + this->anim / 16) & 1) == 0) {
@@ -453,8 +512,12 @@ struct CabViewWindow : Window {
 			}
 
 			bool flying_view = v->type == VehicleType::Aircraft;
-			this->DrawSideObject(r, s.left, (float)d, true, flying_view);
-			this->DrawSideObject(r, s.right, (float)d, false, flying_view);
+			/* Hintere Reihe zuerst, damit die vordere sie ueberdeckt. */
+			this->DrawSideObject(r, s.left2, (float)d, true, flying_view, 3.4f, s.height);
+			this->DrawSideObject(r, s.right2, (float)d, false, flying_view, 3.4f, s.height);
+			this->DrawSideObject(r, s.left, (float)d, true, flying_view, 2.0f, s.height);
+			this->DrawSideObject(r, s.right, (float)d, false, flying_view, 2.0f, s.height);
+			this->DrawWayside(r, v, d, s.height);
 			if (s.signal) this->DrawSignal(r, s.signal_red, (float)d);
 			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, (float)d);
 
