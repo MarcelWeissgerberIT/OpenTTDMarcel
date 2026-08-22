@@ -35,6 +35,9 @@
 #include "console_func.h"
 #include "core/backup_type.hpp"
 #include "rail_map.h"
+#include "road_map.h"
+#include "station_map.h"
+#include "tunnelbridge_map.h"
 #include "signal_type.h"
 #include "table/sprites.h"
 #include "direction_func.h"
@@ -89,9 +92,68 @@ struct CabSample {
 	StationID station = StationID::Invalid(); ///< Bahnhof voraus (fuer das Schild).
 	bool signal = false;              ///< Signal an dieser Gleiskachel.
 	bool signal_red = false;          ///< Signal zeigt Halt.
+	float lateral = 0.0f;             ///< Seitlicher Versatz durch Kurven.
+	bool tunnel_mouth = false;        ///< Hier faehrt die Strecke in einen Tunnel.
+	bool on_bridge = false;           ///< Strecke verlaeuft hier auf einer Bruecke.
 	int height = 0;                   ///< Gelaendehoehe (fuer Kuppen und Senken).
 	bool valid = false;               ///< Kachel liegt noch auf der Karte.
 };
+
+/** Liegt auf dieser Kachel ein Gleis, dem wir folgen koennen? */
+static bool CabHasRail(TileIndex t)
+{
+	if (!IsValidTile(t)) return false;
+	if (IsTileType(t, TileType::Railway)) return true;
+	if (IsTileType(t, TileType::Station)) return HasStationRail(t);
+	if (IsTileType(t, TileType::TunnelBridge)) return GetTunnelBridgeTransportType(t) == TransportType::Rail;
+	if (IsLevelCrossingTile(t)) return true;
+	return false;
+}
+
+/** Fuehrt von dieser Kachel eine Strasse in die gegebene Richtung? */
+static bool CabRoadLeaves(TileIndex t, DiagDirection d)
+{
+	if (!IsValidTile(t)) return false;
+	if (!MayHaveRoad(t)) return false;
+	return GetAnyRoadBits(t, RoadTramType::Road, true).Any(DiagDirToRoadBits(d));
+}
+
+/**
+ * Der Strecke folgen statt stur geradeaus zu schauen: geradeaus hat
+ * Vorrang, sonst wird die Kurve genommen, die weitergeht. Liefert die
+ * neue Richtung und -1/0/+1 fuer die Kurvenrichtung.
+ */
+static DiagDirection CabNextDir(TileIndex tile, DiagDirection dir, VehicleType type, int *turn)
+{
+	*turn = 0;
+	if (type != VehicleType::Train && type != VehicleType::Road) return dir;
+
+	DiagDirection straight = dir;
+	DiagDirection left = ChangeDiagDir(dir, DiagDirDiff::Left90);
+	DiagDirection right = ChangeDiagDir(dir, DiagDirDiff::Right90);
+	const DiagDirection cand[3] = {straight, left, right};
+	const int turns[3] = {0, -1, 1};
+
+	for (int i = 0; i < 3; i++) {
+		if (type == VehicleType::Road) {
+			if (!CabRoadLeaves(tile, cand[i])) continue;
+		} else {
+			TileIndex next = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(cand[i]));
+			if (!CabHasRail(next)) continue;
+			/* Auf einer geraden Kachel gibt es keine Abzweigung - nur wenn
+			 * die Kachel selbst eine Kurve traegt, darf abgebogen werden. */
+			if (i > 0 && IsTileType(tile, TileType::Railway) && !IsLevelCrossingTile(tile)) {
+				TrackBits tb = GetTrackBits(tile);
+				/* Nur Kurvenstuecke erlauben ein Abbiegen - auf einem
+				 * geraden Gleis geht es geradeaus weiter. */
+				if (!tb.Any(TRACK_BIT_HORZ | TRACK_BIT_VERT)) continue;
+			}
+		}
+		*turn = turns[i];
+		return cand[i];
+	}
+	return dir;
+}
 
 /** Zoomstufe fuer die Entfernung - so werden Sprites perspektivisch klein. */
 static ZoomLevel CabZoom(float d, bool flying = false)
@@ -205,17 +267,36 @@ struct CabViewWindow : Window {
 		std::vector<CabSample> out(CAB_DEPTH);
 		TileIndex tile = TileVirtXY(v->x_pos, v->y_pos);
 		DiagDirection fwd = DirToDiagDir(v->direction);
-		DiagDirection lft = ChangeDiagDir(fwd, DiagDirDiff::Left90);
-		DiagDirection rgt = ChangeDiagDir(fwd, DiagDirDiff::Right90);
 		int base_height = IsValidTile(tile) ? (int)TileHeight(tile) : 0;
+		float lateral = 0.0f;
+		float drift = 0.0f;
 
 		for (int d = 0; d < CAB_DEPTH; d++) {
-			tile = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(fwd));
+			/* Der Strecke folgen: die naechste Kachel ergibt sich aus dem
+			 * tatsaechlichen Gleis- bzw. Strassenverlauf. */
+			int turn = 0;
+			DiagDirection next_dir = CabNextDir(tile, fwd, v->type, &turn);
+			tile = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(next_dir));
 			if (tile == INVALID_TILE) break;
+			fwd = next_dir;
+			/* Kurven schieben den Fluchtpunkt zur Seite - wie in den
+			 * Pseudo-3D-Rennspielen; drift sorgt fuer weiche Boegen. */
+			drift += turn * 0.5f;
+			lateral += drift;
+			DiagDirection lft = ChangeDiagDir(fwd, DiagDirDiff::Left90);
+			DiagDirection rgt = ChangeDiagDir(fwd, DiagDirDiff::Right90);
 			CabSample &s = out[d];
 			s.valid = true;
+			s.lateral = lateral;
 			s.ahead = ClassifyTile(tile, &s.ground);
 			s.height = (int)TileHeight(tile) - base_height;
+			if (IsTileType(tile, TileType::TunnelBridge)) {
+				if (IsTunnelTile(tile)) {
+					s.tunnel_mouth = true;
+				} else {
+					s.on_bridge = true;
+				}
+			}
 			if (s.ahead == CabTile::Station) s.station = GetStationIndex(tile);
 			/* Signale an der Strecke: rot oder gruen, wie im Spiel. */
 			if (IsTileType(tile, TileType::Railway) && HasSignals(tile)) {
@@ -250,6 +331,14 @@ struct CabViewWindow : Window {
 		return y - (int)(height * 26 * t);
 	}
 
+	/** Mitte der Strecke in Tiefe d - wandert in Kurven zur Seite. */
+	int CenterX(const Rect &r, float d, float lateral) const
+	{
+		float t = 1.0f / (1.0f + d * 0.42f);
+		int cx = (r.left + r.right) / 2;
+		return cx + (int)(lateral * (r.right - r.left) * 0.10f * t);
+	}
+
 	/** Perspektive: halbe Streckenbreite in Tiefe d. */
 	float HalfWidth(const Rect &r, float d) const
 	{
@@ -263,7 +352,7 @@ struct CabViewWindow : Window {
 	 * Groesse kommt ueber die Zoomstufe (DrawSprite nimmt sie entgegen,
 	 * DrawHouseInGUI ueber _gui_zoom).
 	 */
-	void DrawSideObject(const Rect &r, const CabObject &o, float d, bool left_side, bool flying, float spread, int height) const
+	void DrawSideObject(const Rect &r, const CabObject &o, float d, bool left_side, bool flying, float spread, int height, float lateral) const
 	{
 		if (o.what == CabTile::Ground || o.what == CabTile::Water) return;
 		/* Ganz nahe ist man schon vorbei, ganz fern nur noch Pixelmatsch. */
@@ -271,7 +360,7 @@ struct CabViewWindow : Window {
 		float t = 1.0f / (1.0f + d * 0.42f);
 		/* Die Sprites sollen auf dem Boden stehen, nicht darueber schweben. */
 		int ground = this->GroundY(r, d, height) + (int)(8 * t);
-		int cx = (r.left + r.right) / 2;
+		int cx = this->CenterX(r, d, lateral);
 		float hw = this->HalfWidth(r, d);
 		int x = left_side ? (int)(cx - hw * spread) : (int)(cx + hw * spread);
 		ZoomLevel zoom = CabZoom(d, flying);
@@ -323,14 +412,14 @@ struct CabViewWindow : Window {
 	 * Wegrand-Details, die das Tempo spuerbar machen: Oberleitungsmasten
 	 * an Gleisen, sonst Leitpfosten an der Strasse.
 	 */
-	void DrawWayside(const Rect &r, const Vehicle *v, int d, int height) const
+	void DrawWayside(const Rect &r, const Vehicle *v, int d, int height, float lateral) const
 	{
 		if (v->type != VehicleType::Train && v->type != VehicleType::Road) return;
 		if (d % 2 != 0 || d > 12) return;
 		float dd = (float)d;
 		float t = 1.0f / (1.0f + dd * 0.42f);
 		int ground = this->GroundY(r, dd, height);
-		int cx = (r.left + r.right) / 2;
+		int cx = this->CenterX(r, dd, lateral);
 		float hw = this->HalfWidth(r, dd);
 		int post = (int)((v->type == VehicleType::Train ? 90 : 34) * t);
 		if (post < 3) return;
@@ -353,16 +442,49 @@ struct CabViewWindow : Window {
 		}
 	}
 
+	/** Tunnelportal: dunkle Oeffnung mit Rahmen, die auf einen zukommt. */
+	void DrawTunnelMouth(const Rect &r, float d, int height, float lateral) const
+	{
+		float t = 1.0f / (1.0f + d * 0.42f);
+		int ground = this->GroundY(r, d, height);
+		int cx = this->CenterX(r, d, lateral);
+		float hw = this->HalfWidth(r, d);
+		int h = (int)(150 * t);
+		int w = (int)(hw * 1.5f);
+		if (h < 4 || w < 3) return;
+		/* Portalmauer und dunkle Roehre. */
+		GfxFillRect(cx - w - w / 4, ground - h - h / 6, cx + w + w / 4, ground, PC_GREY);
+		GfxFillRect(cx - w, ground - h, cx + w, ground, PC_BLACK);
+		GfxFillRect(cx - w - w / 4, ground - h - h / 6, cx + w + w / 4, ground - h - h / 6 + std::max(1, h / 20), PC_DARK_GREY);
+	}
+
+	/** Bruecke: Gelaender links und rechts der Fahrbahn. */
+	void DrawBridgeRails(const Rect &r, float d, int height, float lateral) const
+	{
+		float t = 1.0f / (1.0f + d * 0.42f);
+		int ground = this->GroundY(r, d, height);
+		int cx = this->CenterX(r, d, lateral);
+		float hw = this->HalfWidth(r, d);
+		int h = (int)(28 * t);
+		if (h < 2) return;
+		int w = std::max(1, (int)(3 * t));
+		for (int side = 0; side < 2; side++) {
+			int x = side == 0 ? cx - (int)(hw * 1.1f) : cx + (int)(hw * 1.1f);
+			GfxFillRect(x - w, ground - h, x + w, ground, PC_GREY);
+			GfxFillRect(x - w * 2, ground - h, x + w * 2, ground - h + std::max(1, h / 4), PC_WHITE);
+		}
+	}
+
 	/**
 	 * Bahnhofsschild wie im Spiel: heller Kasten mit dem Stationsnamen,
 	 * der beim Naeherkommen groesser wird.
 	 */
-	void DrawStationSign(const Rect &r, StationID id, float d) const
+	void DrawStationSign(const Rect &r, StationID id, float d, int height, float lateral) const
 	{
 		if (!Station::IsValidID(id) || d > 10.0f) return;
 		float t = 1.0f / (1.0f + d * 0.42f);
-		int ground = this->GroundY(r, d);
-		int cx = (r.left + r.right) / 2;
+		int ground = this->GroundY(r, d, height);
+		int cx = this->CenterX(r, d, lateral);
 		float hw = this->HalfWidth(r, d);
 		int x = cx + (int)(hw * 1.6f);
 		int post = (int)(70 * t);
@@ -380,11 +502,11 @@ struct CabViewWindow : Window {
 	}
 
 	/** Signal am Gleisrand - gruen oder rot wie im Spiel. */
-	void DrawSignal(const Rect &r, bool red, float d) const
+	void DrawSignal(const Rect &r, bool red, float d, int height, float lateral) const
 	{
 		float t = 1.0f / (1.0f + d * 0.42f);
-		int ground = this->GroundY(r, d);
-		int cx = (r.left + r.right) / 2;
+		int ground = this->GroundY(r, d, height);
+		int cx = this->CenterX(r, d, lateral);
 		float hw = this->HalfWidth(r, d);
 		int x = cx + (int)(hw * 1.25f);
 		int post = (int)(60 * t);
@@ -483,7 +605,6 @@ struct CabViewWindow : Window {
 		if (v == nullptr) return;
 
 		std::vector<CabSample> scan = this->Scan(v);
-		int cx = (r.left + r.right) / 2;
 
 		/* Boden von hinten nach vorn: jede Kachel ein Streifen. */
 		for (int d = CAB_DEPTH - 1; d >= 0; d--) {
@@ -493,6 +614,9 @@ struct CabViewWindow : Window {
 			int y_far = this->GroundY(r, (float)d + 1, next.height);
 			int y_near = this->GroundY(r, (float)d, s.height);
 			if (y_near <= y_far) continue;
+			/* In der Kurve wandert die Streckenmitte zur Seite. */
+			int cx = this->CenterX(r, (float)d, s.lateral);
+			int cx_far = this->CenterX(r, (float)d + 1, next.lateral);
 			/* Boden in drei Baendern: links, Strecke, rechts - so bekommt
 			 * die Landschaft Struktur statt einer einzigen Farbflaeche. */
 			float hw_mid = this->HalfWidth(r, (float)d);
@@ -513,13 +637,15 @@ struct CabViewWindow : Window {
 
 			bool flying_view = v->type == VehicleType::Aircraft;
 			/* Hintere Reihe zuerst, damit die vordere sie ueberdeckt. */
-			this->DrawSideObject(r, s.left2, (float)d, true, flying_view, 3.4f, s.height);
-			this->DrawSideObject(r, s.right2, (float)d, false, flying_view, 3.4f, s.height);
-			this->DrawSideObject(r, s.left, (float)d, true, flying_view, 2.0f, s.height);
-			this->DrawSideObject(r, s.right, (float)d, false, flying_view, 2.0f, s.height);
-			this->DrawWayside(r, v, d, s.height);
-			if (s.signal) this->DrawSignal(r, s.signal_red, (float)d);
-			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, (float)d);
+			this->DrawSideObject(r, s.left2, (float)d, true, flying_view, 3.4f, s.height, s.lateral);
+			this->DrawSideObject(r, s.right2, (float)d, false, flying_view, 3.4f, s.height, s.lateral);
+			this->DrawSideObject(r, s.left, (float)d, true, flying_view, 2.0f, s.height, s.lateral);
+			this->DrawSideObject(r, s.right, (float)d, false, flying_view, 2.0f, s.height, s.lateral);
+			this->DrawWayside(r, v, d, s.height, s.lateral);
+			if (s.on_bridge) this->DrawBridgeRails(r, (float)d, s.height, s.lateral);
+			if (s.tunnel_mouth) this->DrawTunnelMouth(r, (float)d, s.height, s.lateral);
+			if (s.signal) this->DrawSignal(r, s.signal_red, (float)d, s.height, s.lateral);
+			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, (float)d, s.height, s.lateral);
 
 			/* Fahrweg: Bahndamm, Fahrbahn oder Fahrrinne. Flugzeuge haben
 			 * keinen - dort bleibt die Landschaft, ueber die man fliegt. */
@@ -534,13 +660,14 @@ struct CabViewWindow : Window {
 				for (int y = y_far; y <= y_near; y++) {
 					float f = (y_near == y_far) ? 0.0f : (float)(y - y_far) / (float)(y_near - y_far);
 					float hw = hw_far + (hw_near - hw_far) * f;
-					GfxFillRect(cx - (int)hw, y, cx + (int)hw, y, bed);
+					int mx = cx_far + (int)((cx - cx_far) * f);
+					GfxFillRect(mx - (int)hw, y, mx + (int)hw, y, bed);
 				}
 			}
 			/* Schienen bzw. Mittelstreifen. */
 			if (rail) {
-				GfxDrawLine(cx - (int)(hw_far * 0.6f), y_far, cx - (int)(hw_near * 0.6f), y_near, PC_GREY, std::max(1, (int)(hw_near / 12)));
-				GfxDrawLine(cx + (int)(hw_far * 0.6f), y_far, cx + (int)(hw_near * 0.6f), y_near, PC_GREY, std::max(1, (int)(hw_near / 12)));
+				GfxDrawLine(cx_far - (int)(hw_far * 0.6f), y_far, cx - (int)(hw_near * 0.6f), y_near, PC_GREY, std::max(1, (int)(hw_near / 12)));
+				GfxDrawLine(cx_far + (int)(hw_far * 0.6f), y_far, cx + (int)(hw_near * 0.6f), y_near, PC_GREY, std::max(1, (int)(hw_near / 12)));
 				/* Schwellen wandern mit dem Tempo auf den Betrachter zu. */
 				int sleeper = y_near - (int)((this->anim % 24) * (y_near - y_far) / 24);
 				if (sleeper > y_far && sleeper < y_near) {
