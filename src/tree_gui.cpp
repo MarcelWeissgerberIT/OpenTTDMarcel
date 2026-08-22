@@ -323,3 +323,13 @@ void ShowBuildTreesToolbar()
 	if (_game_mode != GameMode::Editor && !Company::IsValidID(_local_company)) return;
 	AllocateWindowDescFront<BuildTreesWindow>(_build_trees_desc, 0);
 }
+
+
+/**
+ * Fork: Baum-Sprite fuer den Fuehrerstand - dort werden die echten
+ * Spielgrafiken gezeichnet, damit man die Landschaft wiedererkennt.
+ */
+PalSpriteID GetCabTreeSprite(uint index)
+{
+	return tree_sprites[index % lengthof(tree_sprites)];
+}

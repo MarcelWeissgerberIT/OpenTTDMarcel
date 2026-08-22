@@ -33,6 +33,10 @@
 #include "palette_func.h"
 #include "zoom_func.h"
 #include "console_func.h"
+#include "core/backup_type.hpp"
+#include "rail_map.h"
+#include "signal_type.h"
+#include "table/sprites.h"
 #include "direction_func.h"
 #include "timer/timer.h"
 #include "timer/timer_window.h"
@@ -42,6 +46,11 @@
 #include "table/strings.h"
 
 #include "safeguards.h"
+
+/* town_gui.cpp: Haus samt Mehrfach-Kacheln zeichnen (echte Spielgrafik). */
+void DrawHouseInGUI(int x, int y, HouseID house_id, int view);
+/* tree_gui.cpp: Baum-Sprite fuer die Landschaft. */
+PalSpriteID GetCabTreeSprite(uint index);
 
 /** Fahrzeug, aus dem geschaut wird. */
 static VehicleID _cab_vehicle = VehicleID::Invalid();
@@ -60,15 +69,35 @@ enum class CabTile : uint8_t {
 	Tunnel,   ///< Tunnel- oder Brueckenkopf.
 };
 
+/** Was auf einer Seitenkachel steht - mit den Daten fuer die echte Grafik. */
+struct CabObject {
+	CabTile what = CabTile::Ground;   ///< Art des Objekts.
+	HouseID house = INVALID_HOUSE_ID; ///< Haus-Sprite, falls Haus.
+	uint8_t view = 0;                 ///< Blickrichtung des Haus-Sprites.
+	uint8_t tree = 0;                 ///< Baumart, falls Wald.
+};
+
 /** Ein abgetasteter Punkt der Strecke. */
 struct CabSample {
-	CabTile left = CabTile::Ground;   ///< Was links neben der Strecke steht.
-	CabTile right = CabTile::Ground;  ///< Was rechts steht.
+	CabObject left;                   ///< Was links neben der Strecke steht.
+	CabObject right;                  ///< Was rechts steht.
 	CabTile ahead = CabTile::Ground;  ///< Was auf der Strecke selbst liegt.
 	PixelColour ground{PC_GRASS_LAND}; ///< Bodenfarbe der Streckenkachel.
+	StationID station = StationID::Invalid(); ///< Bahnhof voraus (fuer das Schild).
+	bool signal = false;              ///< Signal an dieser Gleiskachel.
+	bool signal_red = false;          ///< Signal zeigt Halt.
 	int height = 0;                   ///< Gelaendehoehe (fuer Kuppen und Senken).
 	bool valid = false;               ///< Kachel liegt noch auf der Karte.
 };
+
+/** Zoomstufe fuer die Entfernung - so werden Sprites perspektivisch klein. */
+static ZoomLevel CabZoom(float d)
+{
+	if (d < 3.0f) return ZoomLevel::In4x;
+	if (d < 6.0f) return ZoomLevel::In2x;
+	if (d < 10.0f) return ZoomLevel::Normal;
+	return ZoomLevel::Out2x;
+}
 
 /** Kachel einordnen und ihre Bodenfarbe bestimmen. */
 static CabTile ClassifyTile(TileIndex t, PixelColour *ground = nullptr)
@@ -103,6 +132,20 @@ static CabTile ClassifyTile(TileIndex t, PixelColour *ground = nullptr)
 		default:
 			return CabTile::Ground;
 	}
+}
+
+/** Kachel samt Sprite-Daten einlesen. */
+static CabObject ReadObject(TileIndex t)
+{
+	CabObject o;
+	o.what = ClassifyTile(t);
+	if (o.what == CabTile::House) {
+		o.house = GetHouseType(t);
+		o.view = TileHash2Bit(TileX(t) * TILE_SIZE, TileY(t) * TILE_SIZE);
+	} else if (o.what == CabTile::Trees) {
+		o.tree = static_cast<uint8_t>(GetTreeType(t));
+	}
+	return o;
 }
 
 struct CabViewWindow : Window {
@@ -164,10 +207,16 @@ struct CabViewWindow : Window {
 			s.valid = true;
 			s.ahead = ClassifyTile(tile, &s.ground);
 			s.height = (int)TileHeight(tile) - base_height;
+			if (s.ahead == CabTile::Station) s.station = GetStationIndex(tile);
+			/* Signale an der Strecke: rot oder gruen, wie im Spiel. */
+			if (IsTileType(tile, TileType::Railway) && HasSignals(tile)) {
+				s.signal = true;
+				s.signal_red = GetSignalStates(tile) == 0;
+			}
 			TileIndex l = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(lft));
 			TileIndex r = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(rgt));
-			if (l != INVALID_TILE) s.left = ClassifyTile(l);
-			if (r != INVALID_TILE) s.right = ClassifyTile(r);
+			if (l != INVALID_TILE) s.left = ReadObject(l);
+			if (r != INVALID_TILE) s.right = ReadObject(r);
 		}
 		return out;
 	}
@@ -186,39 +235,109 @@ struct CabViewWindow : Window {
 		return (r.right - r.left) * 0.22f * t;
 	}
 
-	/** Einen Block neben der Strecke zeichnen (Haus, Wald, Fabrik). */
-	void DrawSideBlock(const Rect &r, CabTile what, float d, bool left_side) const
+	/**
+	 * Ein Objekt neben der Strecke zeichnen - mit der ECHTEN Spielgrafik,
+	 * damit man Haeuser und Waelder im Fuehrerstand wiedererkennt. Die
+	 * Groesse kommt ueber die Zoomstufe (DrawSprite nimmt sie entgegen,
+	 * DrawHouseInGUI ueber _gui_zoom).
+	 */
+	void DrawSideObject(const Rect &r, const CabObject &o, float d, bool left_side) const
 	{
-		if (what == CabTile::Ground || what == CabTile::Water) return;
+		if (o.what == CabTile::Ground || o.what == CabTile::Water) return;
+		/* Ganz nahe ist man schon vorbei, ganz fern nur noch Pixelmatsch. */
+		if (d < 1.0f || d > 13.0f) return;
+		float t = 1.0f / (1.0f + d * 0.42f);
+		/* Die Sprites sollen auf dem Boden stehen, nicht darueber schweben. */
+		int ground = this->GroundY(r, d) + (int)(8 * t);
+		int cx = (r.left + r.right) / 2;
+		float hw = this->HalfWidth(r, d);
+		int x = left_side ? (int)(cx - hw * 2.0f) : (int)(cx + hw * 2.0f);
+		ZoomLevel zoom = CabZoom(d);
+
+		switch (o.what) {
+			case CabTile::House: {
+				/* Das echte Haus-Sprite; _gui_zoom steuert hier die Groesse. */
+				AutoRestoreBackup zoom_backup(_gui_zoom, zoom);
+				DrawHouseInGUI(x, ground, o.house, o.view);
+				break;
+			}
+			case CabTile::Trees: {
+				PalSpriteID tree = GetCabTreeSprite(o.tree);
+				DrawSprite(tree.sprite, tree.pal, x, ground, nullptr, zoom);
+				break;
+			}
+			case CabTile::Industry: {
+				/* Fabrikhalle mit Schornstein - Sprites waeren hier ganze
+				 * Kachel-Layouts, deshalb bleibt es bei der Silhouette. */
+				int h = (int)(130 * t);
+				int w = std::max(3, (int)(hw * 0.9f));
+				if (h < 3) break;
+				GfxFillRect(x - w / 2, ground - h, x + w / 2, ground, PC_DARK_GREY);
+				GfxFillRect(x - w / 6, ground - h - h / 2, x + w / 12, ground - h, PC_GREY);
+				break;
+			}
+			case CabTile::Station: {
+				/* Bahnhofsgebaeude: heller Bau mit rotem Dach. */
+				int h = (int)(60 * t);
+				int w = std::max(3, (int)(hw * 0.9f));
+				if (h < 3) break;
+				int base = ground - (int)(8 * t);
+				GfxFillRect(x - w / 2, base - h, x + w / 2, base, PC_GREY);
+				GfxFillRect(x - w / 2 - w / 8, base - h - std::max(2, h / 5), x + w / 2 + w / 8, base - h, PC_DARK_RED);
+				break;
+			}
+			case CabTile::Tunnel: {
+				int h = (int)(110 * t);
+				int w = std::max(3, (int)(hw * 1.1f));
+				if (h < 3) break;
+				GfxFillRect(x - w / 2, ground - h, x + w / 2, ground, PC_VERY_DARK_BROWN);
+				break;
+			}
+			default: break;
+		}
+	}
+
+	/**
+	 * Bahnhofsschild wie im Spiel: heller Kasten mit dem Stationsnamen,
+	 * der beim Naeherkommen groesser wird.
+	 */
+	void DrawStationSign(const Rect &r, StationID id, float d) const
+	{
+		if (!Station::IsValidID(id) || d > 10.0f) return;
 		float t = 1.0f / (1.0f + d * 0.42f);
 		int ground = this->GroundY(r, d);
 		int cx = (r.left + r.right) / 2;
 		float hw = this->HalfWidth(r, d);
-		int w = std::max(2, (int)(hw * 0.85f));
-		int x = left_side ? (int)(cx - hw * 1.5f) - w : (int)(cx + hw * 1.5f);
+		int x = cx + (int)(hw * 1.6f);
+		int post = (int)(70 * t);
+		if (post < 6) return;
+		/* Pfosten und Schild. */
+		GfxFillRect(x - 1, ground - post, x + 1, ground, PC_GREY);
+		std::string name = GetString(STR_STATION_NAME, id);
+		int tw = GetStringBoundingBox(name).width;
+		int pad = std::max(2, (int)(6 * t));
+		int sw = std::min<int>(tw + pad * 2, (r.right - r.left) / 3);
+		int sh = GetCharacterHeight(FontSize::Normal) + pad;
+		GfxFillRect(x - sw / 2, ground - post - sh, x + sw / 2, ground - post, PC_WHITE);
+		GfxFillRect(x - sw / 2, ground - post - sh, x + sw / 2, ground - post - sh + 1, PC_BLACK);
+		DrawString(x - sw / 2 + pad, x + sw / 2 - pad, ground - post - sh + pad / 2, name, TextColour::Black, AlignmentH::Centre);
+	}
 
-		int h = 0;
-		PixelColour col = PC_GREY;
-		switch (what) {
-			case CabTile::Trees:    h = (int)(70 * t); col = PC_TREES; break;
-			case CabTile::House:    h = (int)(150 * t); col = PC_DARK_RED; break;
-			case CabTile::Industry: h = (int)(130 * t); col = PC_DARK_GREY; break;
-			case CabTile::Station:  h = (int)(90 * t); col = PC_GREY; break;
-			case CabTile::Tunnel:   h = (int)(110 * t); col = PC_VERY_DARK_BROWN; break;
-			default: return;
-		}
-		if (h < 2) return;
-		GfxFillRect(x, ground - h, x + w, ground, col);
-		/* Fenster bzw. Baumkrone andeuten, solange es gross genug ist. */
-		if (what == CabTile::House && h > 14) {
-			for (int wy = ground - h + 4; wy < ground - 4; wy += std::max(5, h / 4)) {
-				GfxFillRect(x + w / 4, wy, x + w - w / 4, wy + std::max(1, h / 12), PC_LIGHT_YELLOW);
-			}
-		} else if (what == CabTile::Trees && h > 8) {
-			GfxFillRect(x + w / 3, ground - h - h / 3, x + w - w / 3, ground - h, PC_GREEN);
-		} else if (what == CabTile::Industry && h > 12) {
-			GfxFillRect(x + w / 3, ground - h - h / 2, x + w / 3 + std::max(1, w / 5), ground - h, PC_DARK_GREY);
-		}
+	/** Signal am Gleisrand - gruen oder rot wie im Spiel. */
+	void DrawSignal(const Rect &r, bool red, float d) const
+	{
+		float t = 1.0f / (1.0f + d * 0.42f);
+		int ground = this->GroundY(r, d);
+		int cx = (r.left + r.right) / 2;
+		float hw = this->HalfWidth(r, d);
+		int x = cx + (int)(hw * 1.25f);
+		int post = (int)(60 * t);
+		int lamp = std::max(2, (int)(14 * t));
+		if (post < 5) return;
+		GfxFillRect(x - std::max(1, lamp / 6), ground - post, x + std::max(1, lamp / 6), ground, PC_GREY);
+		GfxFillRect(x - lamp / 2, ground - post - lamp, x + lamp / 2, ground - post, PC_BLACK);
+		GfxFillRect(x - lamp / 2 + 1, ground - post - lamp + 1, x + lamp / 2 - 1, ground - post - 1,
+				red ? PC_RED : PC_GREEN);
 	}
 
 	/**
@@ -305,14 +424,16 @@ struct CabViewWindow : Window {
 				GfxFillRect(r.left, y_far, r.right, y_near, PC_BLACK, FillRectMode::Checker);
 			}
 
-			this->DrawSideBlock(r, s.left, (float)d, true);
-			this->DrawSideBlock(r, s.right, (float)d, false);
+			this->DrawSideObject(r, s.left, (float)d, true);
+			this->DrawSideObject(r, s.right, (float)d, false);
+			if (s.signal) this->DrawSignal(r, s.signal_red, (float)d);
+			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, (float)d);
 
 			/* Fahrweg: Bahndamm bzw. Fahrbahn. */
 			float hw_far = this->HalfWidth(r, (float)d + 1);
 			float hw_near = this->HalfWidth(r, (float)d);
 			bool rail = v->type == VehicleType::Train;
-			PixelColour bed = rail ? PC_VERY_DARK_BROWN : PC_DARK_GREY;
+			PixelColour bed = rail ? PC_BARE_LAND : PC_DARK_GREY;
 			if (v->type == VehicleType::Ship) bed = PC_WATER;
 			/* Trapez als Zeilen fuellen, damit die Kanten zusammenlaufen. */
 			for (int y = y_far; y <= y_near; y++) {
@@ -329,7 +450,7 @@ struct CabViewWindow : Window {
 				if (sleeper > y_far && sleeper < y_near) {
 					float f = (float)(sleeper - y_far) / (float)std::max(1, y_near - y_far);
 					float hw = hw_far + (hw_near - hw_far) * f;
-					GfxFillRect(cx - (int)(hw * 0.8f), sleeper, cx + (int)(hw * 0.8f), sleeper + std::max(1, (int)(hw / 10)), PC_BLACK);
+					GfxFillRect(cx - (int)(hw * 0.75f), sleeper, cx + (int)(hw * 0.75f), sleeper + std::max(1, (int)(hw / 16)), PC_DARK_GREY);
 				}
 			} else if (v->type == VehicleType::Road) {
 				int dash = y_near - (int)((this->anim % 20) * (y_near - y_far) / 20);
