@@ -2448,6 +2448,18 @@ STR_AUTOCONNECT_LINE_PICKING                                    :{BLACK}Auswahl 
 STR_AUTOCONNECT_LINE_HINT                                       :{BLACK}Städte nacheinander auf der Karte anklicken (bis zu 8); Klick auf eine gewählte Stadt beendet die Linie
 STR_AUTOCONNECT_LINE_TOOLTIP                                    :{BLACK}Bus-Linie durch bis zu 8 Städte planen: Knopf anklicken, dann die Städte auf der Karte
 STR_AUTOCONNECT_LINE_BUS_ONLY                                   :{BLACK}Die Städte-Linie wird mit Bussen gebaut - Modus auf Busse stellen
+STR_AUTOCONNECT_TRACTION_AUTO                                   :{BLACK}Zug-Antrieb: {ORANGE}stärkster verfügbarer
+STR_AUTOCONNECT_TRACTION_STEAM                                  :{BLACK}Zug-Antrieb: {ORANGE}Dampf
+STR_AUTOCONNECT_TRACTION_DIESEL                                 :{BLACK}Zug-Antrieb: {ORANGE}Diesel
+STR_AUTOCONNECT_TRACTION_ELECTRIC                               :{BLACK}Zug-Antrieb: {ORANGE}elektrisch
+STR_AUTOCONNECT_TRACTION_MONO                                   :{BLACK}Zug-Antrieb: {ORANGE}Einschienenbahn
+STR_AUTOCONNECT_TRACTION_MAGLEV                                 :{BLACK}Zug-Antrieb: {ORANGE}Magnetschwebebahn
+STR_AUTOCONNECT_TRACTION_UNAVAILABLE                            :{RED} (noch nicht erfunden)
+STR_AUTOCONNECT_TRACTION_TOOLTIP                                :{BLACK}Welche Art Zug gebaut wird; die Gleise werden passend dazu verlegt
+STR_AUTOCONNECT_PREF_BALANCED                                   :{BLACK}Fahrzeugwahl: {ORANGE}ausgewogen
+STR_AUTOCONNECT_PREF_CAPACITY                                   :{BLACK}Fahrzeugwahl: {ORANGE}viel Ladung
+STR_AUTOCONNECT_PREF_SPEED                                      :{BLACK}Fahrzeugwahl: {ORANGE}schnell
+STR_AUTOCONNECT_PREF_TOOLTIP                                    :{BLACK}Worauf es bei Bussen, Zügen, Flugzeugen und Schiffen ankommt
 STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}Wie viele Bushaltestellen je Stadt gebaut werden (automatisch = nach Stadtgröße). Wirkt nur im Bus-Modus
 STR_INDCON_BUTTON                                               :{BLACK}Abnehmer verbinden
 STR_INDCON_BUTTON_TOOLTIP                                       :{BLACK}Zeigt die nächsten Industrien, die diese Fracht annehmen, und baut die Verbindung mit einem Klick

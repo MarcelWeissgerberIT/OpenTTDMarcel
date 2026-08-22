@@ -19,6 +19,8 @@ enum AutoConnectWidgets : WidgetID {
 	WID_AC_STOPS,      ///< Cycle bus stops per town (auto/1-4).
 	WID_AC_TRAINLEN,   ///< Cycle train/platform length (3-7 tiles).
 	WID_AC_LINE,       ///< Staedte-Linie: bis zu 8 Staedte nacheinander waehlen.
+	WID_AC_TRACTION,   ///< Zug-Antrieb: Auto/Dampf/Diesel/Elektrisch/Einschiene/Maglev.
+	WID_AC_PREF,       ///< Fahrzeugwahl: ausgewogen, Kapazitaet oder Tempo.
 	WID_AC_COUNT_DOWN, ///< Decrease vehicle count.
 	WID_AC_COUNT,      ///< Vehicle count display.
 	WID_AC_COUNT_UP,   ///< Increase vehicle count.

@@ -291,16 +291,98 @@ static TileIndex AcBuildAirportNear(const Town *t, bool estimate, Money reserve,
 	return INVALID_TILE;
 }
 
+/** Fork: Zug-Antrieb, den der Auto-Modus bevorzugt. */
+enum class AcTraction : uint8_t {
+	Auto,     ///< Nimmt, was am staerksten ist.
+	Steam,    ///< Dampf.
+	Diesel,   ///< Diesel.
+	Electric, ///< Elektrisch (elektrifizierte Gleise).
+	Monorail, ///< Einschienenbahn.
+	Maglev,   ///< Magnetschwebebahn.
+};
+
+/** Fork: Wonach das beste Fahrzeug gesucht wird. */
+enum class AcPreference : uint8_t {
+	Balanced, ///< Kapazitaet und Tempo gemeinsam.
+	Capacity, ///< Moeglichst viel Ladung.
+	Speed,    ///< Moeglichst schnell.
+};
+
+static AcTraction _ac_traction = AcTraction::Auto;
+static AcPreference _ac_pref = AcPreference::Balanced;
+
+/**
+ * Schienentyp fuer den gewaehlten Antrieb. Ist er (noch) nicht verfuegbar,
+ * bleibt es bei normalen Gleisen - lieber bauen als abbrechen.
+ */
+static RailType AcRailType()
+{
+	RailType want = RAILTYPE_RAIL;
+	switch (_ac_traction) {
+		case AcTraction::Electric: want = RAILTYPE_ELECTRIC; break;
+		case AcTraction::Monorail: want = RAILTYPE_MONO; break;
+		case AcTraction::Maglev: want = RAILTYPE_MAGLEV; break;
+		default: break;
+	}
+	if (!HasRailTypeAvail(_local_company, want)) want = RAILTYPE_RAIL;
+	return want;
+}
+
+/** Passt die Lok zum gewaehlten Antrieb? */
+static bool AcTractionOk(const RailVehicleInfo &rvi)
+{
+	switch (_ac_traction) {
+		case AcTraction::Steam: return rvi.engclass == EngineClass::Steam;
+		case AcTraction::Diesel: return rvi.engclass == EngineClass::Diesel;
+		default: return true;
+	}
+}
+
+/** Gibt es zum gewaehlten Antrieb schon eine Lok (und die passende Schiene)? */
+static bool AcTractionAvailable()
+{
+	switch (_ac_traction) {
+		case AcTraction::Auto: return true;
+		case AcTraction::Electric: return HasRailTypeAvail(_local_company, RAILTYPE_ELECTRIC);
+		case AcTraction::Monorail: return HasRailTypeAvail(_local_company, RAILTYPE_MONO);
+		case AcTraction::Maglev: return HasRailTypeAvail(_local_company, RAILTYPE_MAGLEV);
+		default: break;
+	}
+	for (const Engine *e : Engine::IterateType(VehicleType::Train)) {
+		if (!e->company_avail.Test(_local_company)) continue;
+		const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
+		if (rvi.railveh_type == RailVehicleType::Wagon) continue;
+		/* Loks brauchen Antriebskraft auf dem Gleis (wie beim Kauf im
+		 * Depot, train_cmd.cpp) - eine E-Lok zieht auf Normalgleis nicht. */
+		if (!HasPowerOnRail(rvi.railtypes, AcRailType())) continue;
+		if (AcTractionOk(rvi)) return true;
+	}
+	return false;
+}
+
+/**
+ * Bewertung eines Fahrzeugs nach der eingestellten Vorliebe. Der jeweils
+ * zweite Wert bricht Gleichstaende, damit die Wahl eindeutig bleibt.
+ */
+static uint64_t AcScore(uint capacity, uint speed)
+{
+	switch (_ac_pref) {
+		case AcPreference::Capacity: return (uint64_t)capacity * 4096 + speed;
+		case AcPreference::Speed: return (uint64_t)speed * 4096 + capacity;
+		default: return (uint64_t)capacity * std::max(1u, speed);
+	}
+}
+
 /** Bestes verfügbares Passagierflugzeug wählen. */
 static EngineID FindBestAircraft()
 {
 	EngineID best = EngineID::Invalid();
-	uint best_capacity = 0;
+	uint64_t best_score = 0;
 	for (const Engine *e : Engine::IterateType(VehicleType::Aircraft)) {
 		if (!e->company_avail.Test(_local_company)) continue;
-		uint cap = e->GetDisplayDefaultCapacity();
-		if (cap > best_capacity) {
-			best_capacity = cap;
+		uint64_t score = AcScore(e->GetDisplayDefaultCapacity(), e->GetDisplayMaxSpeed());
+		if (score > best_score) {
+			best_score = score;
 			best = e->index;
 		}
 	}
@@ -508,14 +590,14 @@ static std::vector<TileIndex> FindRoadPath(TileIndex from, TileIndex to)
 static EngineID FindBestBus(CargoClasses cargo_class)
 {
 	EngineID best = EngineID::Invalid();
-	uint best_capacity = 0;
+	uint64_t best_capacity = 0;
 	for (const Engine *e : Engine::IterateType(VehicleType::Road)) {
 		if (!e->company_avail.Test(_local_company)) continue;
 		if (e->VehInfo<RoadVehicleInfo>().roadtype != ROADTYPE_ROAD) continue;
 		if (!IsCargoInClass(e->GetDefaultCargoType(), cargo_class)) continue;
-		uint cap = e->GetDisplayDefaultCapacity();
-		if (cap > best_capacity) {
-			best_capacity = cap;
+		uint64_t score = AcScore(e->GetDisplayDefaultCapacity(), e->GetDisplayMaxSpeed());
+		if (score > best_capacity) {
+			best_capacity = score;
 			best = e->index;
 		}
 	}
@@ -825,7 +907,7 @@ static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool nee
 	uint level_attempts = 0;
 	for (TileIndex tile : SpiralTileSequence(center, 30)) {
 		for (Axis axis : {Axis::X, Axis::Y}) {
-			CommandCost res = Command<Commands::BuildRailStation>::Do({}, tile, RAILTYPE_RAIL,
+			CommandCost res = Command<Commands::BuildRailStation>::Do({}, tile, AcRailType(),
 					axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 			if (!res.Succeeded() && terraform && level_attempts < 40) {
 				/* Bahnhofsflaeche samt beider Ausfahrkacheln planieren
@@ -844,7 +926,7 @@ static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool nee
 				auto [lc, lmoney, ltile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, a1, a0, false, LevelMode::Level);
 				if (lc.Failed()) continue;
 				if (result != nullptr) result->cost += lc.GetCost();
-				res = Command<Commands::BuildRailStation>::Do({}, tile, RAILTYPE_RAIL,
+				res = Command<Commands::BuildRailStation>::Do({}, tile, AcRailType(),
 						axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 			}
 			if (!res.Succeeded()) continue;
@@ -994,16 +1076,21 @@ static std::vector<std::pair<TileIndex, DiagDirection>> FindRailPath(const RailS
 static EngineID FindBestTrainEngine()
 {
 	EngineID best = EngineID::Invalid();
-	uint best_power = 0;
-	for (const Engine *e : Engine::IterateType(VehicleType::Train)) {
-		if (!e->company_avail.Test(_local_company)) continue;
-		const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
-		if (rvi.railveh_type == RailVehicleType::Wagon) continue;
-		if (!rvi.railtypes.Test(RAILTYPE_RAIL)) continue;
-		uint power = e->GetPower();
-		if (power > best_power) {
-			best_power = power;
-			best = e->index;
+	uint64_t best_score = 0;
+	for (int pass = 0; pass < 2 && best == EngineID::Invalid(); pass++) {
+		/* Zweiter Durchgang ohne Antriebs-Filter: lieber eine andere Lok
+		 * als gar keine Verbindung. */
+		for (const Engine *e : Engine::IterateType(VehicleType::Train)) {
+			if (!e->company_avail.Test(_local_company)) continue;
+			const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
+			if (rvi.railveh_type == RailVehicleType::Wagon) continue;
+			if (!HasPowerOnRail(rvi.railtypes, AcRailType())) continue;
+			if (pass == 0 && !AcTractionOk(rvi)) continue;
+			uint64_t score = AcScore(e->GetPower(), e->GetDisplayMaxSpeed());
+			if (score > best_score) {
+				best_score = score;
+				best = e->index;
+			}
 		}
 	}
 	return best;
@@ -1018,7 +1105,7 @@ static EngineID FindBestWagon(CargoClasses cargo_class)
 		if (!e->company_avail.Test(_local_company)) continue;
 		const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
 		if (rvi.railveh_type != RailVehicleType::Wagon) continue;
-		if (!rvi.railtypes.Test(RAILTYPE_RAIL)) continue;
+		if (!IsCompatibleRail(rvi.railtypes, AcRailType())) continue;
 		if (!IsCargoInClass(e->GetDefaultCargoType(), cargo_class)) continue;
 		uint cap = e->GetDisplayDefaultCapacity();
 		if (cap > best_capacity) {
@@ -1097,7 +1184,7 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 				if (CheckBridgeAvailability(bt, len).Succeeded()) break;
 			}
 			CommandCost c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
-					TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
+					TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, AcRailType(), INVALID_ROADTYPE);
 			if (c.Failed() && do_flags.Test(DoCommandFlag::Execute)) {
 				/* Rampen-Hang unpassend: nahen Kopf auf Vorgängerhöhe
 				 * einebnen und den fernen Kopf einzeln angleichen -
@@ -1109,14 +1196,14 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 				}
 				AcMatchBridgeHead(path[i].first, path[i + 1].first, result);
 				c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
-						TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
+						TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, AcRailType(), INVALID_ROADTYPE);
 				if (c.Failed()) {
 					/* Letzte Rettung auf trockenem Land: Zwischenraum einebnen. */
 					auto [l2, m2, t2] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i + 1].first, path[i].first, false, LevelMode::Level);
 					if (l2.Succeeded()) {
 						result.cost += l2.GetCost();
 						c = Command<Commands::BuildBridge>::Do(do_flags, path[i + 1].first, path[i].first,
-								TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, RAILTYPE_RAIL, INVALID_ROADTYPE);
+								TransportType::Rail, bt < MAX_BRIDGES ? bt : 0, AcRailType(), INVALID_ROADTYPE);
 					}
 				}
 				Debug(misc, 0, "AC: bridge retry at 0x{:X} -> {}", path[i].first.base(), c.Succeeded() ? 1 : 0);
@@ -1137,13 +1224,13 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 		DiagDirection entry_edge = ReverseDiagDir(path[i].second);
 		DiagDirection exit_edge = (i + 1 < path.size()) ? path[i + 1].second : final_exit_edge;
 		Track track = TrackFromEdges(entry_edge, exit_edge);
-		CommandCost c = Command<Commands::BuildRail>::Do(do_flags, path[i].first, RAILTYPE_RAIL, track, true);
+		CommandCost c = Command<Commands::BuildRail>::Do(do_flags, path[i].first, AcRailType(), track, true);
 		if (c.Failed() && i > 0 && do_flags.Test(DoCommandFlag::Execute)) {
 			/* Unpassender Hang: Kachel auf die Hoehe der vorherigen
 			 * Pfadkachel planieren und erneut versuchen. */
 			auto [lc, lmoney, ltile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, path[i].first, path[i - 1].first, false, LevelMode::Level);
 			if (lc.Succeeded()) result.cost += lc.GetCost();
-			CommandCost c2 = Command<Commands::BuildRail>::Do(do_flags, path[i].first, RAILTYPE_RAIL, track, true);
+			CommandCost c2 = Command<Commands::BuildRail>::Do(do_flags, path[i].first, AcRailType(), track, true);
 			Debug(misc, 0, "AC: rail retry at 0x{:X} err {} level {} retry {}",
 					path[i].first.base(), c.GetErrorMessage().base(),
 					lc.Succeeded() ? 1 : 0, c2.Succeeded() ? 1 : 0);
@@ -1189,11 +1276,11 @@ static void BuildStationFan(TileIndex exit_tile, DiagDirection exit_dir, DiagDir
 	/* Nur sinnvoll, wenn dahinter wirklich das zweite Gleis liegt. */
 	TileIndex platform2 = AddTileIndexDiffCWrap(fan, TileIndexDiffCByDiagDir(ReverseDiagDir(exit_dir)));
 	if (platform2 == INVALID_TILE || !IsTileType(platform2, TileType::Station)) return;
-	CommandCost c1 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, fan, RAILTYPE_RAIL,
+	CommandCost c1 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, fan, AcRailType(),
 			TrackFromEdges(ReverseDiagDir(exit_dir), ReverseDiagDir(perp)), true);
 	if (c1.Failed()) return;
 	result.cost += c1.GetCost();
-	CommandCost c2 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, exit_tile, RAILTYPE_RAIL,
+	CommandCost c2 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, exit_tile, AcRailType(),
 			TrackFromEdges(perp, line_edge), true);
 	if (c2.Succeeded()) result.cost += c2.GetCost();
 }
@@ -1259,7 +1346,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	for (const auto &[site, build] : {std::pair{&site_a, build_st_a}, std::pair{&site_b, build_st_b}}) {
 		if (!build) continue;
 		CommandCost c = Command<Commands::BuildRailStation>::Do(do_flags, site->tile,
-				RAILTYPE_RAIL, site->axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+				AcRailType(), site->axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 		if (c.Failed()) {
 			Town *dbg = ClosestTownFromTile(site->tile, _settings_game.economy.dist_local_authority);
 			Debug(misc, 0, "AC: rail station refused at 0x{:X} err {} town {} rating {}",
@@ -1268,7 +1355,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 					dbg != nullptr ? dbg->ratings[_local_company] : -9999);
 			/* Der Spieler hat den Bau angewiesen - Stadtbewertung nicht blockieren lassen. */
 			c = Command<Commands::BuildRailStation>::Do(DoCommandFlags{DoCommandFlag::NoTestTownRating} | do_flags, site->tile,
-					RAILTYPE_RAIL, site->axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
+					AcRailType(), site->axis, numtracks, _ac_train_len, STAT_CLASS_DFLT, 0, NEW_STATION, false);
 		}
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
@@ -1362,7 +1449,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			if (!e->company_avail.Test(_local_company)) continue;
 			const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
 			if (rvi.railveh_type != RailVehicleType::Wagon) continue;
-			if (!rvi.railtypes.Test(RAILTYPE_RAIL)) continue;
+			if (!IsCompatibleRail(rvi.railtypes, AcRailType())) continue;
 			if (e->GetDefaultCargoType() != freight && !e->info.refit_mask.Test(freight)) continue;
 			uint cap = e->GetDisplayDefaultCapacity();
 			if (cap >= best_cap) {
@@ -1400,12 +1487,12 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			if (d == entry_edge || d == exit_edge) continue;
 			TileIndex cand = AddTileIndexDiffCWrap(path[i].first, TileIndexDiffCByDiagDir(d));
 			if (cand == INVALID_TILE || !IsRailBuildableTile(cand)) continue;
-			CommandCost c = Command<Commands::BuildRailDepot>::Do(DoCommandFlag::Execute, cand, RAILTYPE_RAIL, ReverseDiagDir(d));
+			CommandCost c = Command<Commands::BuildRailDepot>::Do(DoCommandFlag::Execute, cand, AcRailType(), ReverseDiagDir(d));
 			if (c.Failed()) continue;
 			result.cost += c.GetCost();
 			/* Anschlusskurven vom Depot auf beide Streckenrichtungen. */
-			CommandCost c1 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, path[i].first, RAILTYPE_RAIL, TrackFromEdges(d, entry_edge), true);
-			CommandCost c2 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, path[i].first, RAILTYPE_RAIL, TrackFromEdges(d, exit_edge), true);
+			CommandCost c1 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, path[i].first, AcRailType(), TrackFromEdges(d, entry_edge), true);
+			CommandCost c2 = Command<Commands::BuildRail>::Do(DoCommandFlag::Execute, path[i].first, AcRailType(), TrackFromEdges(d, exit_edge), true);
 			/* BEIDE Anschlusskurven muessen stehen, sonst haengt das Depot nur
 			 * einseitig an der Strecke und der Zug findet kein Ziel ("lost").
 			 * Dann Depot wieder abreissen und die naechste Stelle versuchen. */
@@ -1540,9 +1627,9 @@ static EngineID FindBestShip(CargoClasses cargo_class)
 	for (const Engine *e : Engine::IterateType(VehicleType::Ship)) {
 		if (!e->company_avail.Test(_local_company)) continue;
 		if (!IsCargoInClass(e->GetDefaultCargoType(), cargo_class)) continue;
-		uint cap = e->GetDisplayDefaultCapacity();
-		if (cap > best_capacity) {
-			best_capacity = cap;
+		uint64_t score = AcScore(e->GetDisplayDefaultCapacity(), e->GetDisplayMaxSpeed());
+		if (score > best_capacity) {
+			best_capacity = score;
 			best = e->index;
 		}
 	}
@@ -1800,6 +1887,19 @@ struct AutoConnectWindow : Window {
 			}
 			case WID_AC_TRAINLEN:
 				return GetString(STR_AUTOCONNECT_TRAINLEN, _ac_train_len, _ac_train_len - 2);
+			case WID_AC_TRACTION: {
+				static const StringID names[] = {STR_AUTOCONNECT_TRACTION_AUTO, STR_AUTOCONNECT_TRACTION_STEAM,
+						STR_AUTOCONNECT_TRACTION_DIESEL, STR_AUTOCONNECT_TRACTION_ELECTRIC,
+						STR_AUTOCONNECT_TRACTION_MONO, STR_AUTOCONNECT_TRACTION_MAGLEV};
+				std::string s = GetString(names[static_cast<uint>(_ac_traction)]);
+				/* Ehrlich bleiben: was es noch nicht gibt, wird nicht gebaut. */
+				if (!AcTractionAvailable()) s += GetString(STR_AUTOCONNECT_TRACTION_UNAVAILABLE);
+				return s;
+			}
+			case WID_AC_PREF: {
+				static const StringID prefs[] = {STR_AUTOCONNECT_PREF_BALANCED, STR_AUTOCONNECT_PREF_CAPACITY, STR_AUTOCONNECT_PREF_SPEED};
+				return GetString(prefs[static_cast<uint>(_ac_pref)]);
+			}
 			case WID_AC_LINE:
 				if (this->picking_line) return GetString(STR_AUTOCONNECT_LINE_PICKING, (uint)this->line.size());
 				return this->line.empty() ? GetString(STR_AUTOCONNECT_LINE_START) : GetString(STR_AUTOCONNECT_LINE_N, (uint)this->line.size());
@@ -1848,6 +1948,16 @@ struct AutoConnectWindow : Window {
 
 			case WID_AC_TRAINLEN:
 				_ac_train_len = _ac_train_len >= 7 ? 3 : _ac_train_len + 1;
+				this->SetDirty();
+				break;
+
+			case WID_AC_TRACTION:
+				_ac_traction = static_cast<AcTraction>((static_cast<uint>(_ac_traction) + 1) % 6);
+				this->SetDirty();
+				break;
+
+			case WID_AC_PREF:
+				_ac_pref = static_cast<AcPreference>((static_cast<uint>(_ac_pref) + 1) % 3);
 				this->SetDirty();
 				break;
 
@@ -2092,6 +2202,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_STOPS), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_STOPS_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TRAINLEN), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_TRAINLEN_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_LINE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_LINE_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TRACTION), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_TRACTION_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_PREF), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_PREF_TOOLTIP),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_DOWN), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_MINUS),
 				NWidget(WWT_TEXT, Colours::Invalid, WID_AC_COUNT), SetFill(1, 0), SetAlignment({AlignmentH::Centre, AlignmentV::Middle}), SetToolTip(STR_AUTOCONNECT_RECOMMEND_TOOLTIP),
@@ -2127,6 +2239,39 @@ void ShowAutoConnectWindow()
 	AllocateWindowDescFront<AutoConnectWindow>(_autoconnect_desc, 0);
 }
 
+
+/**
+ * Fork: Diagnose fuer den Konsolenbefehl "autoconnect engine" - zeigt,
+ * welche Fahrzeuge die aktuellen Einstellungen (Antrieb, Vorliebe) waehlen.
+ */
+std::string AutoConnectDebugEngines()
+{
+	auto name = [](EngineID e) {
+		return e == EngineID::Invalid() ? std::string("-") : GetString(STR_ENGINE_NAME, e);
+	};
+	EngineID loco = FindBestTrainEngine();
+	std::string out = fmt::format("Antrieb={} Vorliebe={} Schiene={}\n",
+			static_cast<uint>(_ac_traction), static_cast<uint>(_ac_pref), static_cast<uint>(AcRailType()));
+	out += fmt::format("Lok: {}", name(loco));
+	if (loco != EngineID::Invalid()) {
+		const Engine *e = Engine::Get(loco);
+		out += fmt::format(" ({} PS, {} km/h)", e->GetPower(), e->GetDisplayMaxSpeed());
+	}
+	out += fmt::format(" | Waggon: {}", name(FindBestWagon({CargoClass::Passengers})));
+	EngineID air = FindBestAircraft();
+	out += fmt::format(" | Flugzeug: {}", name(air));
+	if (air != EngineID::Invalid()) {
+		const Engine *e = Engine::Get(air);
+		out += fmt::format(" ({} Plaetze, {} km/h)", e->GetDisplayDefaultCapacity(), e->GetDisplayMaxSpeed());
+	}
+	EngineID bus = FindBestBus({CargoClass::Passengers});
+	out += fmt::format(" | Bus: {}", name(bus));
+	if (bus != EngineID::Invalid()) {
+		const Engine *e = Engine::Get(bus);
+		out += fmt::format(" ({} Plaetze, {} km/h)", e->GetDisplayDefaultCapacity(), e->GetDisplayMaxSpeed());
+	}
+	return out;
+}
 
 /**
  * Fork: Diagnose-Einstieg fuer den Konsolenbefehl "autoconnect".

@@ -2479,6 +2479,18 @@ STR_AUTOCONNECT_LINE_PICKING                                    :{BLACK}Picking.
 STR_AUTOCONNECT_LINE_HINT                                       :{BLACK}Click towns on the map one by one (up to 8); clicking a chosen town again finishes the line
 STR_AUTOCONNECT_LINE_TOOLTIP                                    :{BLACK}Plan a bus line through up to 8 towns: click the button, then click each town on the map
 STR_AUTOCONNECT_LINE_BUS_ONLY                                   :{BLACK}The town line is built with buses - set mode to buses
+STR_AUTOCONNECT_TRACTION_AUTO                                   :{BLACK}Train power: {ORANGE}strongest available
+STR_AUTOCONNECT_TRACTION_STEAM                                  :{BLACK}Train power: {ORANGE}steam
+STR_AUTOCONNECT_TRACTION_DIESEL                                 :{BLACK}Train power: {ORANGE}diesel
+STR_AUTOCONNECT_TRACTION_ELECTRIC                               :{BLACK}Train power: {ORANGE}electric
+STR_AUTOCONNECT_TRACTION_MONO                                   :{BLACK}Train power: {ORANGE}monorail
+STR_AUTOCONNECT_TRACTION_MAGLEV                                 :{BLACK}Train power: {ORANGE}maglev
+STR_AUTOCONNECT_TRACTION_UNAVAILABLE                            :{RED} (not invented yet)
+STR_AUTOCONNECT_TRACTION_TOOLTIP                                :{BLACK}Which kind of train to build; the track is laid to match
+STR_AUTOCONNECT_PREF_BALANCED                                   :{BLACK}Pick vehicles: {ORANGE}balanced
+STR_AUTOCONNECT_PREF_CAPACITY                                   :{BLACK}Pick vehicles: {ORANGE}high capacity
+STR_AUTOCONNECT_PREF_SPEED                                      :{BLACK}Pick vehicles: {ORANGE}fast
+STR_AUTOCONNECT_PREF_TOOLTIP                                    :{BLACK}What matters when choosing buses, trains, aircraft and ships
 STR_AUTOCONNECT_STOPS_TOOLTIP                                   :{BLACK}How many bus stops to build in each town (automatic = by town size). Only used by the bus mode
 STR_INDCON_BUTTON                                               :{BLACK}Connect to customer
 STR_INDCON_BUTTON_TOOLTIP                                       :{BLACK}Show the nearest industries accepting this cargo and build a connection with one click

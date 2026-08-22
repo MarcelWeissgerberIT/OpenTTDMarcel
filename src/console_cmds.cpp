@@ -371,6 +371,11 @@ static bool ConAutoConnect(std::span<std::string_view> argv)
 		IConsolePrint(CC_HELP, "Baut eine Auto-Verbindung. Usage: 'autoconnect <air|bus|rail|ship> [<townA> <townB>|auto] [count]'.");
 		return true;
 	}
+	if (argv[1] == "engine") {
+		extern std::string AutoConnectDebugEngines();
+		IConsolePrint(CC_DEFAULT, "{}", AutoConnectDebugEngines());
+		return true;
+	}
 	extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
 	bool auto_pick = argv.size() < 4 || argv[2] == "auto";
 	uint a = 0, b = 1, count = 1;
