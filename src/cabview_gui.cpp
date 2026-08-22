@@ -91,8 +91,14 @@ struct CabSample {
 };
 
 /** Zoomstufe fuer die Entfernung - so werden Sprites perspektivisch klein. */
-static ZoomLevel CabZoom(float d)
+static ZoomLevel CabZoom(float d, bool flying = false)
 {
+	/* Aus der Luft ist alles eine Stufe kleiner - man schaut von oben. */
+	if (flying) {
+		if (d < 3.0f) return ZoomLevel::In2x;
+		if (d < 6.0f) return ZoomLevel::Normal;
+		return ZoomLevel::Out2x;
+	}
 	if (d < 3.0f) return ZoomLevel::In4x;
 	if (d < 6.0f) return ZoomLevel::In2x;
 	if (d < 10.0f) return ZoomLevel::Normal;
@@ -241,7 +247,7 @@ struct CabViewWindow : Window {
 	 * Groesse kommt ueber die Zoomstufe (DrawSprite nimmt sie entgegen,
 	 * DrawHouseInGUI ueber _gui_zoom).
 	 */
-	void DrawSideObject(const Rect &r, const CabObject &o, float d, bool left_side) const
+	void DrawSideObject(const Rect &r, const CabObject &o, float d, bool left_side, bool flying = false) const
 	{
 		if (o.what == CabTile::Ground || o.what == CabTile::Water) return;
 		/* Ganz nahe ist man schon vorbei, ganz fern nur noch Pixelmatsch. */
@@ -252,7 +258,7 @@ struct CabViewWindow : Window {
 		int cx = (r.left + r.right) / 2;
 		float hw = this->HalfWidth(r, d);
 		int x = left_side ? (int)(cx - hw * 2.0f) : (int)(cx + hw * 2.0f);
-		ZoomLevel zoom = CabZoom(d);
+		ZoomLevel zoom = CabZoom(d, flying);
 
 		switch (o.what) {
 			case CabTile::House: {
@@ -340,6 +346,23 @@ struct CabViewWindow : Window {
 				red ? PC_RED : PC_GREEN);
 	}
 
+	/** Wolken fuer den Flug - sie ziehen mit dem Tempo nach unten weg. */
+	void DrawClouds(const Rect &r) const
+	{
+		int w = r.right - r.left;
+		int sky = this->horizon - r.top;
+		if (sky < 20) return;
+		for (int i = 0; i < 5; i++) {
+			/* Feste Startpunkte, damit die Wolken nicht flackern. */
+			int cw = w / (6 + i);
+			int ch = std::max(3, sky / (10 + i));
+			int cx = r.left + ((i * 37 + (int)(this->anim / 6)) % (w + cw)) - cw;
+			int cy = r.top + sky / 6 + (i * sky) / 9;
+			GfxFillRect(cx, cy, cx + cw, cy + ch, PC_WHITE);
+			GfxFillRect(cx + cw / 4, cy - ch / 2, cx + cw - cw / 4, cy, PC_WHITE);
+		}
+	}
+
 	/**
 	 * Der Fuehrerstand selbst: Dachbalken, Fensterstreben und ein Pult mit
 	 * Tacho-Anzeige - alles gezeichnet, wie es die Lokfuehrer-Spiele der
@@ -392,7 +415,12 @@ struct CabViewWindow : Window {
 	{
 		if (widget != WID_CB_VIEW) return;
 		const Vehicle *v = this->Cab();
-		const_cast<CabViewWindow *>(this)->horizon = r.top + (r.bottom - r.top) * 42 / 100;
+		/* Aus dem Cockpit blickt man von oben auf die Welt, im Schiff
+		 * dicht ueber dem Wasser - der Horizont wandert entsprechend. */
+		int horizon_pct = 42;
+		if (v != nullptr && v->type == VehicleType::Aircraft) horizon_pct = 30;
+		if (v != nullptr && v->type == VehicleType::Ship) horizon_pct = 46;
+		const_cast<CabViewWindow *>(this)->horizon = r.top + (r.bottom - r.top) * horizon_pct / 100;
 
 		/* Himmel mit Bandverlauf, Sonne knapp ueber dem Horizont. */
 		static const PixelColour sky[] = {PC_DARK_BLUE, PC_DARK_BLUE, PC_LIGHT_BLUE, PC_LIGHT_BLUE};
@@ -424,22 +452,27 @@ struct CabViewWindow : Window {
 				GfxFillRect(r.left, y_far, r.right, y_near, PC_BLACK, FillRectMode::Checker);
 			}
 
-			this->DrawSideObject(r, s.left, (float)d, true);
-			this->DrawSideObject(r, s.right, (float)d, false);
+			bool flying_view = v->type == VehicleType::Aircraft;
+			this->DrawSideObject(r, s.left, (float)d, true, flying_view);
+			this->DrawSideObject(r, s.right, (float)d, false, flying_view);
 			if (s.signal) this->DrawSignal(r, s.signal_red, (float)d);
 			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, (float)d);
 
-			/* Fahrweg: Bahndamm bzw. Fahrbahn. */
+			/* Fahrweg: Bahndamm, Fahrbahn oder Fahrrinne. Flugzeuge haben
+			 * keinen - dort bleibt die Landschaft, ueber die man fliegt. */
 			float hw_far = this->HalfWidth(r, (float)d + 1);
 			float hw_near = this->HalfWidth(r, (float)d);
 			bool rail = v->type == VehicleType::Train;
-			PixelColour bed = rail ? PC_BARE_LAND : PC_DARK_GREY;
-			if (v->type == VehicleType::Ship) bed = PC_WATER;
-			/* Trapez als Zeilen fuellen, damit die Kanten zusammenlaufen. */
-			for (int y = y_far; y <= y_near; y++) {
-				float f = (y_near == y_far) ? 0.0f : (float)(y - y_far) / (float)(y_near - y_far);
-				float hw = hw_far + (hw_near - hw_far) * f;
-				GfxFillRect(cx - (int)hw, y, cx + (int)hw, y, bed);
+			bool flying = v->type == VehicleType::Aircraft;
+			if (!flying) {
+				PixelColour bed = rail ? PC_BARE_LAND : PC_DARK_GREY;
+				if (v->type == VehicleType::Ship) bed = PC_WATER;
+				/* Trapez als Zeilen fuellen, damit die Kanten zusammenlaufen. */
+				for (int y = y_far; y <= y_near; y++) {
+					float f = (y_near == y_far) ? 0.0f : (float)(y - y_far) / (float)(y_near - y_far);
+					float hw = hw_far + (hw_near - hw_far) * f;
+					GfxFillRect(cx - (int)hw, y, cx + (int)hw, y, bed);
+				}
 			}
 			/* Schienen bzw. Mittelstreifen. */
 			if (rail) {
@@ -457,6 +490,14 @@ struct CabViewWindow : Window {
 				if (dash > y_far && dash < y_near) {
 					GfxFillRect(cx - std::max(1, (int)(hw_near / 14)), dash, cx + std::max(1, (int)(hw_near / 14)), dash + std::max(1, (int)(hw_near / 8)), PC_WHITE);
 				}
+			} else if (v->type == VehicleType::Ship) {
+				/* Wellenkaemme laufen dem Bug entgegen. */
+				int wave = y_near - (int)((this->anim % 28) * (y_near - y_far) / 28);
+				if (wave > y_far && wave < y_near) {
+					float f = (float)(wave - y_far) / (float)std::max(1, y_near - y_far);
+					float hw = hw_far + (hw_near - hw_far) * f;
+					GfxFillRect(cx - (int)(hw * 0.7f), wave, cx + (int)(hw * 0.7f), wave + std::max(1, (int)(hw / 18)), PC_LIGHT_BLUE);
+				}
 			}
 
 			/* Bahnhof voraus: Bahnsteigkante ueber die ganze Breite. */
@@ -466,6 +507,7 @@ struct CabViewWindow : Window {
 			}
 		}
 
+		if (v->type == VehicleType::Aircraft) this->DrawClouds(r);
 		this->DrawCabInterior(r, v);
 	}
 
