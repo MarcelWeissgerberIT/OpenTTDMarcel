@@ -2382,6 +2382,12 @@ STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Klick au
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Klick nimmt in den Fahrplan, grün = wird angefahren, Rechtsklick springt hin
 STR_STATIONPAD_EMPTY                                            :{WHITE}Noch keine Stationen dieser Art
 STR_STATIONPAD_ERR_WRONG_TYPE                                   :{WHITE}Dieses Fahrzeug kann dort nicht halten
+STR_RIDEALONG_TOOLTIP                                           :{BLACK}Mitfahren: die Kamera bleibt dicht an diesem Fahrzeug
+STR_RIDEALONG_SPEED                                             :{WHITE}{VEHICLE}{BLACK} - {ORANGE}{VELOCITY}
+STR_RIDEALONG_NEXT_STOP                                         :{BLACK} - nächster Halt: {ORANGE}{STATION}
+STR_RIDEALONG_NEXT_DEPOT                                        :{BLACK} - auf dem Weg ins Depot
+STR_RIDEALONG_STOP                                              :{BLACK}Mitfahrt beenden
+STR_RIDEALONG_STOP_TOOLTIP                                      :{BLACK}Zurück zur normalen Ansicht
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Mehrspieler-Spiel beginnen
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landschaft mit gemäßigtem Klima auswählen

@@ -450,6 +450,11 @@ enum class WindowClass : uint16_t {
 	StationPad,
 
 	/**
+	 * Mitfahr-Modus (Fork): Kamera am Fahrzeug, Leiste mit Tempo und Halt.
+	 */
+	RideAlong,
+
+	/**
 	 * Haus-Dialog (Fork): Bewohner-Infos, Kauf und Miete.
 	 */
 	HouseInfo,

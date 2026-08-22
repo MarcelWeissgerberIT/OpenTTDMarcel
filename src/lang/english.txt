@@ -2413,6 +2413,12 @@ STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Click a 
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Click adds to the schedule, green = already served, right-click jumps there
 STR_STATIONPAD_EMPTY                                            :{WHITE}No stations of this kind yet
 STR_STATIONPAD_ERR_WRONG_TYPE                                   :{WHITE}This vehicle cannot stop at that station
+STR_RIDEALONG_TOOLTIP                                           :{BLACK}Ride along: the camera follows this vehicle up close
+STR_RIDEALONG_SPEED                                             :{WHITE}{VEHICLE}{BLACK} - {ORANGE}{VELOCITY}
+STR_RIDEALONG_NEXT_STOP                                         :{BLACK} - next stop: {ORANGE}{STATION}
+STR_RIDEALONG_NEXT_DEPOT                                        :{BLACK} - heading for the depot
+STR_RIDEALONG_STOP                                              :{BLACK}End ride
+STR_RIDEALONG_STOP_TOOLTIP                                      :{BLACK}Back to the normal view
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Start a multiplayer game
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select 'temperate' landscape style

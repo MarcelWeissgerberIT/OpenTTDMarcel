@@ -456,6 +456,15 @@ static bool ConHouseTest(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Mitfahrt im ersten eigenen Fahrzeug (Diagnose). */
+static bool ConRideAlong(std::span<std::string_view> argv)
+{
+	extern bool StartRideAlongConsole(int index);
+	int index = argv.size() >= 2 ? (int)ParseInteger(argv[1]).value_or(0) : -1;
+	IConsolePrint(CC_DEFAULT, StartRideAlongConsole(index) ? "Mitfahrt gestartet." : "Kein Fahrzeug gefunden.");
+	return true;
+}
+
 /* Fork: Stationen-Pad aus der Konsole oeffnen. */
 static bool ConStationPad(std::span<std::string_view>)
 {
@@ -3108,6 +3117,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("pstest",                  ConPixelTest);
 	IConsole::CmdRegister("housetest",               ConHouseTest);
 	IConsole::CmdRegister("stationpad",              ConStationPad);
+	IConsole::CmdRegister("ridealong",               ConRideAlong);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

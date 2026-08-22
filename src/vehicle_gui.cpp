@@ -2989,6 +2989,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_vehicle_view_widgets
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_SHOW_ORDERS), SetMinimalSize(18, 18), SetSpriteTip(SPR_SHOW_ORDERS),
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_SHOW_DETAILS), SetMinimalSize(18, 18), SetSpriteTip(SPR_SHOW_VEHICLE_DETAILS),
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_MODERNIZE), SetMinimalSize(18, 18), SetSpriteTip(SPR_EMPTY /* filled later */, STR_MODERNIZE_TOOLTIP),
+			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_RIDEALONG), SetMinimalSize(18, 18), SetSpriteTip(SPR_IMG_ZOOMIN, STR_RIDEALONG_TOOLTIP),
 			NWidget(WWT_PANEL, Colours::Grey), SetMinimalSize(18, 0), SetResize(0, 1), EndContainer(),
 		EndContainer(),
 	EndContainer(),
@@ -3245,6 +3246,7 @@ public:
 		this->SetWidgetDisabledState(WID_VV_REFIT, !refittable_and_stopped_in_depot || !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_CLONE, !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_MODERNIZE, !is_localcompany);
+		this->SetWidgetDisabledState(WID_VV_RIDEALONG, _game_mode != GameMode::Normal);
 
 		/* Lower the Send To Depot button when clicking it would cause the
 		 * vehicle to NOT go to the depot. */
@@ -3472,6 +3474,12 @@ public:
 				assert(v->type == VehicleType::Train);
 				Command<Commands::ForceTrainProceed>::Post(STR_ERROR_CAN_T_MAKE_TRAIN_PASS_SIGNAL, v->tile, v->index);
 				break;
+
+			case WID_VV_RIDEALONG: { // Fork: Mitfahrt starten
+				extern void StartRideAlong(VehicleID veh);
+				StartRideAlong(v->index);
+				break;
+			}
 
 			case WID_VV_MODERNIZE: { // Fork: besseres oder fabrikneues Modell beim naechsten Depotbesuch
 				if (v->owner != _local_company) break;
