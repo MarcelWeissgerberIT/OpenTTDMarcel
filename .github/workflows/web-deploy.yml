@@ -50,6 +50,8 @@ jobs:
       - name: Cache-Busting (Browser laedt nach jedem Deploy frische Dateien)
         run: |
           V="${GITHUB_SHA::8}"
+          # Build-Kennung fuer den "Neue Version"-Hinweis im Spiel (pre.js).
+          sed -i "s|</head>|<script>window.OTTD_BUILD=\"${V}\";</script></head>|" site/index.html site/openttd.html
           sed -i "s|openttd\.js|openttd.js?v=${V}|g" site/index.html site/openttd.html
           sed -i "s|\"openttd\.data\"|\"openttd.data?v=${V}\"|g" site/openttd.js
           sed -i "s|\"openttd\.wasm\"|\"openttd.wasm?v=${V}\"|g" site/openttd.js

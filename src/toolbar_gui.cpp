@@ -505,7 +505,9 @@ static CallBackFunction ToolbarTownClick(Window *w)
 {
 	DropDownList list;
 	list.push_back(MakeDropDownListStringItem(STR_TOWN_MENU_TOWN_DIRECTORY, TownMenuEntries::ShowDirectory));
-	if (_settings_game.economy.found_town != TownFounding::Forbidden) list.push_back(MakeDropDownListStringItem(STR_TOWN_MENU_FOUND_TOWN, TownMenuEntries::ShowFoundTown));
+	/* Fork: Stadtgruendung immer anbieten - alte Spielstaende haben das
+	 * Spiel-Setting noch auf "verboten", der Klick schaltet es frei. */
+	list.push_back(MakeDropDownListStringItem(STR_TOWN_MENU_FOUND_TOWN, TownMenuEntries::ShowFoundTown));
 	if (_settings_game.economy.place_houses != PlaceHouses::Forbidden) list.push_back(MakeDropDownListStringItem(STR_SCENEDIT_TOWN_MENU_PACE_HOUSE, TownMenuEntries::ShowPlaceHouses));
 
 	PopupMainToolbarMenu(w, WID_TN_TOWNS, std::move(list), 0);
@@ -523,8 +525,14 @@ static CallBackFunction MenuClickTown(int index)
 {
 	switch (TownMenuEntries(index)) {
 		case TownMenuEntries::ShowDirectory: ShowTownDirectory(); break;
-		case TownMenuEntries::ShowFoundTown: // Setting could be changed when the dropdown was open
-			if (_settings_game.economy.found_town != TownFounding::Forbidden) ShowFoundTownWindow();
+		case TownMenuEntries::ShowFoundTown:
+			/* Fork: in alten Spielstaenden steht economy.found_town noch auf
+			 * "verboten" - im Einzelspieler beim Klick freischalten. */
+			if (_settings_game.economy.found_town == TownFounding::Forbidden) {
+				if (_networking) break;
+				_settings_game.economy.found_town = TownFounding::CustomLayout;
+			}
+			ShowFoundTownWindow();
 			break;
 		case TownMenuEntries::ShowPlaceHouses: // Setting could be changed when the dropdown was open
 			if (_settings_game.economy.place_houses != PlaceHouses::Forbidden) ShowBuildHousePicker(nullptr);

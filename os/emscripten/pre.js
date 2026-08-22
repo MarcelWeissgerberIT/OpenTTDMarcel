@@ -16,6 +16,32 @@
     } catch (e) { /* Ohne Worker bleibt das bisherige Verhalten. */ }
 })();
 
+/* Fork: Hinweis-Banner, wenn ein neuer Build deployt wurde. Der Tab
+ * bleibt gern tagelang offen und spielt sonst unbemerkt den alten
+ * Stand weiter. window.OTTD_BUILD injiziert der Deploy-Workflow. */
+(function () {
+    if (typeof window === 'undefined' || !window.OTTD_BUILD || typeof fetch === 'undefined') return;
+    function check() {
+        fetch(location.pathname + '?u=' + Date.now(), {cache: 'no-store'}).then(function (r) {
+            return r.ok ? r.text() : '';
+        }).then(function (html) {
+            var m = html.match(/OTTD_BUILD="([0-9a-f]+)"/);
+            if (m && m[1] !== window.OTTD_BUILD) showBanner();
+        }).catch(function () { /* offline o.ae. - beim naechsten Mal */ });
+    }
+    function showBanner() {
+        if (document.getElementById('ottd-update')) return;
+        var d = document.createElement('div');
+        d.id = 'ottd-update';
+        d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#083060;color:#ffd000;font:bold 14px sans-serif;padding:8px;text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.5)';
+        d.textContent = 'Neue Version verf\u00fcgbar \u2013 hier klicken zum Neuladen (Spielst\u00e4nde liegen sicher in der Cloud)';
+        d.onclick = function () { location.reload(); };
+        document.body.appendChild(d);
+    }
+    setTimeout(check, 20000);
+    setInterval(check, 5 * 60 * 1000);
+})();
+
 /* Sound läuft über SDL-Audio (OpenSFX ist gebündelt); Musik bleibt aus. */
 Module.arguments.push('-mnull', '-vsdl');
 Module['websocket'] = { url: function(host, port, proto) {
