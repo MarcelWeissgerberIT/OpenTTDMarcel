@@ -102,6 +102,13 @@ struct RideAlongWindow : Window {
 	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override
 	{
 		if (widget == WID_RA_STOP) this->Close();
+		if (widget == WID_RA_CAB) {
+			/* Der Fuehrerstand uebernimmt; die Mitfahrt endet dabei. */
+			extern void ShowCabView(VehicleID veh);
+			VehicleID veh = _ride_vehicle;
+			this->Close();
+			ShowCabView(veh);
+		}
 	}
 
 	void Close([[maybe_unused]] int data = 0) override
@@ -133,6 +140,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_ridealong_widgets = 
 	NWidget(WWT_PANEL, Colours::DarkGreen),
 		NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_wide, 0), SetPadding(WidgetDimensions::unscaled.framerect),
 			NWidget(WWT_TEXT, Colours::Invalid, WID_RA_INFO), SetMinimalSize(360, 12), SetFill(1, 0),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_RA_CAB), SetMinimalSize(110, 12), SetStringTip(STR_RIDEALONG_CAB, STR_RIDEALONG_CAB_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_RA_STOP), SetMinimalSize(110, 12), SetStringTip(STR_RIDEALONG_STOP, STR_RIDEALONG_STOP_TOOLTIP),
 		EndContainer(),
 	EndContainer(),

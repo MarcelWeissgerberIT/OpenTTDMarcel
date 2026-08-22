@@ -18,6 +18,7 @@ add_files(
     assistant_widget.h
     houseown_widget.h
     pixelstudio_widget.h
+    cabview_widget.h
     ridealong_widget.h
     stationpad_widget.h
     framerate_widget.h

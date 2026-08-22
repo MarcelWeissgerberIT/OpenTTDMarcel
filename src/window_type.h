@@ -455,6 +455,11 @@ enum class WindowClass : uint16_t {
 	RideAlong,
 
 	/**
+	 * Fuehrerstand (Fork): Blick nach vorn aus dem Fahrzeug.
+	 */
+	CabView,
+
+	/**
 	 * Haus-Dialog (Fork): Bewohner-Infos, Kauf und Miete.
 	 */
 	HouseInfo,

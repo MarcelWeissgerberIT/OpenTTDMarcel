@@ -5,16 +5,16 @@
  * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <https://www.gnu.org/licenses/old-licenses/gpl-2.0>.
  */
 
-/** @file ridealong_widget.h Types related to the ride along widgets. */
+/** @file cabview_widget.h Types related to the cab view widgets. */
 
-#ifndef WIDGETS_RIDEALONG_WIDGET_H
-#define WIDGETS_RIDEALONG_WIDGET_H
+#ifndef WIDGETS_CABVIEW_WIDGET_H
+#define WIDGETS_CABVIEW_WIDGET_H
 
-/** Widgets of the #RideAlongWindow class. */
-enum RideAlongWidgets : WidgetID {
-	WID_RA_INFO, ///< Fahrzeugname, Tempo und naechster Halt.
-	WID_RA_CAB,  ///< In den Fuehrerstand wechseln.
-	WID_RA_STOP, ///< Mitfahrt beenden.
+/** Widgets of the #CabViewWindow class. */
+enum CabViewWidgets : WidgetID {
+	WID_CB_VIEW,  ///< Blick nach vorn aus dem Fuehrerstand.
+	WID_CB_INFO,  ///< Armaturenbrett-Text.
+	WID_CB_CLOSE, ///< Fuehrerstand verlassen.
 };
 
-#endif /* WIDGETS_RIDEALONG_WIDGET_H */
+#endif /* WIDGETS_CABVIEW_WIDGET_H */
