@@ -445,6 +445,11 @@ enum class WindowClass : uint16_t {
 	AssistantTv,
 
 	/**
+	 * Stationen-Pad (Fork): Stationen filtern, anspringen, Fahrplan bauen.
+	 */
+	StationPad,
+
+	/**
 	 * Haus-Dialog (Fork): Bewohner-Infos, Kauf und Miete.
 	 */
 	HouseInfo,

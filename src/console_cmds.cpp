@@ -451,6 +451,15 @@ static bool ConHouseTest(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Stationen-Pad aus der Konsole oeffnen. */
+static bool ConStationPad(std::span<std::string_view>)
+{
+	extern void ShowStationPadWindow();
+	ShowStationPadWindow();
+	IConsolePrint(CC_DEFAULT, "Stationen-Pad geoeffnet.");
+	return true;
+}
+
 /* Fork: Buerger-Fenster aus der Konsole oeffnen (Diagnose, z. B. Kinder-Portraet). */
 static bool ConCitizenWindow(std::span<std::string_view> argv)
 {
@@ -3093,6 +3102,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("assistant",               ConAssistant);
 	IConsole::CmdRegister("pstest",                  ConPixelTest);
 	IConsole::CmdRegister("housetest",               ConHouseTest);
+	IConsole::CmdRegister("stationpad",              ConStationPad);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

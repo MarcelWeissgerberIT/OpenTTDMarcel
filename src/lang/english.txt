@@ -2397,6 +2397,22 @@ STR_HOUSEOWN_NO_MONEY                                           :{WHITE}Not enou
 STR_NEWS_HOUSEOWN_DEMOLISHED                                    :{BIG_FONT}{BLACK}Your rental building in {TOWN} was demolished by the town
 STR_NEWS_HOUSEOWN_DECAY_WARNING                                 :{BIG_FONT}{BLACK}Dilapidated: your building in {TOWN} is {NUM} years old. The town plans to demolish it in a year - renovate it to keep it!
 STR_HOUSEOWN_DECAY_WARNED                                       :{RED}Demolition announced - renovate now!
+STR_STATIONPAD_CAPTION                                          :{WHITE}Station pad
+STR_STATIONPAD_MENU_ENTRY                                       :Station pad
+STR_STATIONPAD_FILTER_ALL                                       :{BLACK}All
+STR_STATIONPAD_FILTER_RAIL                                      :{BLACK}Rail
+STR_STATIONPAD_FILTER_ROAD                                      :{BLACK}Road
+STR_STATIONPAD_FILTER_AIR                                       :{BLACK}Air
+STR_STATIONPAD_FILTER_DOCK                                      :{BLACK}Docks
+STR_STATIONPAD_FILTER_TOOLTIP                                   :{BLACK}Show only stations of this kind
+STR_STATIONPAD_NO_VEHICLE                                       :{BLACK}Vehicle: {ORANGE}none{BLACK} - buttons jump to the station
+STR_STATIONPAD_VEHICLE                                          :{BLACK}Vehicle: {ORANGE}{VEHICLE}
+STR_STATIONPAD_VEHICLE_ITEM                                     :{BLACK}{VEHICLE}
+STR_STATIONPAD_VEHICLE_TOOLTIP                                  :{BLACK}Pick a vehicle to build its schedule from this pad
+STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Click a station to jump there
+STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Click adds to the schedule, green = already served, right-click jumps there
+STR_STATIONPAD_EMPTY                                            :{WHITE}No stations of this kind yet
+STR_STATIONPAD_ERR_WRONG_TYPE                                   :{WHITE}This vehicle cannot stop at that station
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Start a multiplayer game
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select 'temperate' landscape style

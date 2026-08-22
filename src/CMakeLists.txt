@@ -198,6 +198,7 @@ add_files(
     fios_gui.cpp
     houseown_gui.cpp
     pixelstudio_gui.cpp
+    stationpad_gui.cpp
     fontcache.cpp
     fontcache.h
     framerate_gui.cpp

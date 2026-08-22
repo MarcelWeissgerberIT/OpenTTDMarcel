@@ -2366,6 +2366,22 @@ STR_HOUSEOWN_NO_MONEY                                           :{WHITE}Nicht ge
 STR_NEWS_HOUSEOWN_DEMOLISHED                                    :{BIG_FONT}{BLACK}Ihr Miethaus in {TOWN} wurde von der Stadt abgerissen
 STR_NEWS_HOUSEOWN_DECAY_WARNING                                 :{BIG_FONT}{BLACK}Baufällig: Ihr Gebäude in {TOWN} ist {NUM} Jahre alt. Die Stadt plant den Abriss in einem Jahr - jetzt renovieren und das Haus retten!
 STR_HOUSEOWN_DECAY_WARNED                                       :{RED}Abriss angekündigt - jetzt renovieren!
+STR_STATIONPAD_CAPTION                                          :{WHITE}Stationen-Pad
+STR_STATIONPAD_MENU_ENTRY                                       :Stationen-Pad
+STR_STATIONPAD_FILTER_ALL                                       :{BLACK}Alle
+STR_STATIONPAD_FILTER_RAIL                                      :{BLACK}Bahn
+STR_STATIONPAD_FILTER_ROAD                                      :{BLACK}Straße
+STR_STATIONPAD_FILTER_AIR                                       :{BLACK}Flug
+STR_STATIONPAD_FILTER_DOCK                                      :{BLACK}Häfen
+STR_STATIONPAD_FILTER_TOOLTIP                                   :{BLACK}Nur Stationen dieser Art anzeigen
+STR_STATIONPAD_NO_VEHICLE                                       :{BLACK}Fahrzeug: {ORANGE}keins{BLACK} - Knöpfe springen zur Station
+STR_STATIONPAD_VEHICLE                                          :{BLACK}Fahrzeug: {ORANGE}{VEHICLE}
+STR_STATIONPAD_VEHICLE_ITEM                                     :{BLACK}{VEHICLE}
+STR_STATIONPAD_VEHICLE_TOOLTIP                                  :{BLACK}Fahrzeug wählen und den Fahrplan direkt über das Pad bauen
+STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Klick auf eine Station springt dorthin
+STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Klick nimmt in den Fahrplan, grün = wird angefahren, Rechtsklick springt hin
+STR_STATIONPAD_EMPTY                                            :{WHITE}Noch keine Stationen dieser Art
+STR_STATIONPAD_ERR_WRONG_TYPE                                   :{WHITE}Dieses Fahrzeug kann dort nicht halten
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Mehrspieler-Spiel beginnen
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landschaft mit gemäßigtem Klima auswählen

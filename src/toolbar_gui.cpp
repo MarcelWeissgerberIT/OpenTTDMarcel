@@ -162,6 +162,7 @@ static void PopupMainToolbarMenu(Window *w, WidgetID widget, const std::initiali
 static const int CTMN_CLIENT_LIST = MAX_COMPANIES; ///< Indicates the "all connected players" entry.
 static const int CTMN_SPECTATE = COMPANY_SPECTATOR.base(); ///< Indicates the "become spectator" entry.
 static const int CTMN_SPECTATOR = CompanyID::Invalid().base(); ///< Indicates that a window is being opened for the spectator.
+static const int CTMN_STATIONPAD = MAX_COMPANIES + 1; ///< Fork: Eintrag "Stationen-Pad" im Stationen-Menue.
 
 /**
  * Pop up a generic company list menu.
@@ -184,6 +185,11 @@ static void PopupMainCompanyToolbMenu(Window *w, WidgetID widget, CompanyMask gr
 				list.push_back(MakeDropDownListStringItem(STR_NETWORK_COMPANY_LIST_SPECTATE, CTMN_SPECTATE));
 			}
 			break;
+		case WID_TN_STATIONS:
+			/* Fork: Stationen-Pad ueber dem Firmen-Eintrag anbieten. */
+			list.push_back(MakeDropDownListStringItem(STR_STATIONPAD_MENU_ENTRY, CTMN_STATIONPAD));
+			break;
+
 		case WID_TN_STORY:
 			list.push_back(MakeDropDownListStringItem(STR_STORY_BOOK_SPECTATOR, CTMN_SPECTATOR));
 			break;
@@ -576,6 +582,11 @@ static CallBackFunction ToolbarStationsClick(Window *w)
  */
 static CallBackFunction MenuClickStations(int index)
 {
+	if (index == CTMN_STATIONPAD) {
+		extern void ShowStationPadWindow();
+		ShowStationPadWindow();
+		return CallBackFunction::None;
+	}
 	ShowCompanyStations((CompanyID)index);
 	return CallBackFunction::None;
 }
