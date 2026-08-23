@@ -48,6 +48,8 @@
 
 #include "table/strings.h"
 
+#include <map>
+
 #include "safeguards.h"
 
 /* town_gui.cpp: Haus samt Mehrfach-Kacheln zeichnen (echte Spielgrafik). */
@@ -85,6 +87,7 @@ struct CabObject {
 	uint8_t view = 0;                 ///< Blickrichtung des Haus-Sprites.
 	uint8_t tree = 0;                 ///< Baumart, falls Wald.
 	PixelColour ground{PC_GRASS_LAND}; ///< Boden dieser Kachel.
+	bool flat_apron = false;          ///< Rollfeld: eben, ohne Bahnsteigkante.
 };
 
 /** Ein abgetasteter Punkt der Strecke. */
@@ -103,6 +106,7 @@ struct CabSample {
 	bool on_bridge = false;           ///< Strecke verlaeuft hier auf einer Bruecke.
 	int height = 0;                   ///< Gelaendehoehe (fuer Kuppen und Senken).
 	TileIndex tile = INVALID_TILE;    ///< Die Kachel selbst - fuer ortsfeste Bodenmuster.
+	bool airport = false;             ///< Flughafen: flaches Rollfeld statt Bahnsteigkante.
 	bool valid = false;               ///< Kachel liegt noch auf der Karte.
 };
 
@@ -329,6 +333,8 @@ static CabObject ReadObject(TileIndex t)
 		o.view = TileHash2Bit(TileX(t) * TILE_SIZE, TileY(t) * TILE_SIZE);
 	} else if (o.what == CabTile::Trees) {
 		o.tree = static_cast<uint8_t>(GetTreeType(t));
+	} else if (o.what == CabTile::Station) {
+		o.flat_apron = IsAirportTile(t);
 	}
 	return o;
 }
@@ -413,7 +419,10 @@ struct CabViewWindow : Window {
 					s.on_bridge = true;
 				}
 			}
-			if (s.ahead == CabTile::Station) s.station = GetStationIndex(tile);
+			if (s.ahead == CabTile::Station) {
+				s.station = GetStationIndex(tile);
+				s.airport = IsAirportTile(tile);
+			}
 			/* Signale an der Strecke: rot oder gruen, wie im Spiel. */
 			if (IsTileType(tile, TileType::Railway) && HasSignals(tile)) {
 				s.signal = true;
@@ -549,7 +558,7 @@ struct CabViewWindow : Window {
 	 * werden zeilenweise gefuellt, damit sich die Kachelstuecke zu einer
 	 * durchgehenden Kante fuegen statt als Klotz zu stehen.
 	 */
-	void DrawPlatform(const Rect &r, float d, int height, float lateral, bool left_side, float spread) const
+	void DrawPlatform(const Rect &r, float d, int height, float lateral, bool left_side, float spread, bool flat = false) const
 	{
 		float dn = d;
 		float df = d + 1.0f;
@@ -557,7 +566,8 @@ struct CabViewWindow : Window {
 		int y_far = this->GroundY(r, df, height);
 		if (y_near <= y_far) return;
 		float t_near = 1.0f / (1.0f + dn * 0.42f);
-		int lip = std::max(1, (int)(11 * t_near)); /* Hoehe der Bahnsteigkante */
+		/* Rollfeld: ebene Flaeche. Bahnsteig: mit Kante. */
+		int lip = flat ? 0 : std::max(1, (int)(11 * t_near));
 		int side = left_side ? -1 : 1;
 
 		int inner_far = 0, inner_near = 0, top_far = y_far, top_near = y_near;
@@ -577,7 +587,9 @@ struct CabViewWindow : Window {
 		/* Die helle Bahnsteigkante gehoert EINMAL an den Rand. Pro Zeile
 		 * gezeichnet ergaebe sie eine weisse Flaeche - genau das war sie
 		 * vorher. */
-		GfxDrawLine(inner_far, top_far, inner_near, top_near, PC_WHITE, std::max(1, (int)(3 * t_near)));
+		if (!flat) {
+			GfxDrawLine(inner_far, top_far, inner_near, top_near, PC_WHITE, std::max(1, (int)(3 * t_near)));
+		}
 	}
 
 	/**
@@ -786,8 +798,10 @@ struct CabViewWindow : Window {
 				 * Kacheln, ein Klotz je Kachel ergab eine Reihe schwebender
 				 * Platten. Jetzt zeichnet jede Kachel ein flaches Stueck
 				 * Bahnsteig, das sich mit den Nachbarn zu einer Kante
-				 * zusammensetzt. */
-				this->DrawPlatform(r, d, height, lateral, left_side, spread);
+				 * zusammensetzt. Ein Rollfeld liegt dagegen eben auf dem
+				 * Boden - mit Bahnsteigkanten sah der Flughafen aus wie
+				 * eine Treppe aus grauen Bloecken. */
+				this->DrawPlatform(r, d, height, lateral, left_side, spread, o.flat_apron);
 				break;
 			}
 			case CabTile::Tunnel: {
@@ -936,6 +950,111 @@ struct CabViewWindow : Window {
 	 * Tacho-Anzeige - alles gezeichnet, wie es die Lokfuehrer-Spiele der
 	 * 90er auch gemacht haben.
 	 */
+	/** Gefuellter Kreis - fuer Rundinstrumente und Lenkraeder. */
+	static void CabDisc(int cx, int cy, int rad, PixelColour col)
+	{
+		if (rad < 1) return;
+		for (int dy = -rad; dy <= rad; dy++) {
+			int dx = (int)std::sqrt((float)std::max(0, rad * rad - dy * dy));
+			GfxFillRect(cx - dx, cy + dy, cx + dx, cy + dy, col);
+		}
+	}
+
+	/** Ring: aussen gefuellt, innen ausgespart. */
+	static void CabRing(int cx, int cy, int rad, int thick, PixelColour col, PixelColour inner)
+	{
+		CabDisc(cx, cy, rad, col);
+		CabDisc(cx, cy, rad - thick, inner);
+	}
+
+	/** Zeiger eines Rundinstruments, Winkel in Grad ab 9 Uhr. */
+	static void CabNeedle(int cx, int cy, int len, float deg, PixelColour col)
+	{
+		float rad = deg * 3.14159f / 180.0f;
+		int ex = cx + (int)(std::cos(rad) * len);
+		int ey = cy - (int)(std::sin(rad) * len);
+		GfxDrawLine(cx, cy, ex, ey, col, 2);
+	}
+
+	/**
+	 * Die Einbauten, die ein Fahrzeug ausmachen: Im Flugzeug ein
+	 * kuenstlicher Horizont und ein Steuerhorn, im Zug der Fahrschalter,
+	 * im Bus das Lenkrad, auf dem Schiff Steuerrad und Kompass. Ohne das
+	 * sitzt man in jedem Fahrzeug hinter demselben grauen Brett.
+	 */
+	void DrawCabControls(const Rect &r, const Vehicle *v, int desk, PixelColour body) const
+	{
+		if (v == nullptr) return;
+		int w = r.right - r.left;
+		int h = r.bottom - r.top;
+		int cx = (r.left + r.right) / 2;
+		int deck = r.bottom - (r.bottom - desk) / 2; /* Mitte des Pults */
+		int rad = std::max(6, std::min(h / 12, w / 16));
+
+		switch (v->type) {
+			case VehicleType::Aircraft: {
+				/* Kuenstlicher Horizont: oben Himmel, unten Erde, mit
+				 * Querneigung nach der Flugrichtung. */
+				int hx = cx - w / 10;
+				CabRing(hx, deck, rad, std::max(2, rad / 6), GREY_SCALE(4), PC_BLACK);
+				int inner = rad - std::max(2, rad / 6);
+				float bank = ((int)v->direction % 4 - 1.5f) * 8.0f;
+				for (int dy = -inner; dy <= inner; dy++) {
+					int dx = (int)std::sqrt((float)std::max(0, inner * inner - dy * dy));
+					int split = (int)(bank * dy / std::max(1, inner));
+					GfxFillRect(hx - dx, deck + dy, hx + dx, deck + dy,
+							dy < split ? PC_LIGHT_BLUE : PC_BARE_LAND);
+				}
+				GfxFillRect(hx - inner, deck, hx + inner, deck, PC_WHITE);
+
+				/* Hoehenmesser rechts daneben, Zeiger nach dem Tempo. */
+				int ax = cx + w / 10;
+				CabRing(ax, deck, rad, std::max(2, rad / 6), GREY_SCALE(4), PC_BLACK);
+				CabNeedle(ax, deck, rad - 3, 90.0f - v->GetDisplaySpeed() % 360, PC_WHITE);
+
+				/* Steuerhorn unten in der Mitte. */
+				int yw = std::max(8, w / 12);
+				int yh = std::max(3, h / 60);
+				GfxFillRect(cx - yw, r.bottom - yh * 4, cx + yw, r.bottom - yh * 3, GREY_SCALE(3));
+				GfxFillRect(cx - yh, r.bottom - yh * 4, cx + yh, r.bottom, GREY_SCALE(3));
+				break;
+			}
+			case VehicleType::Train: {
+				/* Manometer links, Fahrschalter als Hebel rechts. */
+				CabRing(cx - w / 7, deck, rad, std::max(2, rad / 6), GREY_SCALE(4), GREY_SCALE(13));
+				CabNeedle(cx - w / 7, deck, rad - 3, 200.0f - v->GetDisplaySpeed() * 1.6f, PC_DARK_RED);
+				int lx = cx + w / 7;
+				int lever = std::max(6, h / 18);
+				GfxFillRect(lx - 2, deck - lever, lx + 2, deck + lever / 2, GREY_SCALE(3));
+				int notch = deck + lever / 2 - (int)(lever * 1.5f * v->GetDisplaySpeed() / std::max(1, v->GetDisplayMaxSpeed()));
+				GfxFillRect(lx - std::max(4, rad / 2), notch - 2, lx + std::max(4, rad / 2), notch + 2, PC_RED);
+				break;
+			}
+			case VehicleType::Ship: {
+				/* Steuerrad mit Speichen, daneben ein Kompass. */
+				int sx = cx + w / 7;
+				CabRing(sx, deck, rad, std::max(2, rad / 5), PC_BARE_LAND, body);
+				for (int k = 0; k < 8; k++) {
+					CabNeedle(sx, deck, rad - 1, k * 45.0f, PC_BARE_LAND);
+				}
+				int kx = cx - w / 7;
+				CabRing(kx, deck, rad, std::max(2, rad / 6), GREY_SCALE(4), PC_BLACK);
+				CabNeedle(kx, deck, rad - 3, 90.0f - (int)v->direction * 45.0f, PC_RED);
+				break;
+			}
+			default: {
+				/* Strassenfahrzeug: Lenkrad mit drei Speichen. */
+				int rw = std::max(10, std::min(h / 8, w / 10));
+				CabRing(cx, r.bottom - rw / 2, rw, std::max(3, rw / 5), GREY_SCALE(3), body);
+				for (float a : {90.0f, 210.0f, 330.0f}) {
+					CabNeedle(cx, r.bottom - rw / 2, rw - 2, a, GREY_SCALE(3));
+				}
+				CabDisc(cx, r.bottom - rw / 2, std::max(2, rw / 4), GREY_SCALE(5));
+				break;
+			}
+		}
+	}
+
 	void DrawCabInterior(const Rect &r, const Vehicle *v) const
 	{
 		int w = r.right - r.left;
@@ -988,10 +1107,13 @@ struct CabViewWindow : Window {
 		DrawString(gx + 4, gx + gw - 4, gy + 2, GetString(STR_CABVIEW_DASH_SPEED, speed),
 				TextColour::Yellow, AlignmentH::Start, false, FontSize::Large);
 
+		/* Die typischen Einbauten des Fahrzeugtyps. */
+		this->DrawCabControls(r, v, desk, body);
+
 		/* Rechts das Ziel, damit man weiss, wohin die Reise geht. */
 		const Order *o = v->GetNumOrders() > 0 ? v->GetOrder(v->cur_real_order_index) : nullptr;
 		if (o != nullptr && o->IsType(OT_GOTO_STATION)) {
-			int dx0 = r.right - strut - w / 3;
+			int dx0 = r.right - strut - w / 4;
 			GfxFillRect(dx0, gy, r.right - strut - w / 20, gy + gh, PC_BLACK);
 			DrawString(dx0 + 4, r.right - strut - w / 20 - 4, gy + gh / 4,
 					GetString(STR_CABVIEW_DASH_TARGET, o->GetDestination().ToStationID()),
@@ -1065,6 +1187,14 @@ struct CabViewWindow : Window {
 
 		std::vector<CabSample> scan = this->Scan(v);
 
+		/* Je Station nur das naechstgelegene Schild - ein Flughafen belegt
+		 * viele Kacheln und wuerde seinen Namen sonst mehrfach zeigen. */
+		std::map<StationID, int> nearest_sign;
+		for (int d = 0; d < CAB_DEPTH; d++) {
+			if (!scan[d].valid || scan[d].station == StationID::Invalid()) continue;
+			if (nearest_sign.count(scan[d].station) == 0) nearest_sign[scan[d].station] = d;
+		}
+
 		/* Boden von hinten nach vorn: jede Kachel ein Streifen. */
 		for (int d = CAB_DEPTH - 1; d >= 0; d--) {
 			const CabSample &s = scan[d];
@@ -1120,7 +1250,9 @@ struct CabViewWindow : Window {
 			if (s.on_bridge) this->DrawBridgeRails(r, dn, s.height, s.lateral);
 			if (s.tunnel_mouth) this->DrawTunnelMouth(r, dn, s.height, s.lateral);
 			if (s.signal) this->DrawSignal(r, s.signal_red, dn, s.height, s.lateral);
-			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, dn, s.height, s.lateral);
+			if (s.station != StationID::Invalid() && nearest_sign.count(s.station) != 0 && nearest_sign[s.station] == d) {
+				this->DrawStationSign(r, s.station, dn, s.height, s.lateral);
+			}
 
 			/* Fahrweg: Bahndamm, Fahrbahn oder Fahrrinne. Flugzeuge haben
 			 * keinen - dort bleibt die Landschaft, ueber die man fliegt. */

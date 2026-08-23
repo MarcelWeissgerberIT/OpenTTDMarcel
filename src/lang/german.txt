@@ -2379,6 +2379,8 @@ STR_STATIONPAD_NO_VEHICLE                                       :{BLACK}Fahrzeug
 STR_STATIONPAD_VEHICLE                                          :{BLACK}Fahrzeug: {ORANGE}{VEHICLE}
 STR_STATIONPAD_VEHICLE_ITEM                                     :{BLACK}{VEHICLE}
 STR_STATIONPAD_VEHICLE_TOOLTIP                                  :{BLACK}Fahrzeug wählen und den Fahrplan direkt über das Pad bauen
+STR_STATIONPAD_SEARCH_HINT                                      :{BLACK}Nach Namen suchen
+STR_STATIONPAD_SEARCH_TOOLTIP                                   :{BLACK}Tippen zeigt nur Stationen, deren Name diesen Text enthält
 STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Klick auf eine Station springt dorthin
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Klick nimmt in den Fahrplan, grün = wird angefahren, Rechtsklick springt hin
 STR_STATIONPAD_EMPTY                                            :{WHITE}Noch keine Stationen dieser Art

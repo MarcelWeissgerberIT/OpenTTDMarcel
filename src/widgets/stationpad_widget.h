@@ -18,6 +18,7 @@ enum StationPadWidgets : WidgetID {
 	WID_SP_FILTER_ROAD,  ///< Filter: Bus- und LKW-Stationen.
 	WID_SP_FILTER_AIR,   ///< Filter: Flughaefen.
 	WID_SP_FILTER_DOCK,  ///< Filter: Haefen.
+	WID_SP_SEARCH,       ///< Eingabefeld: Stationen nach Namen filtern.
 	WID_SP_VEHICLE,      ///< Fahrzeugwahl fuer die Fahrplan-Bearbeitung.
 	WID_SP_PANEL,        ///< Knopfraster der Stationen.
 	WID_SP_SCROLLBAR,    ///< Scrollbalken des Rasters.

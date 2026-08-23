@@ -15,6 +15,7 @@
 
 #include "stdafx.h"
 #include "window_gui.h"
+#include "querystring_gui.h"
 #include "window_func.h"
 #include "gfx_func.h"
 #include "strings_func.h"
@@ -62,6 +63,18 @@ static Order MakePadStationOrder(StationID station)
 	return o;
 }
 
+/** Passt das Fahrzeug zum eingestellten Filter? */
+static bool PadVehicleMatchesFilter(const Vehicle *v)
+{
+	switch (_sp_filter) {
+		case PadFilter::Rail: return v->type == VehicleType::Train;
+		case PadFilter::Road: return v->type == VehicleType::Road;
+		case PadFilter::Air:  return v->type == VehicleType::Aircraft;
+		case PadFilter::Dock: return v->type == VehicleType::Ship;
+		default: return true;
+	}
+}
+
 /** Passt die Station zum eingestellten Filter? */
 static bool PadMatchesFilter(const Station *st)
 {
@@ -78,13 +91,26 @@ struct StationPadWindow : Window {
 	std::vector<StationID> stations; ///< Angezeigte Stationen (gefiltert, sortiert).
 	Scrollbar *vscroll = nullptr;
 	uint line_height = 0;
+	QueryString search_editbox;      ///< Eingabefeld fuer die Namenssuche.
+	std::string search;              ///< Suchtext in Kleinbuchstaben.
 	static const uint COLUMNS = 2;
 
-	StationPadWindow(WindowDesc &desc, WindowNumber number) : Window(desc)
+	StationPadWindow(WindowDesc &desc, WindowNumber number) : Window(desc), search_editbox(50)
 	{
 		this->CreateNestedTree();
 		this->vscroll = this->GetScrollbar(WID_SP_SCROLLBAR);
 		this->FinishInitNested(number);
+		this->querystrings[WID_SP_SEARCH] = &this->search_editbox;
+		this->search_editbox.cancel_button = QueryString::ACTION_CLEAR;
+		this->BuildList();
+	}
+
+	/** Tippen filtert sofort - ohne Enter, ohne Knopf. */
+	void OnEditboxChanged(WidgetID widget) override
+	{
+		if (widget != WID_SP_SEARCH) return;
+		this->search.clear();
+		for (char c : this->search_editbox.text.GetText()) this->search += (char)tolower((unsigned char)c);
 		this->BuildList();
 	}
 
@@ -113,6 +139,11 @@ struct StationPadWindow : Window {
 			if (st->owner != _local_company) continue;
 			if (st->facilities.Test(StationFacility::Waypoint)) continue;
 			if (!PadMatchesFilter(st)) continue;
+			if (!this->search.empty()) {
+				std::string name;
+				for (char c : GetString(STR_STATION_NAME, st->index)) name += (char)tolower((unsigned char)c);
+				if (name.find(this->search) == std::string::npos) continue;
+			}
 			this->stations.push_back(st->index);
 		}
 		std::sort(this->stations.begin(), this->stations.end(), [](StationID a, StationID b) {
@@ -310,6 +341,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_stationpad_widgets =
 				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_SP_FILTER_AIR), SetFill(1, 0), SetStringTip(STR_STATIONPAD_FILTER_AIR, STR_STATIONPAD_FILTER_TOOLTIP),
 				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_SP_FILTER_DOCK), SetFill(1, 0), SetStringTip(STR_STATIONPAD_FILTER_DOCK, STR_STATIONPAD_FILTER_TOOLTIP),
 			EndContainer(),
+			NWidget(WWT_EDITBOX, Colours::Yellow, WID_SP_SEARCH), SetFill(1, 0), SetMinimalSize(120, 12), SetStringTip(STR_STATIONPAD_SEARCH_HINT, STR_STATIONPAD_SEARCH_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_SP_VEHICLE), SetFill(1, 0), SetToolTip(STR_STATIONPAD_VEHICLE_TOOLTIP),
 			NWidget(NWID_HORIZONTAL),
 				NWidget(WWT_PANEL, Colours::DarkGreen, WID_SP_PANEL), SetFill(1, 1), SetResize(1, 1), SetScrollbar(WID_SP_SCROLLBAR), EndContainer(),

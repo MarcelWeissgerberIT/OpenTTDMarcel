@@ -2410,6 +2410,8 @@ STR_STATIONPAD_NO_VEHICLE                                       :{BLACK}Vehicle:
 STR_STATIONPAD_VEHICLE                                          :{BLACK}Vehicle: {ORANGE}{VEHICLE}
 STR_STATIONPAD_VEHICLE_ITEM                                     :{BLACK}{VEHICLE}
 STR_STATIONPAD_VEHICLE_TOOLTIP                                  :{BLACK}Pick a vehicle to build its schedule from this pad
+STR_STATIONPAD_SEARCH_HINT                                      :{BLACK}Search by name
+STR_STATIONPAD_SEARCH_TOOLTIP                                   :{BLACK}Type to show only stations whose name contains this text
 STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Click a station to jump there
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Click adds to the schedule, green = already served, right-click jumps there
 STR_STATIONPAD_EMPTY                                            :{WHITE}No stations of this kind yet
