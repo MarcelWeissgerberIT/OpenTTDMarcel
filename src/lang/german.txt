@@ -2381,6 +2381,21 @@ STR_STATIONPAD_VEHICLE_ITEM                                     :{BLACK}{VEHICLE
 STR_STATIONPAD_VEHICLE_TOOLTIP                                  :{BLACK}Fahrzeug wählen und den Fahrplan direkt über das Pad bauen
 STR_STATIONPAD_SEARCH_HINT                                      :{BLACK}Nach Namen suchen
 STR_STATIONPAD_SEARCH_TOOLTIP                                   :{BLACK}Tippen zeigt nur Stationen, deren Name diesen Text enthält
+STR_DIFFICULTY_CAPTION                                          :{WHITE}Schwierigkeit
+STR_DIFFICULTY_EASY                                             :{BLACK}Leicht
+STR_DIFFICULTY_MEDIUM                                           :{BLACK}Mittel
+STR_DIFFICULTY_HARD                                             :{BLACK}Schwer
+STR_DIFFICULTY_BRUTAL                                           :{BLACK}Fast unmöglich
+STR_DIFFICULTY_PICK_TOOLTIP                                     :{BLACK}Stufe wählen - darunter steht, was sich ändert
+STR_DIFFICULTY_EASY_DETAILS                                     :{BLACK}Platz zum Ausprobieren.{}{}Kredit bis 500.000 zu 2 % Zinsen, günstiger Bau und Betrieb, großzügige Subventionen, keine Pannen, keine Katastrophen, keine Konkurrenz.
+STR_DIFFICULTY_MEDIUM_DETAILS                                   :{BLACK}Der Klassiker.{}{}Kredit bis 300.000 zu 2 % Zinsen, normale Kosten, übliche Subventionen, gelegentliche Pannen, zwei Mitbewerber.
+STR_DIFFICULTY_HARD_DETAILS                                     :{BLACK}Jede Linie muss sich rechnen.{}{}Kredit nur bis 200.000 zu 3 % Zinsen, teurer Bau und Betrieb, magere Subventionen, regelmäßige Pannen, schwankende Wirtschaft mit Inflation, Katastrophen, fünf Mitbewerber.
+STR_DIFFICULTY_BRUTAL_DETAILS                                   :{BLACK}Für alle, die leiden wollen.{}{}Kredit nur bis 100.000 zu 4 % Zinsen, höchste Kosten, überhaupt keine Subventionen, regelmäßige Pannen, schwankende Wirtschaft mit Inflation, Katastrophen - und zehn Mitbewerber, die dir jede Stadt streitig machen.
+STR_DIFFICULTY_NEWGAME_NOTE                                     :{ORANGE}Kreditrahmen, Zinsen und Kosten stehen beim Spielstart fest - sie gelten ab deinem nächsten Spiel. Alles andere wirkt sofort.
+STR_DIFFICULTY_APPLY                                            :{BLACK}Übernehmen
+STR_DIFFICULTY_APPLY_TOOLTIP                                    :{BLACK}Diese Stufe ab jetzt verwenden
+STR_SETTINGS_MENU_DIFFICULTY                                    :Schwierigkeit...
+STR_SETTINGS_MENU_CLOSE_ALL                                     :Alle Fenster schließen
 STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Klick auf eine Station springt dorthin
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Klick nimmt in den Fahrplan, grün = wird angefahren, Rechtsklick springt hin
 STR_STATIONPAD_EMPTY                                            :{WHITE}Noch keine Stationen dieser Art

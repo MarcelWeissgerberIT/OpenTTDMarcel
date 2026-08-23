@@ -21,6 +21,7 @@ add_files(
     cabview_widget.h
     ridealong_widget.h
     tutorial_widget.h
+    difficulty_widget.h
     stationpad_widget.h
     framerate_widget.h
     game_widget.h

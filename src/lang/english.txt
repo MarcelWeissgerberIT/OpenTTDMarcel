@@ -2412,6 +2412,21 @@ STR_STATIONPAD_VEHICLE_ITEM                                     :{BLACK}{VEHICLE
 STR_STATIONPAD_VEHICLE_TOOLTIP                                  :{BLACK}Pick a vehicle to build its schedule from this pad
 STR_STATIONPAD_SEARCH_HINT                                      :{BLACK}Search by name
 STR_STATIONPAD_SEARCH_TOOLTIP                                   :{BLACK}Type to show only stations whose name contains this text
+STR_DIFFICULTY_CAPTION                                          :{WHITE}Difficulty
+STR_DIFFICULTY_EASY                                             :{BLACK}Easy
+STR_DIFFICULTY_MEDIUM                                           :{BLACK}Medium
+STR_DIFFICULTY_HARD                                             :{BLACK}Hard
+STR_DIFFICULTY_BRUTAL                                           :{BLACK}Almost impossible
+STR_DIFFICULTY_PICK_TOOLTIP                                     :{BLACK}Choose a level - the description below shows what changes
+STR_DIFFICULTY_EASY_DETAILS                                     :{BLACK}Room to try things out.{}{}Loan up to 500,000 at 2% interest, cheap building and running costs, generous subsidies, no breakdowns, no disasters, no competitors.
+STR_DIFFICULTY_MEDIUM_DETAILS                                   :{BLACK}The classic setup.{}{}Loan up to 300,000 at 2% interest, normal costs, the usual subsidies, occasional breakdowns, two competitors.
+STR_DIFFICULTY_HARD_DETAILS                                     :{BLACK}Every line has to pay for itself.{}{}Loan only up to 200,000 at 3% interest, expensive building and running costs, thin subsidies, regular breakdowns, a shaky economy with inflation, disasters, five competitors.
+STR_DIFFICULTY_BRUTAL_DETAILS                                   :{BLACK}For those who want to suffer.{}{}Loan only up to 100,000 at 4% interest, highest costs, no subsidies at all, regular breakdowns, shaky economy with inflation, disasters - and ten competitors racing you for every town.
+STR_DIFFICULTY_NEWGAME_NOTE                                     :{ORANGE}Loan limit, interest and costs are fixed when a game starts - those take effect in your next game. Everything else changes right away.
+STR_DIFFICULTY_APPLY                                            :{BLACK}Apply
+STR_DIFFICULTY_APPLY_TOOLTIP                                    :{BLACK}Use this level from now on
+STR_SETTINGS_MENU_DIFFICULTY                                    :Difficulty...
+STR_SETTINGS_MENU_CLOSE_ALL                                     :Close all windows
 STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Click a station to jump there
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Click adds to the schedule, green = already served, right-click jumps there
 STR_STATIONPAD_EMPTY                                            :{WHITE}No stations of this kind yet

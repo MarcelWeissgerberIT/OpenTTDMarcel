@@ -267,6 +267,8 @@ enum class OptionMenuEntries : uint8_t {
 	GameScriptSettings, ///< Open GS settings window.
 	NewGRFSettings, ///< Open NewGRF settings window.
 	SandboxOptions, ///< Open sandbox options window.
+	Difficulty, ///< Fork: Schwierigkeitsstufen waehlen.
+	CloseAllWindows, ///< Fork: alle offenen Fenster auf einen Schlag schliessen.
 	Transparencies, ///< Open transparency options window.
 	ShowTownNames, ///< Toggle visibility of town names.
 	ShowStationNames, ///< Toggle visibility of station names.
@@ -307,6 +309,12 @@ static CallBackFunction ToolbarOptionsClick(Window *w)
 		list.push_back(MakeDropDownListStringItem(STR_SETTINGS_MENU_SANDBOX_OPTIONS, OptionMenuEntries::SandboxOptions));
 	}
 	list.push_back(MakeDropDownListStringItem(STR_SETTINGS_MENU_TRANSPARENCY_OPTIONS, OptionMenuEntries::Transparencies));
+	/* Fork: Schwierigkeit und Aufraeumen liegen weit oben - beides
+	 * braucht man mitten im Spiel, nicht am Ende einer langen Liste. */
+	if (_game_mode != GameMode::Editor && !_networking) {
+		list.push_back(MakeDropDownListStringItem(STR_SETTINGS_MENU_DIFFICULTY, OptionMenuEntries::Difficulty));
+	}
+	list.push_back(MakeDropDownListStringItem(STR_SETTINGS_MENU_CLOSE_ALL, OptionMenuEntries::CloseAllWindows));
 	list.push_back(MakeDropDownListDividerItem());
 	list.push_back(MakeDropDownListCheckedItem(_display_opt.Test(DisplayOption::ShowTownNames), STR_SETTINGS_MENU_TOWN_NAMES_DISPLAYED, OptionMenuEntries::ShowTownNames));
 	list.push_back(MakeDropDownListCheckedItem(_display_opt.Test(DisplayOption::ShowStationNames), STR_SETTINGS_MENU_STATION_NAMES_DISPLAYED, OptionMenuEntries::ShowStationNames));
@@ -338,6 +346,15 @@ static CallBackFunction MenuClickSettings(int index)
 {
 	switch (OptionMenuEntries(index)) {
 		case OptionMenuEntries::GameOptions: ShowGameOptions(); return CallBackFunction::None;
+		case OptionMenuEntries::Difficulty: {
+			extern void ShowDifficultyWindow();
+			ShowDifficultyWindow();
+			return CallBackFunction::None;
+		}
+		case OptionMenuEntries::CloseAllWindows:
+			/* Werkzeugleiste und Statusleiste bleiben - alles andere geht. */
+			CloseAllNonVitalWindows();
+			return CallBackFunction::None;
 		case OptionMenuEntries::AISettings: ShowAIConfigWindow(); return CallBackFunction::None;
 		case OptionMenuEntries::GameScriptSettings: ShowGSConfigWindow(); return CallBackFunction::None;
 		case OptionMenuEntries::NewGRFSettings: ShowNewGRFSettings(!_networking && _settings_client.gui.UserIsAllowedToChangeNewGRFs(), true, true, _grfconfig); return CallBackFunction::None;
