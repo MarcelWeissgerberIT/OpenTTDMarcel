@@ -35,7 +35,7 @@ RUN cmake -B /build -S /src \
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	ca-certificates python3 python3-numpy libfontconfig1 liblzma5 liblzo2-2 libpng16-16 zlib1g \
+	ca-certificates curl python3 python3-numpy libfontconfig1 liblzma5 liblzo2-2 libpng16-16 zlib1g \
 	python3-pip \
 	&& pip3 install --break-system-packages --no-cache-dir websockify \
 	&& apt-get purge -y python3-pip && apt-get autoremove -y \
@@ -57,6 +57,19 @@ VOLUME ["/data"]
 
 # Aussen spricht nur der Uebersetzer; der Spielport bleibt intern.
 ENV OTTD_WS_PORT=8080
+
+# Version des Spiels in diesem Bild. Server und Browser-Fassung muessen
+# uebereinstimmen, sonst weist der Server jeden Beitritt ab - die
+# oeffentliche Serverliste blendet unpassende Server deshalb aus.
+ARG GIT_SHA=unbekannt
+ENV OTTD_BUILD=$GIT_SHA
+
+# Fuer den Eintrag in der oeffentlichen Serverliste (alles freiwillig):
+#   OTTD_PUBLIC_HOST   Name, unter dem Spieler den Server erreichen
+#   OTTD_SERVER_NAME   Anzeigename in der Liste
+#   OTTD_ANNOUNCE_KEY  selbst gewaehltes Geheimnis (schuetzt den Eintrag)
+#   OTTD_SERVER_NOTE   kurze Beschreibung
+ENV OTTD_ANNOUNCE_URL=https://openttd-api.marcelweissgerber81.workers.dev/api/servers
 EXPOSE 8080
 
 CMD ["/usr/local/bin/start.sh"]

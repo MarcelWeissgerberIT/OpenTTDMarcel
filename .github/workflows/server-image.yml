@@ -51,6 +51,8 @@ jobs:
           context: .
           file: os/server/Dockerfile
           push: true
+          build-args: |
+            GIT_SHA=${{ github.sha }}
           tags: |
             ${{ steps.name.outputs.image }}:latest
             ${{ steps.name.outputs.image }}:${{ github.sha }}

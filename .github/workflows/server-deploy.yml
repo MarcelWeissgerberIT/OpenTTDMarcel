@@ -18,6 +18,10 @@ on:
         description: 'Rechenzentrum (fra = Frankfurt)'
         required: true
         default: 'fra'
+      name:
+        description: 'Anzeigename in der Serverliste'
+        required: false
+        default: 'Marcels Welt'
   # Von Hand ausloesen geht nur vom Hauptbranch aus. Auf dem Arbeits-
   # branch stossen wir den Deploy stattdessen ueber diese Markierung an:
   # Datei anfassen, pushen, fertig.
@@ -39,6 +43,8 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       APP: ${{ inputs.app || 'openttd-marcel' }}
       REGION: ${{ inputs.region || 'fra' }}
+      SERVER_NAME: ${{ inputs.name || 'Marcels Welt' }}
+      SERVER_NOTE: 'Offizieller Server der Marcel Edition'
     steps:
       - uses: actions/checkout@v4
 
@@ -83,6 +89,20 @@ jobs:
           docker tag "$SRC" "$DST"
           flyctl auth docker
           docker push "$DST"
+
+      - name: Eintrag in der oeffentlichen Serverliste vorbereiten
+        run: |
+          # Der Schluessel schuetzt den Listeneintrag davor, dass jemand
+          # anderes ihn ueberschreibt. Einmal erzeugt, bleibt er.
+          if flyctl secrets list --app "$APP" 2>/dev/null | grep -q OTTD_ANNOUNCE_KEY; then
+            echo "Schluessel besteht bereits."
+          else
+            flyctl secrets set --app "$APP" --stage "OTTD_ANNOUNCE_KEY=$(openssl rand -hex 16)"
+          fi
+          flyctl secrets set --app "$APP" --stage \
+            "OTTD_PUBLIC_HOST=$APP.fly.dev" \
+            "OTTD_SERVER_NAME=${SERVER_NAME:-Marcels Welt}" \
+            "OTTD_SERVER_NOTE=${SERVER_NOTE:-Offizieller Server der Marcel Edition}"
 
       - name: Ausrollen
         run: |

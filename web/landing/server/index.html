@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eigenen Server betreiben – OpenTTD Marcel Edition</title>
+<meta name="description" content="Betreibe deinen eigenen Mehrspieler-Server für die OpenTTD Marcel Edition. Anleitung, Serverliste und alles was du brauchst.">
+<meta property="og:title" content="Eigenen Server betreiben – OpenTTD Marcel Edition">
+<meta property="og:description" content="In 10 Minuten zum eigenen Mehrspieler-Server. Er erscheint automatisch bei allen Spielern im Menü.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/img/preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root { --win:#a8a8a8; --shadow:#5a5a5a; --light:#d4d4d4; --green:#6b8c3f; --dark:#2f4318; --pale:#b7d17a; --ink:#101010; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#3d5a24; color:var(--ink); font-family:"VT323",monospace; font-size:22px; line-height:1.5; }
+  .px { font-family:"Press Start 2P",monospace; }
+  .wrap { max-width:920px; margin:0 auto; padding:24px 16px 64px; }
+  header { background:var(--dark); padding:14px 0; border-bottom:4px solid var(--pale); }
+  header .wrap { padding:0 16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .logo { color:#f2c230; font-size:15px; }
+  .logo span { color:#fff; }
+  a { color:#e8f3d2; }
+  .win { background:var(--win); border:3px solid var(--shadow); box-shadow:inset 2px 2px 0 var(--light), 6px 6px 0 rgba(0,0,0,.35); margin:22px 0; }
+  .titlebar { background:var(--green); color:#fff; padding:9px 12px; font-size:12px; border-bottom:3px solid var(--shadow); }
+  .body { padding:18px 20px; }
+  h1 { font-size:clamp(15px,3.2vw,24px); line-height:1.4; margin:10px 0 18px; color:#fff; text-shadow:2px 2px 0 rgba(0,0,0,.6); }
+  h2 { font-size:14px; margin:22px 0 10px; }
+  h3 { font-size:13px; margin:18px 0 8px; }
+  p, li { margin:8px 0; }
+  ul, ol { margin-left:24px; }
+  code, pre { font-family:"VT323",monospace; background:#20301a; color:#d8e8bf; }
+  code { padding:1px 6px; font-size:20px; }
+  pre { padding:12px 14px; overflow-x:auto; border:2px solid var(--dark); margin:10px 0; font-size:19px; line-height:1.45; }
+  .note { background:#e8e0b8; border-left:6px solid #b08a2a; padding:10px 14px; margin:12px 0; }
+  .btn { display:inline-block; background:#e8c33c; color:#1a1a1a; border:3px solid #6b5a12; padding:10px 18px; font-family:"Press Start 2P",monospace; font-size:11px; text-decoration:none; margin:6px 8px 6px 0; }
+  .btn.green { background:var(--green); color:#fff; border-color:var(--dark); }
+  table { width:100%; border-collapse:collapse; margin:10px 0; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:2px solid var(--shadow); font-size:20px; }
+  th { background:var(--green); color:#fff; font-size:12px; font-family:"Press Start 2P",monospace; }
+  #liste td:first-child { font-weight:bold; }
+  .muted { opacity:.75; }
+  footer { color:#d8e8bf; text-align:center; padding:20px; font-size:19px; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="logo px">Open<span>TTD</span> Marcel Edition</div>
+  <div style="flex:1"></div>
+  <a class="btn" href="../../">Spielen</a>
+  <a class="btn" href="../">Zur Kaufseite</a>
+</div></header>
+
+<div class="wrap">
+  <h1 class="px">Betreibe deinen eigenen Mehrspieler-Server</h1>
+
+  <div class="win">
+    <div class="titlebar px">Wer gerade online ist</div>
+    <div class="body">
+      <p class="muted">Diese Liste kommt direkt aus dem Spiel – dieselben Server siehst du im Mehrspieler-Menü.</p>
+      <table id="liste"><thead><tr><th>Name</th><th>Adresse</th><th>Version</th></tr></thead>
+        <tbody><tr><td colspan="3" class="muted">Lade…</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div class="win">
+    <div class="titlebar px">Warum ein eigener Server?</div>
+    <div class="body">
+      <p>Auf einem Server bauen mehrere Leute gleichzeitig in derselben Welt – jeder mit eigener Firma. Die Welt läuft weiter, auch wenn niemand zuschaut.</p>
+      <p>Wer einen Server betreibt, taucht <b>automatisch bei allen Spielern im Menü auf</b>. Du brauchst dafür keine Erlaubnis und musst niemanden fragen.</p>
+      <p><b>Was es kostet:</b> etwa 3–5 € im Monat für einen kleinen Mietserver. Mehr braucht es nicht – das Spiel selbst ist frei.</p>
+    </div>
+  </div>
+
+  <div class="win">
+    <div class="titlebar px">Der schnelle Weg: Fly.io</div>
+    <div class="body">
+      <p>Fly gibt dir eine fertige Adresse mit Verschlüsselung – das spart die ganze Zertifikats-Arbeit. Du brauchst ein Konto und das Programm <code>flyctl</code>.</p>
+      <ol>
+        <li>Anmelden: <code>fly auth login</code></li>
+        <li>App anlegen (Name frei wählbar, muss weltweit einmalig sein):
+<pre>fly apps create mein-ottd-server</pre></li>
+        <li>Platz für die Spielstände:
+<pre>fly volumes create ottd_data --app mein-ottd-server --region fra --size 1 --yes</pre></li>
+        <li>Angaben für die Serverliste hinterlegen:
+<pre>fly secrets set --app mein-ottd-server \
+  OTTD_PUBLIC_HOST=mein-ottd-server.fly.dev \
+  OTTD_SERVER_NAME="Meine Welt" \
+  OTTD_SERVER_NOTE="Gemütlich, keine Abrisse" \
+  OTTD_ANNOUNCE_KEY="$(openssl rand -hex 16)"</pre></li>
+        <li>Server starten:
+<pre>fly deploy --app mein-ottd-server \
+  --image ghcr.io/marcelweissgerberit/openttdmarcel-server:latest \
+  --vm-memory 512</pre></li>
+      </ol>
+      <p>Fertig. Nach ein paar Minuten steht dein Server in der Liste oben – und im Spiel bei allen anderen.</p>
+      <div class="note"><b>Wichtig:</b> Der Server muss durchgehend laufen. Stell in Fly sicher, dass die Maschine nicht schlafen gelegt wird (<code>auto_stop_machines = false</code>), sonst friert deine Welt ein, sobald niemand spielt.</div>
+    </div>
+  </div>
+
+  <div class="win">
+    <div class="titlebar px">Eigener Rechner oder Mietserver (Docker)</div>
+    <div class="body">
+      <p>Auf jedem Linux-Server mit Docker:</p>
+<pre>docker run -d --name ottd --restart unless-stopped \
+  -p 8080:8080 -v ottd_data:/data \
+  -e OTTD_PUBLIC_HOST=ottd.deine-domain.de \
+  -e OTTD_SERVER_NAME="Meine Welt" \
+  -e OTTD_ANNOUNCE_KEY="ein-langes-geheimnis" \
+  ghcr.io/marcelweissgerberit/openttdmarcel-server:latest</pre>
+      <p>Davor gehört ein Reverse-Proxy mit Verschlüsselung, zum Beispiel Caddy – zwei Zeilen genügen:</p>
+<pre>ottd.deine-domain.de {
+    reverse_proxy 127.0.0.1:8080
+}</pre>
+      <div class="note"><b>Warum Verschlüsselung Pflicht ist:</b> Das Spiel läuft im Browser über <code>https</code>, und von dort darf nur eine verschlüsselte Verbindung aufgebaut werden. Ohne Zertifikat kommt niemand auf deinen Server.</div>
+    </div>
+  </div>
+
+  <div class="win">
+    <div class="titlebar px">Einstellungen deiner Welt</div>
+    <div class="body">
+      <p>Die Konfiguration liegt im Datenverzeichnis unter <code>/data/openttd.cfg</code>. Ändern, Server neu starten, fertig.</p>
+      <table>
+        <tr><th>Einstellung</th><th>Bedeutung</th></tr>
+        <tr><td>server_name</td><td>Name im Spiel (die Liste nimmt <code>OTTD_SERVER_NAME</code>)</td></tr>
+        <tr><td>max_clients</td><td>Wie viele gleichzeitig mitspielen dürfen</td></tr>
+        <tr><td>max_companies</td><td>Wie viele Firmen es geben darf</td></tr>
+        <tr><td>autoclean_unprotected</td><td>Nach wie vielen Monaten verwaiste Firmen verschwinden</td></tr>
+      </table>
+      <h3>Welt sichern und weiterspielen</h3>
+      <p>Der Server sichert monatlich nach <code>/data/save/autosave</code> und spielt beim Start den neuesten Stand weiter. Für eine frische Welt einfach den Ordner leeren und neu starten.</p>
+    </div>
+  </div>
+
+  <div class="win">
+    <div class="titlebar px">Wenn niemand hereinkommt</div>
+    <div class="body">
+      <h3>„Der Server läuft eine andere Version"</h3>
+      <p>Das ist der häufigste Fall. Server und Browser-Fassung müssen aus demselben Stand gebaut sein. Nach einem Spiel-Update also das Bild neu holen:</p>
+<pre>fly deploy --app mein-ottd-server \
+  --image ghcr.io/marcelweissgerberit/openttdmarcel-server:latest</pre>
+      <p>Die Liste blendet Server mit abweichender Version automatisch aus – dann bist du für andere unsichtbar, obwohl der Server läuft.</p>
+      <h3>Server steht nicht in der Liste</h3>
+      <ul>
+        <li>Sind <code>OTTD_PUBLIC_HOST</code> und <code>OTTD_ANNOUNCE_KEY</code> gesetzt? Ohne beides bleibt der Server absichtlich privat.</li>
+        <li>Ist die Adresse von außen erreichbar und verschlüsselt?</li>
+        <li>Der Eintrag verschwindet nach etwa 12 Minuten ohne Lebenszeichen – läuft der Server noch?</li>
+      </ul>
+      <h3>Beitritt bricht sofort ab</h3>
+      <p>Prüfe, ob der Reverse-Proxy WebSocket-Verbindungen durchlässt. Caddy und Fly tun das von sich aus, nginx braucht die passenden Kopfzeilen.</p>
+    </div>
+  </div>
+
+  <div class="win">
+    <div class="titlebar px">Deinen Server bekannt machen</div>
+    <div class="body">
+      <ul>
+        <li><b>Im Spiel:</b> Du stehst automatisch im Mehrspieler-Menü aller Spieler – der wichtigste Platz, und du musst nichts tun.</li>
+        <li><b>Beschreibung nutzen:</b> <code>OTTD_SERVER_NOTE</code> erscheint in der Liste. Schreib rein, was deinen Server ausmacht – „Anfängerfreundlich", „Nur Eisenbahn", „Jeden Sonntag neue Welt".</li>
+        <li><b>Welt teilen:</b> Zeig, was auf deinem Server gebaut wurde – im Spiel über das Disketten-Menü → „Welt teilen (Link)". Wer den Link öffnet, sieht deine Welt sofort im Browser.</li>
+        <li><b>Diese Seite verlinken:</b> Sie zeigt oben immer die gerade laufenden Server.</li>
+      </ul>
+      <div class="note">Verstößt jemand gegen die guten Sitten, kann ein Eintrag gesperrt werden. Sonst ist die Liste offen für alle.</div>
+    </div>
+  </div>
+
+  <div style="text-align:center; margin-top:26px;">
+    <a class="btn green" href="../../">Jetzt spielen</a>
+    <a class="btn" href="../manual/">Handbuch</a>
+  </div>
+</div>
+
+<footer>Die OpenTTD Marcel Edition ist ein unabhängiger Fan-Fork von <a href="https://www.openttd.org/">OpenTTD</a>.</footer>
+
+<script>
+  // Serverliste laden - dieselbe Quelle, aus der auch das Spiel liest.
+  fetch('https://openttd-api.marcelweissgerber81.workers.dev/api/servers', { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      var tb = document.querySelector('#liste tbody');
+      var list = (d && d.servers) || [];
+      if (!list.length) {
+        tb.innerHTML = '<tr><td colspan="3" class="muted">Gerade läuft kein Server. Sei der Erste!</td></tr>';
+        return;
+      }
+      tb.innerHTML = list.map(function (s) {
+        var esc = function (t) { return String(t == null ? '' : t).replace(/[<>&"]/g, function (c) { return ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]; }); };
+        return '<tr><td>' + esc(s.name) + (s.note ? '<br><span class="muted">' + esc(s.note) + '</span>' : '') +
+               '</td><td>' + esc(s.host) + '</td><td class="muted">' + esc((s.build || '').slice(0, 8)) + '</td></tr>';
+      }).join('');
+    })
+    .catch(function () {
+      document.querySelector('#liste tbody').innerHTML = '<tr><td colspan="3" class="muted">Liste gerade nicht erreichbar.</td></tr>';
+    });
+</script>
+</body>
+</html>

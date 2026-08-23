@@ -423,6 +423,114 @@ async function handleShareInfo(request, env, cors, url) {
 	return json({ ok: true, ...row }, 200, cors);
 }
 
+/* ---------- Oeffentliche Serverliste ---------- */
+
+const SERVER_ALIVE_MS = 12 * 60 * 1000;   /* Ohne Lebenszeichen faellt ein Server aus der Liste. */
+const SERVER_PER_HOUR = 60;               /* Anmeldungen je IP und Stunde. */
+const SERVER_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+async function sha256hex(text) {
+	const bits = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+	return toHex(bits);
+}
+
+/** Anmelden oder Lebenszeichen senden. Beides derselbe Aufruf. */
+async function handleServerAnnounce(request, env, cors) {
+	let body;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ error: 'bad_json' }, 400, cors);
+	}
+	const host = String(body.host || '').trim().toLowerCase();
+	const name = String(body.name || '').trim().slice(0, 60);
+	const key = String(body.key || '');
+	if (!SERVER_HOST_RE.test(host) || host.length > 100) {
+		return json({ error: 'bad_host', message: 'Der Hostname sieht nicht wie ein Name aus (z. B. meinserver.example.com).' }, 400, cors);
+	}
+	if (name.length < 3) return json({ error: 'bad_name', message: 'Bitte einen Namen mit mindestens 3 Zeichen.' }, 400, cors);
+	if (key.length < 8) return json({ error: 'bad_key', message: 'Der Schluessel muss mindestens 8 Zeichen haben.' }, 400, cors);
+
+	const id = (await sha256hex('server:' + host)).slice(0, 32);
+	const key_hash = await sha256hex('serverkey:' + host + ':' + key);
+	const now = Date.now();
+	const existing = await env.DB.prepare('SELECT id, key_hash, blocked FROM servers WHERE id = ?').bind(id).first();
+
+	if (existing) {
+		/* Nur wer den Schluessel kennt, darf den Eintrag aendern - sonst
+		 * koennte jeder fremde Server umleiten. */
+		if (existing.key_hash !== key_hash) {
+			return json({ error: 'wrong_key', message: 'Dieser Hostname ist bereits mit einem anderen Schluessel angemeldet.' }, 403, cors);
+		}
+		if (existing.blocked) return json({ error: 'blocked', message: 'Dieser Eintrag wurde gesperrt.' }, 403, cors);
+	} else {
+		/* Missbrauchsbremse nur fuer neue Eintraege; Lebenszeichen kommen oft. */
+		const hash = await ipHash(request);
+		const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM servers WHERE created_at > ?')
+			.bind(now - 60 * 60 * 1000).first();
+		if ((row?.n || 0) >= SERVER_PER_HOUR) {
+			return json({ error: 'rate_limited', message: 'Gerade zu viele Anmeldungen - bitte spaeter erneut.' }, 429, cors);
+		}
+		void hash;
+	}
+
+	await env.DB.prepare(
+		`INSERT INTO servers (id, name, host, secure, build, note, players, max_players, key_hash, blocked, created_at, seen_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET name = excluded.name, secure = excluded.secure, build = excluded.build,
+		   note = excluded.note, players = excluded.players, max_players = excluded.max_players, seen_at = excluded.seen_at`)
+		.bind(id, name, host, body.secure === false ? 0 : 1, String(body.build || '').slice(0, 40),
+			String(body.note || '').slice(0, 140), Number(body.players) || 0, Number(body.max_players) || 0,
+			key_hash, now, now).run();
+
+	return json({ ok: true, id, host, alive_for_minutes: Math.round(SERVER_ALIVE_MS / 60000) }, 200, cors);
+}
+
+/** Die Liste, die das Spiel und die Webseite anzeigen. */
+async function handleServerList(request, env, cors, url) {
+	const since = Date.now() - SERVER_ALIVE_MS;
+	const rows = (await env.DB.prepare(
+		`SELECT name, host, secure, build, note, players, max_players, seen_at FROM servers
+		 WHERE blocked = 0 AND seen_at > ? ORDER BY players DESC, name LIMIT 100`).bind(since).all()).results || [];
+	/* Das Spiel fragt mit seiner eigenen Version an und bekommt dann nur
+	 * Server, bei denen ein Beitritt ueberhaupt moeglich ist. */
+	const build = (url.searchParams.get('build') || '').slice(0, 40);
+	const list = build ? rows.filter(r => !r.build || r.build === build) : rows;
+	return json({ ok: true, servers: list, filtered_by_build: build || null }, 200, cors);
+}
+
+/** Eintrag wieder abmelden (Server faehrt herunter). */
+async function handleServerRemove(request, env, cors) {
+	let body;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ error: 'bad_json' }, 400, cors);
+	}
+	const host = String(body.host || '').trim().toLowerCase();
+	const key = String(body.key || '');
+	if (!SERVER_HOST_RE.test(host)) return json({ error: 'bad_host' }, 400, cors);
+	const id = (await sha256hex('server:' + host)).slice(0, 32);
+	const key_hash = await sha256hex('serverkey:' + host + ':' + key);
+	const row = await env.DB.prepare('SELECT key_hash FROM servers WHERE id = ?').bind(id).first();
+	if (!row) return json({ ok: true, removed: false }, 200, cors);
+	if (row.key_hash !== key_hash) return json({ error: 'wrong_key' }, 403, cors);
+	await env.DB.prepare('DELETE FROM servers WHERE id = ?').bind(id).run();
+	return json({ ok: true, removed: true }, 200, cors);
+}
+
+/** Notbremse fuer den Betreiber der Seite: Eintrag sperren oder freigeben. */
+async function handleServerBlock(request, env, cors, url) {
+	const user = await getSessionUser(env, request);
+	if (!user || !user.is_admin) return json({ error: 'not_admin' }, 401, cors);
+	const host = (url.searchParams.get('host') || '').trim().toLowerCase();
+	const on = url.searchParams.get('blocked') !== '0';
+	if (!SERVER_HOST_RE.test(host)) return json({ error: 'bad_host' }, 400, cors);
+	const id = (await sha256hex('server:' + host)).slice(0, 32);
+	await env.DB.prepare('UPDATE servers SET blocked = ? WHERE id = ?').bind(on ? 1 : 0, id).run();
+	return json({ ok: true, host, blocked: on }, 200, cors);
+}
+
 export default {
 	async fetch(request, env) {
 		const url = new URL(request.url);
@@ -454,6 +562,10 @@ export default {
 			if (url.pathname === '/api/share' && request.method === 'POST') return await handleShareUpload(request, env, cors, url);
 			if (url.pathname === '/api/share' && request.method === 'GET') return await handleShareDownload(request, env, cors, url);
 			if (url.pathname === '/api/share/info' && request.method === 'GET') return await handleShareInfo(request, env, cors, url);
+			if (url.pathname === '/api/servers' && request.method === 'POST') return await handleServerAnnounce(request, env, cors);
+			if (url.pathname === '/api/servers' && request.method === 'GET') return await handleServerList(request, env, cors, url);
+			if (url.pathname === '/api/servers' && request.method === 'DELETE') return await handleServerRemove(request, env, cors);
+			if (url.pathname === '/api/servers/block' && request.method === 'POST') return await handleServerBlock(request, env, cors, url);
 		} catch (e) {
 			/* Diagnose-Detail, solange Phase 2 stabilisiert wird. */
 			return json({ error: 'server_error', detail: String(e && e.message || e).slice(0, 200) }, 500, cors);

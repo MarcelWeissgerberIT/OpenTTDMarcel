@@ -966,6 +966,15 @@ struct CabViewWindow : Window {
 	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override
 	{
 		if (widget == WID_CB_CLOSE) this->Close();
+		if (widget == WID_CB_RIDE) {
+			/* Zurueck in die Aussenansicht - dasselbe Fahrzeug, nur von
+			 * aussen betrachtet. Der Weg hin und zurueck geht damit in
+			 * beide Richtungen. */
+			extern void StartRideAlong(VehicleID veh);
+			VehicleID veh = _cab_vehicle;
+			this->Close();
+			StartRideAlong(veh);
+		}
 	}
 
 	void Close([[maybe_unused]] int data = 0) override
@@ -999,7 +1008,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_cabview_widgets = {
 		NWidget(WWT_PANEL, Colours::DarkGreen, WID_CB_VIEW), SetFill(1, 1), SetResize(1, 1), SetMinimalSize(400, 240), EndContainer(),
 		NWidget(WWT_PANEL, Colours::DarkGreen), SetFill(1, 0), SetResize(1, 0),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_wide, 0), SetPadding(WidgetDimensions::unscaled.framerect),
-				NWidget(WWT_TEXT, Colours::Invalid, WID_CB_INFO), SetMinimalSize(360, 12), SetFill(1, 0), SetResize(1, 0),
+				NWidget(WWT_TEXT, Colours::Invalid, WID_CB_INFO), SetMinimalSize(300, 12), SetFill(1, 0), SetResize(1, 0),
+				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_CB_RIDE), SetMinimalSize(130, 12), SetStringTip(STR_CABVIEW_RIDE, STR_CABVIEW_RIDE_TOOLTIP),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_CB_CLOSE), SetMinimalSize(130, 12), SetStringTip(STR_CABVIEW_CLOSE, STR_CABVIEW_CLOSE_TOOLTIP),
 			EndContainer(),
 		EndContainer(),

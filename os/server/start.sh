@@ -35,12 +35,33 @@ fi
 GAME_PID=$!
 
 # Endet eines von beiden, geht der Container mit.
-trap 'kill $GAME_PID 2>/dev/null; exit 0' TERM INT
+trap 'kill $GAME_PID $ANNOUNCE_PID 2>/dev/null; exit 0' TERM INT
 
 python3 -m websockify "0.0.0.0:$WS_PORT" "127.0.0.1:$GAME_PORT" &
 WS_PID=$!
 
+# In die oeffentliche Serverliste eintragen und dort sichtbar halten.
+# Ohne Hostname oder Schluessel bleibt der Server einfach privat.
+announce_loop() {
+	while true; do
+		curl -sS --max-time 10 -X POST "$OTTD_ANNOUNCE_URL" \
+			-H 'Content-Type: application/json' \
+			-d "{\"host\":\"$OTTD_PUBLIC_HOST\",\"name\":\"$OTTD_SERVER_NAME\",\"key\":\"$OTTD_ANNOUNCE_KEY\",\"build\":\"$OTTD_BUILD\",\"note\":\"$OTTD_SERVER_NOTE\",\"secure\":true}" \
+			> /dev/null 2>&1 || true
+		sleep 300
+	done
+}
+
+if [ -n "$OTTD_PUBLIC_HOST" ] && [ -n "$OTTD_ANNOUNCE_KEY" ]; then
+	echo "Melde den Server als \"${OTTD_SERVER_NAME:-Unbenannt}\" unter $OTTD_PUBLIC_HOST an."
+	announce_loop &
+	ANNOUNCE_PID=$!
+else
+	echo "Kein OTTD_PUBLIC_HOST/OTTD_ANNOUNCE_KEY gesetzt - der Server bleibt privat."
+	ANNOUNCE_PID=""
+fi
+
 wait -n $GAME_PID $WS_PID
 echo "Ein Dienst hat sich beendet - Container faehrt herunter."
-kill $GAME_PID $WS_PID 2>/dev/null || true
+kill $GAME_PID $WS_PID $ANNOUNCE_PID 2>/dev/null || true
 exit 1

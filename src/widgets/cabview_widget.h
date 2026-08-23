@@ -14,6 +14,7 @@
 enum CabViewWidgets : WidgetID {
 	WID_CB_VIEW,  ///< Blick nach vorn aus dem Fuehrerstand.
 	WID_CB_INFO,  ///< Armaturenbrett-Text.
+	WID_CB_RIDE,  ///< Zurueck zur Aussenansicht (Mitfahren).
 	WID_CB_CLOSE, ///< Fuehrerstand verlassen.
 };
 

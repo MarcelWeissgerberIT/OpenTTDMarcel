@@ -44,9 +44,10 @@
 
 /* Sound läuft über SDL-Audio (OpenSFX ist gebündelt); Musik bleibt aus. */
 Module.arguments.push('-mnull', '-vsdl');
-/* Adresse unseres Mehrspieler-Servers; wird beim Start aus server.json
- * gefuellt, damit sie sich ohne neuen Spielbau aendern laesst. */
-var ottd_mp_server = null;
+/* Bekannte Mehrspieler-Server. Der Eintrag aus server.json ist der
+ * Hausserver, dazu kommt die oeffentliche Liste aus der Cloud - so
+ * koennen auch andere Leute eigene Server anbieten. */
+var ottd_mp_servers = [];
 
 Module['websocket'] = { url: function(host, port, proto) {
     /* openttd.org hosts a WebSocket proxy for the content service. */
@@ -54,11 +55,13 @@ Module['websocket'] = { url: function(host, port, proto) {
         return "wss://bananas-server.openttd.org/";
     }
 
-    /* Unser eigener Server steht hinter einem WebSocket-Uebersetzer mit
-     * TLS auf dem ueblichen Port - der Spielport aus der Serverliste
-     * gehoert deshalb nicht in die Adresse. */
-    if (ottd_mp_server && host == ottd_mp_server.host) {
-        return (ottd_mp_server.secure === false ? 'ws://' : 'wss://') + ottd_mp_server.host + '/';
+    /* Diese Server stehen hinter einem WebSocket-Uebersetzer mit TLS auf
+     * dem ueblichen Port - der Spielport aus der Serverliste gehoert
+     * deshalb nicht in die Adresse. */
+    for (var i = 0; i < ottd_mp_servers.length; i++) {
+        if (ottd_mp_servers[i].host == host) {
+            return (ottd_mp_servers[i].secure === false ? 'ws://' : 'wss://') + host + '/';
+        }
     }
 
     /* Everything else just tries to make a default WebSocket connection.
@@ -322,24 +325,44 @@ Module.preRun.push(function() {
 
     /* ---------- Mehrspieler: unseren Server vorbelegen ---------- */
 
-    /* Adresse aus server.json neben dem Spiel; fehlt sie oder ist der Host
-     * leer, bleibt die Serverliste einfach unveraendert. */
+    /** Einen Server in die Liste des Spiels eintragen. */
+    function addMultiplayerServer(entry) {
+        if (!entry || !entry.host) return;
+        for (var i = 0; i < ottd_mp_servers.length; i++) {
+            if (ottd_mp_servers[i].host == entry.host) return; /* schon drin */
+        }
+        ottd_mp_servers.push(entry);
+        try { Module.ccall('em_openttd_add_server', null, ['string'], [entry.host]); } catch (e) {}
+    }
+
+    /**
+     * Serverliste zusammentragen: der Hausserver steht in server.json
+     * neben dem Spiel, alle weiteren kommen aus der Cloud. Dort tragen
+     * sich Leute ein, die selbst einen Server betreiben.
+     */
     function loadMultiplayerServer() {
+        /* Ohne Spielernamen weist jeder Server den Beitritt ab.
+         * Angemeldete Nutzer bekommen ihren Kontonamen. */
+        var mail = '';
+        try { mail = localStorage.getItem('ottd_email') || ''; } catch (e) {}
+        if (mail) {
+            try { Module.ccall('em_openttd_set_client_name', null, ['string'], [mail.split('@')[0].slice(0, 24)]); } catch (e) {}
+        }
+
         fetch('server.json', { cache: 'no-store' })
             .then(function(r) { return r.ok ? r.json() : null; })
-            .then(function(cfg) {
-                if (!cfg || !cfg.host) return;
-                ottd_mp_server = cfg;
-                try {
-                    Module.ccall('em_openttd_add_server', null, ['string'], [cfg.host]);
-                } catch (e) {}
-                /* Ohne Spielernamen weist jeder Server den Beitritt ab.
-                 * Angemeldete Nutzer bekommen ihren Kontonamen. */
-                var mail = '';
-                try { mail = localStorage.getItem('ottd_email') || ''; } catch (e) {}
-                if (mail) {
-                    try { Module.ccall('em_openttd_set_client_name', null, ['string'], [mail.split('@')[0].slice(0, 24)]); } catch (e) {}
-                }
+            .then(function(cfg) { if (cfg && cfg.host) addMultiplayerServer(cfg); })
+            .catch(function() {});
+
+        /* Nur Server der eigenen Spielversion - bei allen anderen wuerde
+         * der Beitritt mit einer unverstaendlichen Meldung scheitern. */
+        var build = '';
+        try { build = window.OTTD_BUILD || ''; } catch (e) {}
+        fetch(CLOUD_API + '/api/servers' + (build ? '?build=' + encodeURIComponent(build) : ''), { cache: 'no-store' })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(d) {
+                if (!d || !d.servers) return;
+                for (var i = 0; i < d.servers.length; i++) addMultiplayerServer(d.servers[i]);
             })
             .catch(function() {});
     }

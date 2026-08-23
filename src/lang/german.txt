@@ -2395,6 +2395,8 @@ STR_CABVIEW_INFO                                                :{WHITE}{VEHICLE
 STR_CABVIEW_NEXT_STOP                                           :{BLACK} - nächster Halt: {ORANGE}{STATION}
 STR_CABVIEW_CLOSE                                               :{BLACK}Führerstand verlassen
 STR_CABVIEW_CLOSE_TOOLTIP                                       :{BLACK}Zurück zur normalen Ansicht
+STR_CABVIEW_RIDE                                                :{BLACK}Mitfahren
+STR_CABVIEW_RIDE_TOOLTIP                                        :{BLACK}Zurück zur Außenansicht dieses Fahrzeugs
 STR_CABVIEW_DASH_SPEED                                          :{NUM} km/h
 STR_CABVIEW_DASH_TARGET                                         :{STATION}
 STR_TUTORIAL_CAPTION                                            :{WHITE}Erste Schritte
