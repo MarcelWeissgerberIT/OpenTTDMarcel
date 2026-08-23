@@ -21,11 +21,16 @@ WORKDIR /src
 COPY . /src
 
 # Dedicated: ohne Fenster, ohne Ton - der Server rechnet nur.
+# Installiert wird nach /usr/local, weil OpenTTD den Datenpfad beim
+# Uebersetzen einbrennt: nur so findet der Server Sprachdateien und
+# Grafiken auch dann, wenn "-c" auf eine Konfiguration in /data zeigt.
 RUN cmake -B /build -S /src \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DOPTION_DEDICATED=ON \
 		-DOPTION_USE_ASSERTS=OFF \
-	&& cmake --build /build -j"$(nproc)" --target openttd language_files
+		-DCMAKE_INSTALL_PREFIX=/usr/local \
+	&& cmake --build /build -j"$(nproc)" --target openttd language_files \
+	&& cmake --install /build
 
 FROM debian:bookworm-slim
 
@@ -36,19 +41,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& apt-get purge -y python3-pip && apt-get autoremove -y \
 	&& rm -rf /var/lib/apt/lists/*
 
-# OpenTTD findet seine Daten neben dem Arbeitsverzeichnis - genau so
-# laeuft auch der lokal gepruefte Server.
-COPY --from=build /build/openttd /usr/local/bin/openttd
-COPY --from=build /build/baseset /app/baseset
-COPY --from=build /build/lang /app/lang
-COPY --from=build /build/ai /app/ai
-COPY --from=build /build/game /app/game
+COPY --from=build /usr/local/games/openttd /usr/local/bin/openttd
+COPY --from=build /usr/local/share/games/openttd /usr/local/share/games/openttd
 # Dieselben Grafiken wie in der Browser-Fassung.
-COPY web/baseset/ /app/baseset/
+COPY web/baseset/ /usr/local/share/games/openttd/baseset/
 COPY os/server/start.sh /usr/local/bin/start.sh
 COPY os/server/server.cfg /etc/openttd/server.cfg
 
-WORKDIR /app
+WORKDIR /data
 RUN chmod +x /usr/local/bin/start.sh && mkdir -p /data
 
 # Spielstaende und Konfiguration liegen hier - als Volume einhaengen,
