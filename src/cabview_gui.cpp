@@ -239,12 +239,27 @@ static SpriteID CabGroundSprite(CabTile what, PixelColour ground)
  * Hoehe und Farben aus dem echten Haustyp ab, damit eine Reihenhaus-
  * siedlung nicht wie ein Hochhausviertel aussieht.
  */
+/**
+ * Bauform. Sie entscheidet ueber die Silhouette - und die macht aus
+ * einer Reihe Kaesten eine wiedererkennbare Stadt: Die Kirche mit ihrem
+ * Turm, das Stadion als flacher Riegel, Wohnhaeuser mit Satteldach,
+ * Hochhaeuser mit Flachdach.
+ */
+enum class CabShape : uint8_t {
+	Cottage, ///< Wohnhaus mit Satteldach.
+	Block,   ///< Mehrfamilienhaus, flaches Dach mit Attika.
+	Tower,   ///< Hochhaus.
+	Church,  ///< Kirche: Schiff mit Turm.
+	Stadium, ///< Stadion: breit, niedrig, Tribuenendach.
+};
+
 struct CabFacade {
 	PixelColour front;  ///< Uns zugewandte Wand (Sonnenseite).
 	PixelColour side;   ///< Wand laengs der Strecke (Schattenseite).
 	PixelColour roof;   ///< Dachkante.
 	PixelColour window; ///< Fensterfarbe.
 	float storeys;      ///< Stockwerke - bestimmt die Hoehe.
+	CabShape shape;     ///< Bauform.
 };
 
 static CabFacade CabFacadeStyle(HouseID id)
@@ -256,6 +271,32 @@ static CabFacade CabFacadeStyle(HouseID id)
 	CabFacade f{};
 	/* Die Einwohnerzahl verraet, wie gross das Gebaeude ist. */
 	f.storeys = (pop >= 40) ? 7.0f : (pop >= 24 ? 4.5f : (pop >= 12 ? 2.8f : 1.6f));
+	f.shape = (pop >= 24) ? CabShape::Tower : (pop >= 12 ? CabShape::Block : CabShape::Cottage);
+
+	/* Wahrzeichen kennt das Spiel selbst - ohne sie waere jede Stadt
+	 * eine Reihe gleicher Kaesten. */
+	if (hs != nullptr && hs->building_flags.Test(BuildingFlag::IsChurch)) {
+		f.shape = CabShape::Church;
+		f.storeys = 3.0f;
+	} else if (hs != nullptr && hs->building_flags.Test(BuildingFlag::IsStadium)) {
+		f.shape = CabShape::Stadium;
+		f.storeys = 2.0f;
+	}
+
+	if (f.shape == CabShape::Church) {
+		f.front = PC_FIELDS;
+		f.side = PC_BARE_LAND;
+		f.roof = PC_VERY_DARK_RED;
+		f.window = PC_VERY_DARK_BLUE;
+		return f;
+	}
+	if (f.shape == CabShape::Stadium) {
+		f.front = GREY_SCALE(12);
+		f.side = GREY_SCALE(8);
+		f.roof = GREY_SCALE(5);
+		f.window = PC_VERY_DARK_BLUE;
+		return f;
+	}
 
 	if (pop >= 24) {
 		/* Grosse Bauten: Beton in verschiedenen Helligkeiten. */
@@ -590,13 +631,67 @@ struct CabViewWindow : Window {
 		int fx1 = std::max(in_near, out_near);
 		GfxFillRect(fx0, y_near - h_near, fx1, y_near, f.front);
 
-		/* Dachkante als dunkler Streifen oben - gibt dem Bau einen Abschluss. */
+		/* Dachform: Sie macht die Silhouette einer Stadt aus. Ein
+		 * Kirchturm zwischen Wohnhaeusern ist von weitem zu erkennen -
+		 * lauter gleiche Flachdaecher waeren austauschbar. */
 		int roof = std::max(1, h_near / 14);
-		GfxFillRect(fx0 - roof, y_near - h_near - roof, fx1 + roof, y_near - h_near, f.roof);
+		int top = y_near - h_near;
+		switch (f.shape) {
+			case CabShape::Cottage: {
+				/* Satteldach: zeilenweise ein Dreieck. */
+				int ridge = std::max(3, (fx1 - fx0) / 3);
+				for (int i = 0; i < ridge; i++) {
+					int inset = (fx1 - fx0) * i / (2 * ridge);
+					GfxFillRect(fx0 + inset, top - i, fx1 - inset, top - i, f.roof);
+				}
+				break;
+			}
+			case CabShape::Church: {
+				/* Turm an der Strassenseite, darauf eine Spitze. */
+				int tw = std::max(3, (fx1 - fx0) / 3);
+				int tx0 = left_side ? fx1 - tw : fx0;
+				int tx1 = tx0 + tw;
+				int th = (int)(h_near * 0.9f);
+				GfxFillRect(tx0, top - th, tx1, top, f.front);
+				GfxFillRect(tx0, top - th, tx1, top - th + roof, f.roof);
+				int spire = std::max(4, th / 2);
+				for (int i = 0; i < spire; i++) {
+					int inset = tw * i / (2 * spire);
+					GfxFillRect(tx0 + inset, top - th - i, tx1 - inset, top - th - i, f.roof);
+				}
+				/* Hohes Rundbogenfenster im Turm. */
+				int ww = std::max(2, tw / 3);
+				int wh = std::max(3, th / 3);
+				GfxFillRect((tx0 + tx1) / 2 - ww / 2, top - th / 2, (tx0 + tx1) / 2 + ww / 2, top - th / 2 + wh, f.window);
+				/* Flaches Satteldach ueber dem Schiff. */
+				for (int i = 0; i < std::max(2, roof * 3); i++) {
+					int inset = (fx1 - fx0) * i / (4 * std::max(2, roof * 3));
+					GfxFillRect(fx0 + inset, top - i, fx1 - inset, top - i, f.roof);
+				}
+				break;
+			}
+			case CabShape::Stadium: {
+				/* Tribuenendach mit Ueberstand, dazu Flutlichtmasten. */
+				int over = std::max(2, (fx1 - fx0) / 12);
+				GfxFillRect(fx0 - over, top - roof * 3, fx1 + over, top, f.roof);
+				int mast = std::max(4, h_near / 3);
+				int mw = std::max(1, over / 2);
+				GfxFillRect(fx0, top - roof * 3 - mast, fx0 + mw, top - roof * 3, GREY_SCALE(6));
+				GfxFillRect(fx1 - mw, top - roof * 3 - mast, fx1, top - roof * 3, GREY_SCALE(6));
+				GfxFillRect(fx0 - mw, top - roof * 3 - mast - mw * 2, fx0 + mw * 2, top - roof * 3 - mast, PC_LIGHT_YELLOW);
+				GfxFillRect(fx1 - mw * 2, top - roof * 3 - mast - mw * 2, fx1 + mw, top - roof * 3 - mast, PC_LIGHT_YELLOW);
+				break;
+			}
+			default:
+				/* Flachdach mit Attika. */
+				GfxFillRect(fx0 - roof, top - roof, fx1 + roof, top, f.roof);
+				break;
+		}
 
 		/* Fenster: je Stockwerk eine Reihe, etwa quadratisch. Breite
 		 * Baender ueber die halbe Wand sehen nach Bueroklotz aus, nicht
 		 * nach Haus. */
+		if (f.shape == CabShape::Stadium || f.shape == CabShape::Church) return;
 		int rows = std::max(1, (int)f.storeys);
 		int wide = fx1 - fx0;
 		int floor_h = std::max(2, h_near / rows);
