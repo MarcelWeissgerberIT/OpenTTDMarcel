@@ -201,6 +201,7 @@ add_files(
     cabview_gui.cpp
     ridealong_gui.cpp
     stationpad_gui.cpp
+    tutorial_gui.cpp
     fontcache.cpp
     fontcache.h
     framerate_gui.cpp

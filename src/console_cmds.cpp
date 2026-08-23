@@ -483,6 +483,22 @@ static bool ConStationPad(std::span<std::string_view>)
 	return true;
 }
 
+/* Fork: Gefuehrten Einstieg oeffnen; "tutorial reset" zeigt ihn beim
+ * naechsten neuen Spiel wieder von selbst. */
+static bool ConTutorial(std::span<std::string_view> argv)
+{
+	extern void ShowTutorialWindow();
+	extern void TutorialReset();
+	if (argv.size() >= 2 && argv[1] == "reset") {
+		TutorialReset();
+		IConsolePrint(CC_DEFAULT, "Gefuehrter Einstieg zurueckgesetzt.");
+		return true;
+	}
+	ShowTutorialWindow();
+	IConsolePrint(CC_DEFAULT, "Gefuehrter Einstieg geoeffnet.");
+	return true;
+}
+
 /* Fork: Buerger-Fenster aus der Konsole oeffnen (Diagnose, z. B. Kinder-Portraet). */
 static bool ConCitizenWindow(std::span<std::string_view> argv)
 {
@@ -3128,6 +3144,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("stationpad",              ConStationPad);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);
 	IConsole::CmdRegister("cab",                     ConCabView);
+	IConsole::CmdRegister("tutorial",                ConTutorial);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

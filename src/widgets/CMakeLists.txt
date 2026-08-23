@@ -20,6 +20,7 @@ add_files(
     pixelstudio_widget.h
     cabview_widget.h
     ridealong_widget.h
+    tutorial_widget.h
     stationpad_widget.h
     framerate_widget.h
     game_widget.h

@@ -897,6 +897,11 @@ static void MakeNewGameDone()
 	CheckEngines();
 	CheckIndustries();
 	MarkWholeScreenDirty();
+
+	/* Fork: Beim allerersten Spiel begleitet der gefuehrte Einstieg
+	 * durch die ersten Schritte. Danach nur noch auf Wunsch. */
+	extern void ShowTutorialIfFirstGame();
+	ShowTutorialIfFirstGame();
 }
 
 static void MakeNewGame(bool from_heightmap, bool reset_settings)

@@ -465,6 +465,11 @@ enum class WindowClass : uint16_t {
 	HouseInfo,
 
 	/**
+	 * Gefuehrter Einstieg (Fork): Begleiter durch die ersten Schritte.
+	 */
+	Tutorial,
+
+	/**
 	 * Build station; %Window numbers:
 	 *   - #TransportType::Air = #AirportPickerWidgets
 	 *   - #TransportType::Water = #DockToolbarWidgets

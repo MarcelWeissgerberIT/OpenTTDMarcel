@@ -538,6 +538,7 @@ STR_NEWS_MENU_DELETE_ALL_MESSAGES                               :Alle Nachrichte
 
 # About menu
 STR_ABOUT_MENU_LAND_BLOCK_INFO                                  :Gebietsinformationen
+STR_ABOUT_MENU_TUTORIAL                                         :Erste Schritte (geführter Einstieg)
 STR_ABOUT_MENU_HELP                                             :Hilfe u. Anleitungen
 STR_ABOUT_MENU_TOGGLE_CONSOLE                                   :Konsole öffnen/schließen
 STR_ABOUT_MENU_AI_DEBUG                                         :KI-/Skript-Debug
@@ -2396,6 +2397,28 @@ STR_CABVIEW_CLOSE                                               :{BLACK}Führers
 STR_CABVIEW_CLOSE_TOOLTIP                                       :{BLACK}Zurück zur normalen Ansicht
 STR_CABVIEW_DASH_SPEED                                          :{NUM} km/h
 STR_CABVIEW_DASH_TARGET                                         :{STATION}
+STR_TUTORIAL_CAPTION                                            :{WHITE}Erste Schritte
+STR_TUTORIAL_STEP_OF                                            :{BLACK}Schritt {NUM} von {NUM}
+STR_TUTORIAL_S1_TITLE                                           :{WHITE}Willkommen in deinem Verkehrsunternehmen!
+STR_TUTORIAL_S1_BODY                                            :{BLACK}Du bringst Menschen und Waren von Stadt zu Stadt und verdienst damit Geld. Dieser Begleiter führt dich in wenigen Minuten zur ersten funktionierenden Buslinie - ganz ohne Bau-Erfahrung.{}{}Klick auf „Los geht's“, dann starten wir.
+STR_TUTORIAL_S2_TITLE                                           :{WHITE}Auto-Verbindung öffnen
+STR_TUTORIAL_S2_BODY                                            :{BLACK}Die Auto-Verbindung baut eine komplette Linie für dich: Haltestellen, Straße oder Schiene, Fahrzeuge und Fahrplan.{}{}Der blinkende Knopf in der Werkzeugleiste öffnet sie - oder klick hier einfach auf „Öffnen“.
+STR_TUTORIAL_S3_TITLE                                           :{WHITE}Zwei Städte verbinden
+STR_TUTORIAL_S3_BODY                                            :{BLACK}Wähle im Fenster Stadt A und Stadt B, lass den Rest wie er ist und klick auf „Verbindung bauen“. Busse sind schon vorgewählt - sie sind günstig und rentieren sich schnell.{}{}Für die erste Linie eignen sich zwei Städte, die nah beieinander liegen. Die Statuszeile sagt dir, was gebaut wurde.
+STR_TUTORIAL_S4_TITLE                                           :{WHITE}Zeit schneller laufen lassen
+STR_TUTORIAL_S4_BODY                                            :{BLACK}Deine Fahrzeuge sind unterwegs. Geld kommt herein, sobald sie Fahrgäste ausladen.{}{}Der blinkende Zeitraffer-Knopf beschleunigt das Spiel stufenweise: 2x, 4x, 8x, 16x, Maximum. Schau zu, wie das Guthaben in der Statusleiste wächst.
+STR_TUTORIAL_S5_TITLE                                           :{WHITE}Geschafft - die Linie läuft!
+STR_TUTORIAL_S5_BODY                                            :{BLACK}Das ist der Kern des Spiels. Von hier aus kannst du:{}{}- weitere Verbindungen mit der Auto-Verbindung bauen{}- den persönlichen Assistenten Fahrzeuge erneuern und Städte pflegen lassen{}- mit dem Stationen-Pad zwischen Stationen springen{}- in einem Fahrzeug mitfahren oder dich in den Führerstand setzen{}{}Alles Weitere steht im Handbuch auf der Webseite.
+STR_TUTORIAL_ACT_START                                          :{BLACK}Los geht's
+STR_TUTORIAL_ACT_OPEN                                           :{BLACK}Öffnen
+STR_TUTORIAL_ACT_SPEED                                          :{BLACK}Schneller
+STR_TUTORIAL_ACT_MORE                                           :{BLACK}Weiterbauen
+STR_TUTORIAL_ACTION_TOOLTIP                                     :{BLACK}Diesen Schritt sofort ausführen
+STR_TUTORIAL_BACK                                               :{BLACK}Zurück
+STR_TUTORIAL_BACK_TOOLTIP                                       :{BLACK}Einen Schritt zurück
+STR_TUTORIAL_SKIP                                               :{BLACK}Überspringen
+STR_TUTORIAL_SKIP_TOOLTIP                                       :{BLACK}Zum nächsten Schritt springen
+STR_TUTORIAL_FINISH                                             :{BLACK}Fertig
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Mehrspieler-Spiel beginnen
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landschaft mit gemäßigtem Klima auswählen

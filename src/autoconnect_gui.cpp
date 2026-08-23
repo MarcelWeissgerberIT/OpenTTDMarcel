@@ -2239,6 +2239,20 @@ void ShowAutoConnectWindow()
 	AllocateWindowDescFront<AutoConnectWindow>(_autoconnect_desc, 0);
 }
 
+/**
+ * Fork: Einstieg fuer Neulinge - oeffnet die Auto-Verbindung und stellt
+ * sie auf Busse. Die sind billig, brauchen keine Flughaefen und liefern
+ * die erste Einnahme am schnellsten.
+ */
+void ShowAutoConnectWindowForBeginners()
+{
+	ShowAutoConnectWindow();
+	AutoConnectWindow *w = dynamic_cast<AutoConnectWindow *>(FindWindowById(WindowClass::AutoConnect, 0));
+	if (w == nullptr) return;
+	w->mode = 1; /* Busse */
+	w->SetDirty();
+}
+
 
 /**
  * Fork: Diagnose fuer den Konsolenbefehl "autoconnect engine" - zeigt,

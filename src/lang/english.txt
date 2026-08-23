@@ -538,6 +538,7 @@ STR_NEWS_MENU_DELETE_ALL_MESSAGES                               :Delete all mess
 
 # About menu
 STR_ABOUT_MENU_LAND_BLOCK_INFO                                  :Land area information
+STR_ABOUT_MENU_TUTORIAL                                         :First steps (guided start)
 STR_ABOUT_MENU_HELP                                             :Help & manuals
 STR_ABOUT_MENU_ENTER_SCREENSAVER_MODE                           :Toggle screensaver mode
 STR_ABOUT_MENU_TOGGLE_CONSOLE                                   :Toggle console
@@ -2427,6 +2428,28 @@ STR_CABVIEW_CLOSE                                               :{BLACK}Leave ca
 STR_CABVIEW_CLOSE_TOOLTIP                                       :{BLACK}Back to the normal view
 STR_CABVIEW_DASH_SPEED                                          :{NUM} km/h
 STR_CABVIEW_DASH_TARGET                                         :{STATION}
+STR_TUTORIAL_CAPTION                                            :{WHITE}First steps
+STR_TUTORIAL_STEP_OF                                            :{BLACK}Step {NUM} of {NUM}
+STR_TUTORIAL_S1_TITLE                                           :{WHITE}Welcome to your transport company!
+STR_TUTORIAL_S1_BODY                                            :{BLACK}You move people and goods between towns and earn money doing it. This guide takes you to your first working bus line in a couple of minutes - no building skills needed.{}{}Click 'Let's go' to start.
+STR_TUTORIAL_S2_TITLE                                           :{WHITE}Open the auto connection
+STR_TUTORIAL_S2_BODY                                            :{BLACK}The auto connection builds a whole line for you: stops, roads or tracks, vehicles and schedule.{}{}The blinking button in the toolbar opens it - or simply click 'Open' here.
+STR_TUTORIAL_S3_TITLE                                           :{WHITE}Connect two towns
+STR_TUTORIAL_S3_BODY                                            :{BLACK}Pick town A and town B in the window, leave everything else as it is and click 'Build connection'. Buses are preselected - they are cheap and pay off quickly.{}{}Towns close to each other work best for a first line. The status line tells you what was built.
+STR_TUTORIAL_S4_TITLE                                           :{WHITE}Speed up time
+STR_TUTORIAL_S4_BODY                                            :{BLACK}Your vehicles are on their way. Money arrives whenever they unload passengers.{}{}The blinking fast forward button speeds the game up step by step: 2x, 4x, 8x, 16x, maximum. Watch the money in the status bar grow.
+STR_TUTORIAL_S5_TITLE                                           :{WHITE}Well done - the line is running!
+STR_TUTORIAL_S5_BODY                                            :{BLACK}That is the core of the game. From here you can:{}{}- build more connections with the auto connection{}- let the personal assistant handle renewals and town care{}- jump between stations with the station pad{}- ride along in a vehicle or sit in the driver's cab{}{}Everything is explained in the manual on the website.
+STR_TUTORIAL_ACT_START                                          :{BLACK}Let's go
+STR_TUTORIAL_ACT_OPEN                                           :{BLACK}Open
+STR_TUTORIAL_ACT_SPEED                                          :{BLACK}Speed up
+STR_TUTORIAL_ACT_MORE                                           :{BLACK}Keep building
+STR_TUTORIAL_ACTION_TOOLTIP                                     :{BLACK}Do this step right away
+STR_TUTORIAL_BACK                                               :{BLACK}Back
+STR_TUTORIAL_BACK_TOOLTIP                                       :{BLACK}One step back
+STR_TUTORIAL_SKIP                                               :{BLACK}Skip
+STR_TUTORIAL_SKIP_TOOLTIP                                       :{BLACK}Jump to the next step
+STR_TUTORIAL_FINISH                                             :{BLACK}Done
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Start a multiplayer game
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select 'temperate' landscape style
