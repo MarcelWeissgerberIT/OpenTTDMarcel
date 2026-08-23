@@ -15,7 +15,20 @@ sein. OpenTTD vergleicht die Versionskennung und weist sonst jeden
 Beitritt ab. Der Workflow `server-image.yml` baut das Bild deshalb bei
 jedem Push automatisch mit.
 
-## Einrichten mit Fly.io (empfohlen)
+## Einrichten über GitHub Actions (der bequeme Weg)
+
+1. Fly-Token holen: `fly tokens create org` (oder im Fly-Dashboard unter
+   *Account → Access Tokens*).
+2. Auf GitHub im Repo: *Settings → Secrets and variables → Actions →
+   New repository secret*, Name **`FLY_API_TOKEN`**, Wert das Token.
+3. *Actions → „Server ausrollen (Fly.io)" → Run workflow*.
+
+Der Workflow legt App und Speicherplatz an, hängt das Server-Bild in
+Flys Registry um und rollt es aus. Am Ende prüft er, ob der Server
+antwortet. Danach nur noch `web/server.json` auf die Adresse setzen
+und pushen.
+
+## Einrichten von Hand mit Fly.io
 
 Fly liefert von sich aus eine Adresse mit gültigem Zertifikat, damit
 entfällt die ganze Zertifikats-Arbeit. Kosten: etwa 3–5 € im Monat.

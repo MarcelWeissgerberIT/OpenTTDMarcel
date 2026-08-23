@@ -1,0 +1,110 @@
+name: Server ausrollen (Fly.io)
+
+# Startet den Mehrspieler-Server auf Fly.io. Von Hand auszuloesen,
+# damit nicht jeder Push die laufende Welt neu startet.
+#
+# Voraussetzung: das GitHub-Secret FLY_API_TOKEN.
+# Das Bild kommt aus der GitHub-Registry und wird in Flys eigene
+# Registry umgehaengt - so ist es egal, ob das Paket oeffentlich ist.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Name der Fly-App'
+        required: true
+        default: 'openttd-marcel'
+      region:
+        description: 'Rechenzentrum (fra = Frankfurt)'
+        required: true
+        default: 'fra'
+
+concurrency:
+  group: server-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      APP: ${{ inputs.app }}
+      REGION: ${{ inputs.region }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Token vorhanden?
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "Es fehlt das Secret FLY_API_TOKEN."
+            echo "Anlegen unter: Settings -> Secrets and variables -> Actions -> New repository secret"
+            exit 1
+          fi
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Anmeldung pruefen
+        run: flyctl auth whoami
+
+      - name: App anlegen (falls noch nicht vorhanden)
+        run: flyctl apps create "$APP" || echo "App gibt es schon - weiter."
+
+      - name: Platz fuer Spielstaende anlegen
+        run: |
+          # Ein Volume je App reicht; ein zweites wuerde nur Geld kosten.
+          if flyctl volumes list --app "$APP" | grep -q ottd_data; then
+            echo "Volume ottd_data gibt es schon."
+          else
+            flyctl volumes create ottd_data --app "$APP" --region "$REGION" --size 1 --yes
+          fi
+
+      - name: An der GitHub-Registry anmelden
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bild in Flys Registry umhaengen
+        run: |
+          SRC="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')-server:latest"
+          DST="registry.fly.io/$APP:latest"
+          echo "Quelle: $SRC"
+          docker pull "$SRC"
+          docker tag "$SRC" "$DST"
+          flyctl auth docker
+          docker push "$DST"
+
+      - name: Ausrollen
+        run: |
+          flyctl deploy --app "$APP" \
+            --config os/server/fly.toml \
+            --image "registry.fly.io/$APP:latest" \
+            --regions "$REGION" \
+            --yes
+
+      - name: Laeuft der Server?
+        run: |
+          echo "Warte auf den Server..."
+          ok=0
+          for i in $(seq 1 30); do
+            # Der Uebersetzer lehnt eine Anfrage ohne WebSocket-Handshake ab -
+            # genau diese Antwort beweist, dass er lauscht.
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "https://$APP.fly.dev/" || true)
+            if [ -n "$code" ] && [ "$code" != "000" ]; then
+              ok=$((ok + 1))
+              echo "Antwort HTTP $code"
+              [ "$ok" -ge 2 ] && break
+            else
+              echo "Noch nichts, warte 10s ($i/30)..."
+            fi
+            sleep 10
+          done
+          [ "$ok" -ge 2 ] || { echo "Server antwortet nicht"; flyctl logs --app "$APP" | tail -40; exit 1; }
+          flyctl status --app "$APP"
+          echo
+          echo "Server laeuft: $APP.fly.dev"
+          echo "Naechster Schritt: web/server.json auf diesen Namen setzen und pushen."
