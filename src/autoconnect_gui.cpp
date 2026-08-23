@@ -116,6 +116,9 @@ struct AutoConnectResult {
 	Money cost = 0;
 	StringID error = STR_NULL;
 	uint32_t error_detail = 0; ///< Roh-ID der Engine-Fehlermeldung (Diagnose).
+	Money money_needed = 0;    ///< Bei Geldmangel: was die Verbindung kostet.
+	Money money_have = 0;      ///< Bei Geldmangel: was auf dem Konto liegt.
+	const char *phase = "";    ///< Woran es lag - ohne das sucht man im Dunkeln.
 };
 
 /* ============ Fork: Einstellungen, Staffelstart, Bau-Rollback ============ */
@@ -971,6 +974,24 @@ static RailSite FindRailStationSite(TileIndex center, TileIndex toward, bool nee
  * damit Kurven und Bahnübergänge korrekt geplant werden.
  * @return Folge aus (Kachel, Einfahrtrichtung), leer wenn kein Weg.
  */
+/**
+ * Fork: Traegt diese Kachel ein Gleis in dieser Fahrtachse?
+ *
+ * Ein Gleis darf auf einer Steigung liegen - aber nur, wenn es in der
+ * Falllinie verlaeuft. Quer ueber einen Hang lehnt das Spiel den Bau ab
+ * ("Land ist in die falsche Richtung geneigt"). Genau daran scheiterten
+ * Zugverbindungen bisher reihenweise: Der Wegsucher unterschied nur
+ * flach und geneigt, nicht aber die Richtung der Neigung.
+ */
+static bool AcSlopeFitsAxis(TileIndex t, Axis axis)
+{
+	Slope s = GetTileSlope(t);
+	if (s == SLOPE_FLAT) return true;
+	/* Steile Haenge und Ecken tragen ueberhaupt kein durchgehendes Gleis. */
+	if (axis == Axis::X) return s == SLOPE_NE || s == SLOPE_SW;
+	return s == SLOPE_NW || s == SLOPE_SE;
+}
+
 static std::vector<std::pair<TileIndex, DiagDirection>> FindRailPath(const RailSite &from, const RailSite &to)
 {
 	/* Zustand: Kachel, Einfahrtrichtung und die Richtung davor. Letztere
@@ -1028,11 +1049,20 @@ static std::vector<std::pair<TileIndex, DiagDirection>> FindRailPath(const RailS
 			uint step;
 			if (IsRailBuildableTile(next)) {
 				step = IsTileFlat(next) ? 8 : 14;
+				/* Neigung quer zur Fahrtrichtung ist unbaubar. Solche
+				 * Kacheln bekommen einen hohen Aufschlag: der Weg macht
+				 * lieber einen Bogen, statt spaeter am Hang zu scheitern.
+				 * Ganz verbieten waere zu streng - im Notfall planiert der
+				 * Bau die Kachel. */
+				if (!IsTileFlat(next) && !AcSlopeFitsAxis(next, DiagDirToAxis(d))) step += 60;
 				if (d != n.dir) {
 					/* Alternierender Wechsel setzt eine Diagonale fort (billig),
 					 * alles andere ist eine echte Kurve (teuer). */
 					step += (d == n.prev) ? 1 : 8;
 					if (!flat_here) step += 16; /* Richtungswechsel auf Hang: riskant */
+					/* Eine Kurve verlangt eine flache Kachel - auf einer
+					 * Steigung laesst sie sich nicht legen. */
+					if (!IsTileFlat(next)) step += 60;
 				}
 			} else if (IsNormalRoadTile(next)) {
 				/* Bahnübergang nur senkrecht über gerade Straßen. */
@@ -1211,6 +1241,8 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 			if (c.Failed()) {
 				result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 				result.error_detail = c.GetErrorMessage().base();
+				result.phase = "Bruecke";
+				Debug(misc, 0, "AC: bridge failed at 0x{:X} err {}", path[i].first.base(), c.GetErrorMessage().base());
 				return false;
 			}
 			result.cost += c.GetCost();
@@ -1239,6 +1271,8 @@ static bool BuildRailLine(const std::vector<std::pair<TileIndex, DiagDirection>>
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 			result.error_detail = c.GetErrorMessage().base();
+			result.phase = "Gleis";
+			Debug(misc, 0, "AC: rail tile failed at 0x{:X} err {}", path[i].first.base(), c.GetErrorMessage().base());
 			return false;
 		}
 		result.cost += c.GetCost();
@@ -1300,8 +1334,14 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	uint8_t numtracks = loop ? 2 : 1;
 
 	/* Geld-Vorabpruefung: gar nicht erst bauen, wenn Strecke UND Zuege
-	 * zusammen absehbar nicht bezahlbar sind. Vorher stand sonst eine
-	 * teure Strecke ohne einen einzigen Zug in der Landschaft. */
+	 * zusammen nicht bezahlbar sind - sonst stuende eine teure Strecke
+	 * ohne einen einzigen Zug in der Landschaft.
+	 *
+	 * Frueher stand hier eine Pauschale (Distanz * 1000 * Gleise +
+	 * 30000). Die lag oft beim Doppelten der echten Kosten und hat
+	 * bezahlbare Verbindungen blockiert. Jetzt laeuft die Strecke
+	 * einmal als Trockenlauf durch - das sind dieselben Zahlen, die
+	 * auch "Kosten schaetzen" zeigt. */
 	if (!estimate) {
 		EngineID pre_engine = FindBestTrainEngine();
 		if (pre_engine == EngineID::Invalid()) {
@@ -1309,12 +1349,21 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			cur_company.Restore();
 			return result;
 		}
-		Money vehicles = Engine::Get(pre_engine)->GetCost() * 2 * train_count; /* Lok + grob Waggons */
-		Money infra = (Money)DistanceManhattan(center_a, center_b) * 1000 * numtracks + 30000;
-		if (Company::Get(_local_company)->money < vehicles + infra) {
-			result.error = STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL;
-			cur_company.Restore();
-			return result;
+		cur_company.Restore();
+		AutoConnectResult dry = BuildRailConnection(center_a, center_b, train_count, cargo_mode, freight, true);
+		cur_company.Change(_local_company);
+		if (dry.error == 0) {
+			/* Ein Zehntel Luft fuer Kleinigkeiten, die der Trockenlauf
+			 * nicht sieht (Planieren am Hang, Signale). */
+			Money needed = dry.cost + dry.cost / 10;
+			Money have = Company::Get(_local_company)->money;
+			if (have < needed) {
+				result.error = STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL;
+				result.money_needed = needed;
+				result.money_have = have;
+				cur_company.Restore();
+				return result;
+			}
 		}
 	}
 
@@ -1360,6 +1409,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 		if (c.Failed()) {
 			result.error = STR_AUTOCONNECT_ERR_BUILD_FAILED;
 			result.error_detail = c.GetErrorMessage().base();
+			result.phase = "Bahnhof";
 			AcRollback();
 			cur_company.Restore();
 			return result;
@@ -1816,6 +1866,9 @@ static std::string RunNetworkCheck()
 }
 
 /** Fenster der Auto-Verbindung. */
+/* Weiter unten definiert: beschafft notfalls per Kredit das Geld. */
+static bool AcEnsureFunds(Money needed, Money *short_by);
+
 struct AutoConnectWindow : Window {
 	TownID town_a = TownID::Invalid();
 	TownID town_b = TownID::Invalid();
@@ -2109,18 +2162,11 @@ struct AutoConnectWindow : Window {
 					 * Kreditrahmen) nicht reicht - halbe Bauten nutzen niemandem. */
 					AutoConnectResult est_res = run(true);
 					if (est_res.ok) {
-						Money needed = est_res.cost + est_res.cost / 4; /* +25 % Puffer */
-						const Company *c = Company::Get(_local_company);
-						Money avail = c->money + (c->GetMaxLoan() - c->current_loan);
-						if (avail < needed) {
-							this->status = GetString(STR_AUTOCONNECT_ERR_TOO_EXPENSIVE, needed);
+						Money missing = 0;
+						if (!AcEnsureFunds(est_res.cost, &missing)) {
+							this->status = GetString(STR_AUTOCONNECT_ERR_TOO_EXPENSIVE, est_res.cost + est_res.cost / 4);
 							this->SetDirty();
 							break;
-						}
-						if (c->money < needed) {
-							Backup<CompanyID> cur_company(_current_company, _local_company);
-							Command<Commands::IncreaseLoan>::Do(DoCommandFlag::Execute, LoanCommand::Amount, needed - c->money);
-							cur_company.Restore();
 						}
 					}
 				}
@@ -2131,6 +2177,12 @@ struct AutoConnectWindow : Window {
 					if (res.error_detail != 0) this->status += ": " + GetString(StringID(res.error_detail));
 				} else {
 					this->status = GetString(res.error);
+					/* Bei Geldmangel die Zahlen dazu - "nicht genug Geld"
+					 * allein sagt nicht, ob zehn Pfund fehlen oder das
+					 * Zehnfache. */
+					if (res.money_needed > 0) {
+						this->status += " " + GetString(STR_AUTOCONNECT_ERR_NO_MONEY_DETAIL, res.money_needed, res.money_have);
+					}
 					if (res.error_detail != 0) this->status += ": " + GetString(StringID(res.error_detail));
 				}
 				this->SetDirty();
@@ -2288,6 +2340,37 @@ std::string AutoConnectDebugEngines()
 }
 
 /**
+ * Fork: Genug Geld fuer den Bau beschaffen.
+ *
+ * Reicht das Guthaben nicht, wird der fehlende Betrag als Kredit
+ * aufgenommen - solange der Rahmen es hergibt. Ohne das scheitern
+ * gerade Zugverbindungen staendig: Gleise und Zuege zusammen kosten
+ * mehr, als am Anfang auf dem Konto liegt, obwohl der Kreditrahmen
+ * laengst reichen wuerde.
+ *
+ * @param needed Geschaetzte Kosten (ohne Puffer).
+ * @param[out] short_by Wieviel trotz Kredit fehlt (0 = alles gut).
+ * @return true, wenn nach dem Aufruf genug Geld da ist.
+ */
+static bool AcEnsureFunds(Money needed, Money *short_by)
+{
+	if (short_by != nullptr) *short_by = 0;
+	const Company *c = Company::Get(_local_company);
+	Money want = needed + needed / 4; /* 25 % Puffer fuer Planieren und Signale */
+	if (c->money >= want) return true;
+
+	Money avail = c->money + (c->GetMaxLoan() - c->current_loan);
+	if (avail < want) {
+		if (short_by != nullptr) *short_by = want - avail;
+		return false;
+	}
+	Backup<CompanyID> cur_company(_current_company, _local_company);
+	Command<Commands::IncreaseLoan>::Do(DoCommandFlag::Execute, LoanCommand::Amount, want - c->money);
+	cur_company.Restore();
+	return Company::Get(_local_company)->money >= needed;
+}
+
+/**
  * Fork: Diagnose-Einstieg fuer den Konsolenbefehl "autoconnect".
  * Fuehrt den Auto-Bau direkt aus und liefert eine lesbare Zusammenfassung.
  * @param mode "air", "bus", "rail" oder "ship".
@@ -2317,6 +2400,15 @@ std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx,
 	}
 
 	Backup<CompanyID> cur_company(_current_company, _local_company);
+	/* Erst trocken rechnen und notfalls Kredit aufnehmen - genau das
+	 * macht der Knopf im Fenster auch. */
+	AutoConnectResult dry;
+	if (mode == "air") dry = BuildAirConnection(ta, tb, count, true);
+	else if (mode == "bus") dry = BuildRoadConnection(ta, tb, count, 0, true);
+	else if (mode == "rail") dry = BuildRailConnection(ta->xy, tb->xy, count, 0, INVALID_CARGO, true);
+	else if (mode == "ship") dry = BuildShipConnection(ta, tb, count, 0, true);
+	if (dry.ok) AcEnsureFunds(dry.cost, nullptr);
+
 	AutoConnectResult res;
 	if (mode == "air") res = BuildAirConnection(ta, tb, count, false);
 	else if (mode == "bus") res = BuildRoadConnection(ta, tb, count, 0, false);
@@ -2331,7 +2423,11 @@ std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx,
 		out += fmt::format("OK, Kosten {}", (int64_t)res.cost);
 		if (res.error_detail != 0) out += fmt::format(" (Teilproblem: {})", GetString(StringID(res.error_detail)));
 	} else {
-		out += fmt::format("FEHLGESCHLAGEN: {}", GetString(res.error));
+		out += fmt::format("FEHLGESCHLAGEN{}{}: {}",
+				res.phase[0] != '\0' ? " bei " : "", res.phase, GetString(res.error));
+		if (res.money_needed > 0) {
+			out += " " + GetString(STR_AUTOCONNECT_ERR_NO_MONEY_DETAIL, res.money_needed, res.money_have);
+		}
 		if (res.error_detail != 0) out += fmt::format(" - Grund: {}", GetString(StringID(res.error_detail)));
 	}
 	Debug(misc, 0, "{}", out);

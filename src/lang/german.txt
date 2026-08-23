@@ -2471,6 +2471,7 @@ STR_AUTOCONNECT_MODE_TRAIN                                      :{BLACK}Modus: Z
 STR_AUTOCONNECT_COUNT_TRAIN                                     :{BLACK}Züge: {NUM}
 STR_AUTOCONNECT_ERR_NO_RAIL_SITE                                :{BLACK}Kein Platz für einen Bahnhof in der Nähe einer der Städte
 STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL                              :{BLACK}Nicht genug Geld für Strecke plus Züge - erst Geld verdienen oder Kredit aufnehmen
+STR_AUTOCONNECT_ERR_NO_MONEY_DETAIL                              :{BLACK}Kostet etwa {CURRENCY_LONG} - du hast {CURRENCY_LONG}. Nimm einen Kredit auf oder baue kürzer.
 STR_AUTOCONNECT_ERR_DETOUR                                      :{BLACK}Es wurde nur eine große Umweg-Route gefunden - nichts gebaut. LKW-Option probieren oder Hindernisse beseitigen
 STR_AUTOCONNECT_ERR_NO_RAIL_PATH                                :{BLACK}Keine Bahnstrecke zwischen den Städten möglich (Wasser im Weg?)
 STR_AUTOCONNECT_MODE_SHIP                                       :{BLACK}Modus: Schiffe
