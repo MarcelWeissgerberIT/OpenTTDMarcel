@@ -11,6 +11,8 @@ on:
     paths:
       - 'src/**'
       - 'os/server/**'
+      # Die Markierung loest nur das Ausrollen aus, keinen neuen Bau.
+      - '!os/server/deploy.trigger'
       - 'web/baseset/**'
       - 'CMakeLists.txt'
       - '.github/workflows/server-image.yml'

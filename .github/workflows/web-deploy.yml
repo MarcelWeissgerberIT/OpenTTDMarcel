@@ -7,7 +7,11 @@ name: Web-Build und Deploy (WASM zu GitHub Pages)
 on:
   push:
     branches: [claude/candyland-scrolling]
-    paths-ignore: ['webapp/**', '.github/workflows/webapp-deploy.yml']
+    # Die Deploy-Markierung ist bewusst ausgenommen: Sie soll nur den
+    # Server neu ausrollen. Wuerde sie auch die Browser-Fassung neu
+    # bauen, traegt diese eine neue Versionskennung - und der gerade
+    # ausgerollte Server passt sofort nicht mehr dazu.
+    paths-ignore: ['webapp/**', '.github/workflows/webapp-deploy.yml', 'os/server/deploy.trigger']
   workflow_dispatch:
 
 permissions:
