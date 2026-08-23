@@ -1,5 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 # Startet den Spielserver und den WebSocket-Uebersetzer davor.
+# Bash und nicht sh: "wait -n" (auf den erstbesten beendeten Dienst
+# warten) kennt die schlanke Debian-Shell nicht.
 # Faellt einer der beiden aus, endet der Container - der Betreiber
 # (Fly.io, Docker, systemd) startet ihn dann neu.
 set -e
