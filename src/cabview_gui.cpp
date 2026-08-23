@@ -222,6 +222,7 @@ static CabObject ReadObject(TileIndex t)
 struct CabViewWindow : Window {
 	uint anim = 0;      ///< Laeuft mit dem Tempo mit (Schwellen, Fahrbahnstreifen).
 	int horizon = 0;    ///< Bildschirmzeile des Horizonts.
+	float sub = 0.0f;   ///< Wie weit das Fahrzeug in der aktuellen Kachel steht (0..1).
 
 	CabViewWindow(WindowDesc &desc, WindowNumber number) : Window(desc)
 	{
@@ -320,6 +321,16 @@ struct CabViewWindow : Window {
 	}
 
 	/**
+	 * Tiefe einer Kachel aus Sicht der Kamera. Der Bruchteil sub sorgt
+	 * dafuer, dass die Landschaft zwischen zwei Kacheln WEITERLAEUFT -
+	 * ohne ihn springt das Bild nur beim Kachelwechsel und ruckelt.
+	 */
+	float Depth(float d) const
+	{
+		return d - this->sub;
+	}
+
+	/**
 	 * Perspektive: Bildschirmzeile des Bodens in Tiefe d. Der Hoehenversatz
 	 * macht Kuppen und Senken der Strecke sichtbar - bergauf wandert der
 	 * Boden nach oben, bergab nach unten.
@@ -412,11 +423,11 @@ struct CabViewWindow : Window {
 	 * Wegrand-Details, die das Tempo spuerbar machen: Oberleitungsmasten
 	 * an Gleisen, sonst Leitpfosten an der Strasse.
 	 */
-	void DrawWayside(const Rect &r, const Vehicle *v, int d, int height, float lateral) const
+	void DrawWayside(const Rect &r, const Vehicle *v, int d, float depth, int height, float lateral) const
 	{
 		if (v->type != VehicleType::Train && v->type != VehicleType::Road) return;
 		if (d % 2 != 0 || d > 12) return;
-		float dd = (float)d;
+		float dd = depth;
 		float t = 1.0f / (1.0f + dd * 0.42f);
 		int ground = this->GroundY(r, dd, height);
 		int cx = this->CenterX(r, dd, lateral);
@@ -604,6 +615,22 @@ struct CabViewWindow : Window {
 		}
 		if (v == nullptr) return;
 
+		/* Zwischenposition in der Kachel bestimmen (Weltkoordinaten sind
+		 * 1/16 Kachel): daraus fliesst die Landschaft gleichmaessig. */
+		{
+			DiagDirection fwd = DirToDiagDir(v->direction);
+			int fx = v->x_pos & 0x0F;
+			int fy = v->y_pos & 0x0F;
+			float s = 0.0f;
+			switch (fwd) {
+				case DiagDirection::NE: s = (15 - fx) / 16.0f; break; /* -x */
+				case DiagDirection::SW: s = fx / 16.0f; break;        /* +x */
+				case DiagDirection::NW: s = (15 - fy) / 16.0f; break; /* -y */
+				default:                s = fy / 16.0f; break;        /* +y */
+			}
+			const_cast<CabViewWindow *>(this)->sub = s;
+		}
+
 		std::vector<CabSample> scan = this->Scan(v);
 
 		/* Boden von hinten nach vorn: jede Kachel ein Streifen. */
@@ -611,46 +638,59 @@ struct CabViewWindow : Window {
 			const CabSample &s = scan[d];
 			if (!s.valid) continue;
 			const CabSample &next = (d + 1 < CAB_DEPTH) ? scan[d + 1] : s;
-			int y_far = this->GroundY(r, (float)d + 1, next.height);
-			int y_near = this->GroundY(r, (float)d, s.height);
+			float dn = this->Depth((float)d);
+			float df = this->Depth((float)d + 1);
+			int y_far = this->GroundY(r, df, next.height);
+			int y_near = this->GroundY(r, dn, s.height);
 			if (y_near <= y_far) continue;
 			/* In der Kurve wandert die Streckenmitte zur Seite. */
-			int cx = this->CenterX(r, (float)d, s.lateral);
-			int cx_far = this->CenterX(r, (float)d + 1, next.lateral);
-			/* Boden in drei Baendern: links, Strecke, rechts - so bekommt
-			 * die Landschaft Struktur statt einer einzigen Farbflaeche. */
-			float hw_mid = this->HalfWidth(r, (float)d);
-			int edge_l = cx - (int)(hw_mid * 3.0f);
-			int edge_r = cx + (int)(hw_mid * 3.0f);
+			int cx = this->CenterX(r, dn, s.lateral);
+			int cx_far = this->CenterX(r, df, next.lateral);
 			PixelColour col = s.ground;
 			PixelColour col_l = s.left.ground;
 			PixelColour col_r = s.right.ground;
 			if (d > 14) { col = PC_ROUGH_LAND; col_l = PC_ROUGH_LAND; col_r = PC_ROUGH_LAND; }
-			GfxFillRect(r.left, y_far, edge_l, y_near, col_l);
-			GfxFillRect(edge_l, y_far, edge_r, y_near, col);
-			GfxFillRect(edge_r, y_far, r.right, y_near, col_r);
-			/* Jede zweite Kachel etwas dunkler; der Wechsel wandert mit dem
-			 * Tempo und macht die Fahrt ueberhaupt erst sichtbar. */
-			if (d < 12 && ((d + this->anim / 16) & 1) == 0) {
-				GfxFillRect(r.left, y_far, r.right, y_near, PC_BLACK, FillRectMode::Checker);
+			/* Die Baender laufen perspektivisch zusammen - zeilenweise
+			 * gezeichnet, sonst stehen dort harte Kloetze statt Landschaft. */
+			float band_near = this->HalfWidth(r, dn) * 3.0f;
+			float band_far = this->HalfWidth(r, df) * 3.0f;
+			/* Die oberen Zeilen bekommen die Farbe der dahinterliegenden
+			 * Kachel als Schachbrett daruebergelegt: so verlaufen die
+			 * Farben ineinander statt als harte Streifenkanten zu stehen. */
+			PixelColour far_col = (d > 14) ? PC_ROUGH_LAND : next.ground;
+			PixelColour far_l = (d > 14) ? PC_ROUGH_LAND : next.left.ground;
+			PixelColour far_r = (d > 14) ? PC_ROUGH_LAND : next.right.ground;
+			int blend = std::max(1, (y_near - y_far) / 3);
+			for (int y = y_far; y <= y_near; y++) {
+				float f = (y_near == y_far) ? 1.0f : (float)(y - y_far) / (float)(y_near - y_far);
+				int mx = cx_far + (int)((cx - cx_far) * f);
+				int bw = (int)(band_far + (band_near - band_far) * f);
+				GfxFillRect(r.left, y, mx - bw, y, col_l);
+				GfxFillRect(mx - bw, y, mx + bw, y, col);
+				GfxFillRect(mx + bw, y, r.right, y, col_r);
+				if (y < y_far + blend) {
+					GfxFillRect(r.left, y, mx - bw, y, far_l, FillRectMode::Checker);
+					GfxFillRect(mx - bw, y, mx + bw, y, far_col, FillRectMode::Checker);
+					GfxFillRect(mx + bw, y, r.right, y, far_r, FillRectMode::Checker);
+				}
 			}
 
 			bool flying_view = v->type == VehicleType::Aircraft;
 			/* Hintere Reihe zuerst, damit die vordere sie ueberdeckt. */
-			this->DrawSideObject(r, s.left2, (float)d, true, flying_view, 3.4f, s.height, s.lateral);
-			this->DrawSideObject(r, s.right2, (float)d, false, flying_view, 3.4f, s.height, s.lateral);
-			this->DrawSideObject(r, s.left, (float)d, true, flying_view, 2.0f, s.height, s.lateral);
-			this->DrawSideObject(r, s.right, (float)d, false, flying_view, 2.0f, s.height, s.lateral);
-			this->DrawWayside(r, v, d, s.height, s.lateral);
-			if (s.on_bridge) this->DrawBridgeRails(r, (float)d, s.height, s.lateral);
-			if (s.tunnel_mouth) this->DrawTunnelMouth(r, (float)d, s.height, s.lateral);
-			if (s.signal) this->DrawSignal(r, s.signal_red, (float)d, s.height, s.lateral);
-			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, (float)d, s.height, s.lateral);
+			this->DrawSideObject(r, s.left2, dn, true, flying_view, 3.4f, s.height, s.lateral);
+			this->DrawSideObject(r, s.right2, dn, false, flying_view, 3.4f, s.height, s.lateral);
+			this->DrawSideObject(r, s.left, dn, true, flying_view, 2.0f, s.height, s.lateral);
+			this->DrawSideObject(r, s.right, dn, false, flying_view, 2.0f, s.height, s.lateral);
+			this->DrawWayside(r, v, d, dn, s.height, s.lateral);
+			if (s.on_bridge) this->DrawBridgeRails(r, dn, s.height, s.lateral);
+			if (s.tunnel_mouth) this->DrawTunnelMouth(r, dn, s.height, s.lateral);
+			if (s.signal) this->DrawSignal(r, s.signal_red, dn, s.height, s.lateral);
+			if (s.station != StationID::Invalid()) this->DrawStationSign(r, s.station, dn, s.height, s.lateral);
 
 			/* Fahrweg: Bahndamm, Fahrbahn oder Fahrrinne. Flugzeuge haben
 			 * keinen - dort bleibt die Landschaft, ueber die man fliegt. */
-			float hw_far = this->HalfWidth(r, (float)d + 1);
-			float hw_near = this->HalfWidth(r, (float)d);
+			float hw_far = this->HalfWidth(r, df);
+			float hw_near = this->HalfWidth(r, dn);
 			bool rail = v->type == VehicleType::Train;
 			bool flying = v->type == VehicleType::Aircraft;
 			if (!flying) {
@@ -713,17 +753,23 @@ struct CabViewWindow : Window {
 		this->Window::Close(data);
 	}
 
-	/** Bild und Schwellenlauf mit dem Tempo aktualisieren. */
-	const IntervalTimer<TimerWindow> tick = {std::chrono::milliseconds(50), [this](auto) {
+	/**
+	 * Bild bei JEDEM Frame neu zeichnen - ein fester Timer waere gegenueber
+	 * der Bildrate versetzt und laesst die Fahrt stocken.
+	 */
+	void OnRealtimeTick([[maybe_unused]] uint delta_ms) override
+	{
 		const Vehicle *v = this->Cab();
 		if (v == nullptr) {
 			this->Close();
 			return;
 		}
-		this->anim += std::max(1, v->GetDisplaySpeed() / 8);
+		/* Schwellen und Streifen laufen mit dem Tempo, unabhaengig von der
+		 * Bildrate (delta_ms), damit die Bewegung gleichmaessig bleibt. */
+		this->anim += std::max(1u, (uint)(v->GetDisplaySpeed() * std::max(1u, delta_ms) / 300));
 		if (this->width != _screen.width || this->height != _screen.height) this->FitToScreen();
 		this->SetDirty();
-	}};
+	}
 };
 
 static constexpr std::initializer_list<NWidgetPart> _nested_cabview_widgets = {
