@@ -453,6 +453,42 @@ struct CabViewWindow : Window {
 	}
 
 	/**
+	 * Ein Stueck Bahnsteig laengs der Strecke. Ober- und Vorderseite
+	 * werden zeilenweise gefuellt, damit sich die Kachelstuecke zu einer
+	 * durchgehenden Kante fuegen statt als Klotz zu stehen.
+	 */
+	void DrawPlatform(const Rect &r, float d, int height, float lateral, bool left_side, float spread) const
+	{
+		float dn = d;
+		float df = d + 1.0f;
+		int y_near = this->GroundY(r, dn, height);
+		int y_far = this->GroundY(r, df, height);
+		if (y_near <= y_far) return;
+		float t_near = 1.0f / (1.0f + dn * 0.42f);
+		int lip = std::max(1, (int)(11 * t_near)); /* Hoehe der Bahnsteigkante */
+		int side = left_side ? -1 : 1;
+
+		int inner_far = 0, inner_near = 0, top_far = y_far, top_near = y_near;
+		for (int y = y_far; y <= y_near; y++) {
+			float f = (float)(y - y_far) / (float)std::max(1, y_near - y_far);
+			float dd = df + (dn - df) * f;
+			float hw = this->HalfWidth(r, dd);
+			int cx = this->CenterX(r, dd, lateral);
+			int inner = cx + side * (int)(hw * (spread - 0.9f));
+			int outer = cx + side * (int)(hw * (spread + 1.1f));
+			int top = y - (int)(lip * (0.4f + 0.6f * f));
+			GfxFillRect(std::min(inner, outer), top, std::max(inner, outer), y, PC_GREY);
+			if (y == y_far) { inner_far = inner; top_far = top; }
+			inner_near = inner;
+			top_near = top;
+		}
+		/* Die helle Bahnsteigkante gehoert EINMAL an den Rand. Pro Zeile
+		 * gezeichnet ergaebe sie eine weisse Flaeche - genau das war sie
+		 * vorher. */
+		GfxDrawLine(inner_far, top_far, inner_near, top_near, PC_WHITE, std::max(1, (int)(3 * t_near)));
+	}
+
+	/**
 	 * Ein Objekt neben der Strecke zeichnen - mit der ECHTEN Spielgrafik,
 	 * damit man Haeuser und Waelder im Fuehrerstand wiedererkennt. Die
 	 * Groesse kommt ueber die Zoomstufe (DrawSprite nimmt sie entgegen,
@@ -473,9 +509,23 @@ struct CabViewWindow : Window {
 
 		switch (o.what) {
 			case CabTile::House: {
-				/* Das echte Haus-Sprite; _gui_zoom steuert hier die Groesse. */
-				AutoRestoreBackup zoom_backup(_gui_zoom, zoom);
-				DrawHouseInGUI(x, ground, o.house, o.view);
+				/* Das echte Haus-Sprite; _gui_zoom steuert hier die Groesse.
+				 *
+				 * ACHTUNG: DrawHouseInGUI setzt an (x,y) die OBERE Ecke der
+				 * Bodenraute an, nicht den Fuss des Hauses. Ohne Korrektur
+				 * sitzt das Gebaeude eine halbe Kachel zu tief und schleppt
+				 * seine Bodenkachel als Platte durchs Bild. Wir heben es um
+				 * die halbe Rautenhoehe an. */
+				ZoomLevel hz = zoom;
+				const HouseSpec *hs = HouseSpec::Get(o.house);
+				/* Grosse Haeuser bestehen aus bis zu vier Kacheln und
+				 * wuerden sonst alles ueberdecken - eine Stufe kleiner. */
+				if (hs != nullptr && hs->building_flags.Any({BuildingFlag::Size2x2, BuildingFlag::Size2x1, BuildingFlag::Size1x2})) {
+					hz = (ZoomLevel)std::min<int>((int)ZoomLevel::Out4x, (int)zoom + 1);
+				}
+				AutoRestoreBackup zoom_backup(_gui_zoom, hz);
+				int half_tile = ScaleByZoom(TILE_PIXELS / 2, hz) / ZOOM_BASE;
+				DrawHouseInGUI(x, ground - half_tile, o.house, o.view);
 				break;
 			}
 			case CabTile::Trees: {
@@ -494,13 +544,12 @@ struct CabViewWindow : Window {
 				break;
 			}
 			case CabTile::Station: {
-				/* Bahnhofsgebaeude: heller Bau mit rotem Dach. */
-				int h = (int)(60 * t);
-				int w = std::max(3, (int)(hw * 0.9f));
-				if (h < 3) break;
-				int base = ground - (int)(8 * t);
-				GfxFillRect(x - w / 2, base - h, x + w / 2, base, PC_GREY);
-				GfxFillRect(x - w / 2 - w / 8, base - h - std::max(2, h / 5), x + w / 2 + w / 8, base - h, PC_DARK_RED);
+				/* Bahnsteig statt Kasten: ein Bahnhof besteht aus mehreren
+				 * Kacheln, ein Klotz je Kachel ergab eine Reihe schwebender
+				 * Platten. Jetzt zeichnet jede Kachel ein flaches Stueck
+				 * Bahnsteig, das sich mit den Nachbarn zu einer Kante
+				 * zusammensetzt. */
+				this->DrawPlatform(r, d, height, lateral, left_side, spread);
 				break;
 			}
 			case CabTile::Tunnel: {
