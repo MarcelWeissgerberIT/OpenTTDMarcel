@@ -131,6 +131,32 @@ jobs:
           npx wrangler d1 execute openttd-web --remote --command "DELETE FROM shares WHERE id = '$ID'" > /dev/null
           echo "Welt-Teilen OK"
 
+      - name: Verify server list
+        run: |
+          API=https://openttd-api.marcelweissgerber81.workers.dev
+          HOST="ci-test-${GITHUB_RUN_ID}.example.com"
+          KEY="ci-$(openssl rand -hex 8)"
+          BUILD="citest01"
+          echo "Anmelden..."
+          curl -sS --fail -X POST "$API/api/servers" -H 'Content-Type: application/json' \
+            -d "{\"host\":\"$HOST\",\"name\":\"CI Testserver\",\"key\":\"$KEY\",\"build\":\"$BUILD\"}"
+          echo; echo "Steht er in der Liste?"
+          curl -sS --fail "$API/api/servers" | grep -q "$HOST"
+          echo "Zeigt der Versionsfilter ihn nur bei passender Version?"
+          curl -sS --fail "$API/api/servers?build=$BUILD" | grep -q "$HOST"
+          if curl -sS --fail "$API/api/servers?build=anders00" | grep -q "$HOST"; then
+            echo "Server mit fremder Version wurde nicht ausgeblendet"; exit 1
+          fi
+          echo "Wird ein fremder Schluessel abgewiesen?"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/api/servers" \
+            -H 'Content-Type: application/json' \
+            -d "{\"host\":\"$HOST\",\"name\":\"Uebernahme\",\"key\":\"falscher-schluessel\"}")
+          [ "$code" = "403" ] || { echo "Fremder Schluessel wurde akzeptiert (HTTP $code)"; exit 1; }
+          echo "Abmelden..."
+          curl -sS --fail -X DELETE "$API/api/servers" -H 'Content-Type: application/json' \
+            -d "{\"host\":\"$HOST\",\"key\":\"$KEY\"}"
+          echo; echo "Serverliste OK"
+
       - name: Verify auth flow end-to-end
         run: |
           API=https://openttd-api.marcelweissgerber81.workers.dev
