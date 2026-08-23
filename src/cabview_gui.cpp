@@ -168,10 +168,14 @@ static ZoomLevel CabZoom(float d, bool flying = false)
 		if (d < 6.0f) return ZoomLevel::Normal;
 		return ZoomLevel::Out2x;
 	}
-	if (d < 3.0f) return ZoomLevel::In4x;
-	if (d < 6.0f) return ZoomLevel::In2x;
-	if (d < 10.0f) return ZoomLevel::Normal;
-	return ZoomLevel::Out2x;
+	/* Fork: Die Stufen liegen bewusst niedrig. Ein Haus in vierfacher
+	 * Groesse fuellt den halben Bildschirm, verdeckt die Strecke und
+	 * zeigt sein Dach von oben - aus dem Fahrersitz sieht man das nicht. */
+	if (d < 1.6f) return ZoomLevel::In4x;
+	if (d < 4.5f) return ZoomLevel::In2x;
+	if (d < 8.5f) return ZoomLevel::Normal;
+	if (d < 14.0f) return ZoomLevel::Out2x;
+	return ZoomLevel::Out4x;
 }
 
 /** Kachel einordnen und ihre Bodenfarbe bestimmen. */
@@ -371,11 +375,15 @@ struct CabViewWindow : Window {
 		return cx + (int)(lateral * (r.right - r.left) * 0.10f * t);
 	}
 
-	/** Perspektive: halbe Streckenbreite in Tiefe d. */
+	/**
+	 * Perspektive: halbe Streckenbreite in Tiefe d. Der Wert bestimmt
+	 * zugleich das Sichtfeld - je schmaler die Trasse, desto mehr
+	 * Umgebung passt links und rechts ins Bild.
+	 */
 	float HalfWidth(const Rect &r, float d) const
 	{
 		float t = 1.0f / (1.0f + d * 0.42f);
-		return (r.right - r.left) * 0.22f * t;
+		return (r.right - r.left) * 0.165f * t;
 	}
 
 	/**
@@ -392,7 +400,7 @@ struct CabViewWindow : Window {
 		if (!s.valid || s.tile == INVALID_TILE) return;
 		float t = 1.0f / (1.0f + dn * 0.42f);
 		if (t < 0.06f) return; /* Zu weit weg - dort traegt die Flaeche. */
-		int specks = (dn < 4.0f) ? 44 : (dn < 9.0f ? 30 : 16);
+		int specks = (dn < 4.0f) ? 54 : (dn < 9.0f ? 36 : 20);
 
 		for (int k = 0; k < specks; k++) {
 			/* Deterministisch aus Kachel und Zaehler: kein Flackern. */
@@ -406,7 +414,7 @@ struct CabViewWindow : Window {
 			if (x < r.left || x > r.right) continue;
 
 			float tt = 1.0f / (1.0f + dd * 0.42f);
-			int sz = std::max(1, (int)(13 * tt));
+			int sz = std::max(1, (int)(10 * tt));
 
 			/* Was auf der Kachel liegt, bestimmt das Muster. */
 			int row = std::min(CAB_SIDE_ROWS - 1, (int)(std::fabs(lat) / 2.2f));
@@ -423,11 +431,22 @@ struct CabViewWindow : Window {
 				/* Steppe: Steine und trockene Bueschel. */
 				GfxFillRect(x - sz / 2, y - sz / 2, x + sz / 2, y, PC_GREY);
 			} else {
-				/* Wiese: erst ein breiter Fuss, darauf ein Halm - so sieht
-				 * es nach Bewuchs aus und nicht nach Bildrauschen. */
+				/* Wiese: die Form wechselt mit der Kachel - mal ein flacher
+				 * Fleck, mal ein Bueschel, mal ein einzelner Halm. Immer
+				 * dieselbe Form ergaebe ein Symbolmuster statt Bewuchs. */
 				PixelColour tuft = ((h >> 3) & 1) ? PC_TREES : PC_RAINFOREST;
-				GfxFillRect(x - sz, y - std::max(1, sz / 3), x + sz, y, tuft);
-				GfxFillRect(x - std::max(1, sz / 4), y - sz - sz / 2, x + std::max(1, sz / 4), y, tuft);
+				int form = (h >> 5) & 3;
+				int gw = std::max(1, sz / 2);
+				if (form == 0) {
+					GfxFillRect(x - gw, y - std::max(1, sz / 4), x + gw, y, tuft);
+				} else if (form == 1) {
+					GfxFillRect(x - std::max(1, sz / 5), y - sz, x + std::max(1, sz / 5), y, tuft);
+				} else if (form == 2) {
+					GfxFillRect(x - gw, y - std::max(1, sz / 5), x + gw, y, tuft);
+					GfxFillRect(x - std::max(1, sz / 6), y - sz, x + std::max(1, sz / 6), y, tuft);
+				} else {
+					GfxFillRect(x - std::max(1, sz / 3), y - std::max(1, sz / 2), x + std::max(1, sz / 3), y, tuft);
+				}
 			}
 		}
 		(void)d;
@@ -645,7 +664,7 @@ struct CabViewWindow : Window {
 		/* Scheibenecken abschraegen: eine rechteckige Oeffnung sieht aus
 		 * wie ein Bilderrahmen, eine abgerundete wie eine Windschutz-
 		 * scheibe. Zeilenweise, damit die Schraege sauber laeuft. */
-		int corner = std::max(6, w / 9);
+		int corner = std::max(5, w / 20);
 		for (int i = 0; i < corner; i++) {
 			int cut = corner - i;
 			int y = r.top + strut / 2 + i;
@@ -725,7 +744,7 @@ struct CabViewWindow : Window {
 			GfxFillRect(r.left, this->horizon - haze, r.right, this->horizon, PC_WHITE, FillRectMode::Checker);
 
 			/* Sonne: fester Platz, damit sie nicht mitwandert. */
-			int sun_r = std::max(4, sky_h / 9);
+			int sun_r = std::max(3, sky_h / 14);
 			int sun_x = r.left + (r.right - r.left) * 3 / 4;
 			int sun_y = r.top + sky_h / 3;
 			for (int dy = -sun_r; dy <= sun_r; dy++) {
@@ -737,12 +756,7 @@ struct CabViewWindow : Window {
 				int dx = (int)(std::sqrt((float)std::max(0, rr * rr - dy * dy)));
 				GfxFillRect(sun_x - dx, sun_y + dy, sun_x + dx, sun_y + dy, PC_WHITE);
 			}
-			for (int dy = -sun_r - sun_r / 2; dy <= sun_r + sun_r / 2; dy++) {
-				int rr = sun_r + sun_r / 2;
-				if (rr * rr - dy * dy < 0) continue;
-				int dx = (int)(std::sqrt((float)(rr * rr - dy * dy)));
-				GfxFillRect(sun_x - dx, sun_y + dy, sun_x + dx, sun_y + dy, PC_YELLOW, FillRectMode::Checker);
-			}
+
 		}
 		if (v == nullptr) return;
 
