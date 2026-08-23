@@ -25,7 +25,7 @@ RUN cmake -B /build -S /src \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DOPTION_DEDICATED=ON \
 		-DOPTION_USE_ASSERTS=OFF \
-	&& cmake --build /build -j"$(nproc)" --target openttd
+	&& cmake --build /build -j"$(nproc)" --target openttd language_files
 
 FROM debian:bookworm-slim
 
