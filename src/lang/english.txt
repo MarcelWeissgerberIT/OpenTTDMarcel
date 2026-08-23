@@ -2450,6 +2450,11 @@ STR_TUTORIAL_BACK_TOOLTIP                                       :{BLACK}One step
 STR_TUTORIAL_SKIP                                               :{BLACK}Skip
 STR_TUTORIAL_SKIP_TOOLTIP                                       :{BLACK}Jump to the next step
 STR_TUTORIAL_FINISH                                             :{BLACK}Done
+STR_FILE_MENU_SHARE_WORLD                                       :Share world (link)
+STR_SHARE_WORLD_NAME                                            :{COMPANY}, {NUM}
+STR_SHARE_WORLD_NAME_ANON                                       :Shared world, {NUM}
+STR_SHARE_ERR_SAVE                                              :{WHITE}The world could not be saved for sharing
+STR_SHARE_ERR_BROWSER_ONLY                                      :{WHITE}Sharing works in the browser version
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Start a multiplayer game
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Select 'temperate' landscape style

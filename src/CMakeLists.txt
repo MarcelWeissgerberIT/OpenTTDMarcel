@@ -202,6 +202,7 @@ add_files(
     ridealong_gui.cpp
     stationpad_gui.cpp
     tutorial_gui.cpp
+    shareworld.cpp
     fontcache.cpp
     fontcache.h
     framerate_gui.cpp

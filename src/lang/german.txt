@@ -2419,6 +2419,11 @@ STR_TUTORIAL_BACK_TOOLTIP                                       :{BLACK}Einen Sc
 STR_TUTORIAL_SKIP                                               :{BLACK}Überspringen
 STR_TUTORIAL_SKIP_TOOLTIP                                       :{BLACK}Zum nächsten Schritt springen
 STR_TUTORIAL_FINISH                                             :{BLACK}Fertig
+STR_FILE_MENU_SHARE_WORLD                                       :Welt teilen (Link)
+STR_SHARE_WORLD_NAME                                            :{COMPANY}, {NUM}
+STR_SHARE_WORLD_NAME_ANON                                       :Geteilte Welt, {NUM}
+STR_SHARE_ERR_SAVE                                              :{WHITE}Die Welt konnte zum Teilen nicht gespeichert werden
+STR_SHARE_ERR_BROWSER_ONLY                                      :{WHITE}Teilen gibt es in der Browser-Fassung
 STR_INTRO_TOOLTIP_MULTIPLAYER                                   :{BLACK}Mehrspieler-Spiel beginnen
 
 STR_INTRO_TOOLTIP_TEMPERATE                                     :{BLACK}Landschaft mit gemäßigtem Klima auswählen

@@ -225,10 +225,137 @@ Module.preRun.push(function() {
         next();
     }
 
+    /* ---------- Welt teilen: Spielstand hinter einem kurzen Link ---------- */
+
+    var autosave_dir = personal_dir + '/save/autosave';
+    var SHARE_BASE = location.origin + location.pathname;
+
+    function shareOverlay(html) {
+        var old = document.getElementById('ottd-share-box');
+        if (old) old.remove();
+        var box = document.createElement('div');
+        box.id = 'ottd-share-box';
+        box.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;'
+            + 'background:#6b8c3f;border:3px solid #2f4318;box-shadow:0 0 0 3px #b7d17a inset, 0 8px 30px rgba(0,0,0,.5);'
+            + 'padding:18px 20px;font:14px/1.5 system-ui,sans-serif;color:#111;max-width:min(560px,92vw);border-radius:2px';
+        box.innerHTML = html;
+        document.body.appendChild(box);
+        var close = box.querySelector('[data-close]');
+        if (close) close.onclick = function() { box.remove(); };
+        return box;
+    }
+
+    function shareButton(label) {
+        return '<button style="background:#e8c33c;border:2px solid #6b5a12;padding:6px 14px;'
+            + 'font:bold 13px system-ui,sans-serif;cursor:pointer">' + label + '</button>';
+    }
+
+    /* Vom Spiel gerufen (Disketten-Menue -> "Welt teilen"). */
+    window.openttd_share_world = function(filename, title) {
+        var data;
+        try {
+            data = FS.readFile(autosave_dir + '/' + filename);
+        } catch (e0) {
+            /* Aeltere Fassungen legten die Kopie eine Ebene hoeher ab. */
+            try { data = FS.readFile(personal_dir + '/autosave/' + filename); } catch (e) { data = null; }
+        }
+        if (!data) {
+            shareOverlay('<b>Teilen fehlgeschlagen</b><br>Die Welt konnte nicht gelesen werden.<br><br>' + shareButton('Schliessen').replace('<button', '<button data-close'));
+            return;
+        }
+        var box = shareOverlay('<b>Welt wird hochgeladen...</b><br>Einen Moment, die Karte reist gerade in die Cloud.');
+        /* Angemeldete Nutzer bekommen ihre Welten zugeordnet; noetig ist das
+         * nicht - Teilen geht auch ohne Konto. */
+        var head = {};
+        var tok = cloudToken();
+        if (tok) head['Authorization'] = 'Bearer ' + tok;
+        fetch(CLOUD_API + '/api/share?name=' + encodeURIComponent(title || 'Welt'), {
+            method: 'POST',
+            headers: head,
+            body: data,
+        })
+            .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, j: j }; }); })
+            .then(function(res) {
+                if (!res.ok || !res.j || !res.j.id) throw new Error((res.j && res.j.message) || 'Upload fehlgeschlagen');
+                var link = SHARE_BASE + '?share=' + res.j.id;
+                box.innerHTML = '<b>Deine Welt ist geteilt!</b>'
+                    + '<br>Wer diesen Link öffnet, spielt sie sofort im Browser weiter - ohne Konto, ohne Installation.'
+                    + '<br><br><input id="ottd-share-url" readonly value="' + link + '" '
+                    + 'style="width:100%;padding:7px;font:13px monospace;border:2px solid #2f4318;background:#f4f4e8">'
+                    + '<br><br><div style="display:flex;gap:8px;flex-wrap:wrap">'
+                    + shareButton('Link kopieren').replace('<button', '<button data-copy')
+                    + shareButton('Schliessen').replace('<button', '<button data-close')
+                    + '</div>'
+                    + '<div style="margin-top:10px;font-size:12px;opacity:.85">Der Link ist 30 Tage gültig.</div>';
+                box.querySelector('[data-close]').onclick = function() { box.remove(); };
+                var input = box.querySelector('#ottd-share-url');
+                box.querySelector('[data-copy]').onclick = function(ev) {
+                    input.select();
+                    var done = function() { ev.target.textContent = 'Kopiert!'; };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(link).then(done).catch(function() { document.execCommand('copy'); done(); });
+                    } else {
+                        document.execCommand('copy');
+                        done();
+                    }
+                };
+                input.focus();
+                input.select();
+            })
+            .catch(function(e) {
+                box.innerHTML = '<b>Teilen fehlgeschlagen</b><br>' + String(e.message || e)
+                    + '<br><br>' + shareButton('Schliessen').replace('<button', '<button data-close');
+                box.querySelector('[data-close]').onclick = function() { box.remove(); };
+            });
+    };
+
+    /* Beim Start: "?share=<id>" laedt die geteilte Welt und startet damit. */
+    function shareLoad(done) {
+        var id = '';
+        try { id = new URLSearchParams(location.search).get('share') || ''; } catch (e) {}
+        if (!/^[a-z0-9]{6,20}$/.test(id)) { done(); return; }
+        var finished = false;
+        var guard = setTimeout(function() { if (!finished) { finished = true; done(); } }, 25000);
+        var shared_name = '';
+        fetch(CLOUD_API + '/api/share?id=' + encodeURIComponent(id))
+            .then(function(r) {
+                if (!r.ok) return Promise.reject(new Error('HTTP ' + r.status));
+                try { shared_name = decodeURIComponent(r.headers.get('X-Save-Name') || ''); } catch (e) {}
+                return r.arrayBuffer();
+            })
+            .then(function(buf) {
+                try { FS.mkdirTree(save_dir); } catch (e) {}
+                var path = save_dir + '/Geteilte Welt.sav';
+                FS.writeFile(path, new Uint8Array(buf));
+                Module.arguments.push('-g', path);
+                window.openttd_shared_world = id;
+                /* Kurz erklaeren, wo man gelandet ist - und wie man selbst loslegt. */
+                if (!Module.postRun) Module.postRun = [];
+                Module.postRun.push(function() {
+                    setTimeout(function() {
+                        shareOverlay('<b>Du spielst eine geteilte Welt' + (shared_name ? ': ' + shared_name.replace(/[<>&]/g, '') : '') + '</b>'
+                            + '<br>Bau sie weiter aus, so viel du willst - deine Aenderungen bleiben bei dir.'
+                            + '<br>Ein eigenes Spiel startest du jederzeit über das Disketten-Menü.'
+                            + '<br><br>' + shareButton('Los geht\'s').replace('<button', '<button data-close'));
+                    }, 2500);
+                });
+            })
+            .catch(function() {
+                shareOverlay('<b>Diese geteilte Welt gibt es nicht mehr</b><br>'
+                    + 'Der Link ist abgelaufen oder falsch. Du startest stattdessen ein eigenes Spiel.<br><br>'
+                    + shareButton('Alles klar').replace('<button', '<button data-close'));
+            })
+            .finally(function() {
+                if (!finished) { finished = true; clearTimeout(guard); done(); }
+            });
+    }
+
     Module.addRunDependency('syncfs');
     FS.syncfs(true, function (err) {
         cloudPull(function() {
-            Module.removeRunDependency('syncfs');
+            shareLoad(function() {
+                Module.removeRunDependency('syncfs');
+            });
         });
     });
 

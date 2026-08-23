@@ -334,6 +334,95 @@ async function handleAdminPurchases(request, env, cors) {
 	return json({ ok: true, purchases: rows.results || [] }, 200, cors);
 }
 
+/* ---------- Geteilte Welten (kurzer Link -> Spielstand aus R2) ---------- */
+
+const MAX_SHARE_BYTES = 8 * 1024 * 1024;
+const SHARE_DAYS = 30;
+const SHARE_PER_HOUR = 5;          /* Uploads je IP und Stunde */
+const SHARE_ID_CHARS = '23456789abcdefghjkmnpqrstuvwxyz'; /* ohne verwechselbare Zeichen */
+
+function shareId() {
+	const raw = crypto.getRandomValues(new Uint8Array(10));
+	return [...raw].map(b => SHARE_ID_CHARS[b % SHARE_ID_CHARS.length]).join('');
+}
+
+/* Die IP wird nie im Klartext gespeichert - nur ein Hash fuer das Limit. */
+async function ipHash(request) {
+	const ip = request.headers.get('CF-Connecting-IP') || '';
+	const bits = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('share:' + ip));
+	return toHex(bits).slice(0, 32);
+}
+
+/* Nur echte OpenTTD-Spielstaende: die Datei traegt ihr Format im Kopf. */
+function looksLikeSavegame(buf) {
+	const tag = new TextDecoder('latin1').decode(new Uint8Array(buf, 0, 4));
+	return ['OTTD', 'OTTN', 'OTTZ', 'OTTX'].includes(tag);
+}
+
+async function handleShareUpload(request, env, cors, url) {
+	const body = await request.arrayBuffer();
+	if (body.byteLength < 16 || body.byteLength > MAX_SHARE_BYTES) {
+		return json({ error: 'bad_size', message: 'Welt ist leer oder groesser als 8 MB.' }, 400, cors);
+	}
+	if (!looksLikeSavegame(body)) {
+		return json({ error: 'bad_format', message: 'Das ist kein OpenTTD-Spielstand.' }, 400, cors);
+	}
+	const name = (url.searchParams.get('name') || 'Welt').slice(0, 60);
+	const hash = await ipHash(request);
+	const since = Date.now() - 60 * 60 * 1000;
+	const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM shares WHERE ip_hash = ? AND created_at > ?')
+		.bind(hash, since).first();
+	if ((row?.n || 0) >= SHARE_PER_HOUR) {
+		return json({ error: 'rate_limited', message: 'Zu viele geteilte Welten - bitte spaeter erneut.' }, 429, cors);
+	}
+	/* Angemeldete Nutzer bekommen ihre Welten zugeordnet; noetig ist das nicht. */
+	const user = await getSessionUser(env, request);
+	const id = shareId();
+	const key = `shares/${id}.sav`;
+	await env.SAVES.put(key, body);
+	const now = Date.now();
+	await env.DB.prepare(
+		`INSERT INTO shares (id, name, size, r2_key, ip_hash, user_id, created_at, expires_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+		.bind(id, name, body.byteLength, key, hash, user ? user.id : null, now, now + SHARE_DAYS * 86400000).run();
+	return json({ ok: true, id, name, size: body.byteLength, expires_at: now + SHARE_DAYS * 86400000 }, 200, cors);
+}
+
+async function handleShareDownload(request, env, cors, url) {
+	const id = (url.searchParams.get('id') || '').toLowerCase();
+	if (!/^[a-z0-9]{6,20}$/.test(id)) return json({ error: 'bad_id' }, 400, cors);
+	const row = await env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
+	if (!row) return json({ error: 'not_found', message: 'Diese Welt gibt es nicht (mehr).' }, 404, cors);
+	if (row.expires_at < Date.now()) {
+		/* Abgelaufene Welten raeumen sich beim naechsten Zugriff selbst weg. */
+		await env.SAVES.delete(row.r2_key).catch(() => {});
+		await env.DB.prepare('DELETE FROM shares WHERE id = ?').bind(id).run();
+		return json({ error: 'expired', message: 'Dieser Link ist abgelaufen.' }, 404, cors);
+	}
+	const obj = await env.SAVES.get(row.r2_key);
+	if (!obj) return json({ error: 'not_found' }, 404, cors);
+	await env.DB.prepare('UPDATE shares SET downloads = downloads + 1 WHERE id = ?').bind(id).run();
+	return new Response(obj.body, {
+		status: 200,
+		headers: {
+			...cors,
+			'Content-Type': 'application/octet-stream',
+			'X-Save-Name': encodeURIComponent(row.name),
+			'Cache-Control': 'public, max-age=3600',
+		},
+	});
+}
+
+/* Kurzinfo ohne Download - fuer die Begruessung beim Oeffnen eines Links. */
+async function handleShareInfo(request, env, cors, url) {
+	const id = (url.searchParams.get('id') || '').toLowerCase();
+	if (!/^[a-z0-9]{6,20}$/.test(id)) return json({ error: 'bad_id' }, 400, cors);
+	const row = await env.DB.prepare('SELECT id, name, size, downloads, created_at, expires_at FROM shares WHERE id = ?')
+		.bind(id).first();
+	if (!row || row.expires_at < Date.now()) return json({ error: 'not_found' }, 404, cors);
+	return json({ ok: true, ...row }, 200, cors);
+}
+
 export default {
 	async fetch(request, env) {
 		const url = new URL(request.url);
@@ -362,6 +451,9 @@ export default {
 			if (url.pathname === '/api/settings' && request.method === 'PUT') return await handleSettingsPut(request, env, cors);
 			if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') return await handleStripeWebhook(request, env);
 			if (url.pathname === '/api/admin/purchases' && request.method === 'GET') return await handleAdminPurchases(request, env, cors);
+			if (url.pathname === '/api/share' && request.method === 'POST') return await handleShareUpload(request, env, cors, url);
+			if (url.pathname === '/api/share' && request.method === 'GET') return await handleShareDownload(request, env, cors, url);
+			if (url.pathname === '/api/share/info' && request.method === 'GET') return await handleShareInfo(request, env, cors, url);
 		} catch (e) {
 			/* Diagnose-Detail, solange Phase 2 stabilisiert wird. */
 			return json({ error: 'server_error', detail: String(e && e.message || e).slice(0, 200) }, 500, cors);

@@ -112,6 +112,25 @@ jobs:
           done
           echo "Neue Endpunkte antworten nicht wie erwartet"; exit 1
 
+      - name: Verify world sharing
+        run: |
+          API=https://openttd-api.marcelweissgerber81.workers.dev
+          # Ein Spielstand traegt sein Format im Kopf - der Worker prueft das.
+          { printf 'OTTN'; head -c 256 /dev/urandom; } > /tmp/cishare.sav
+          ID=$(curl -sS --fail -X POST --data-binary @/tmp/cishare.sav \
+            "$API/api/share?name=CI-Welt" | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))")
+          [ -n "$ID" ] || { echo "Kein Share-Link erhalten"; exit 1; }
+          echo "Share-ID: $ID"
+          curl -sS --fail "$API/api/share?id=$ID" -o /tmp/cishare-down.sav
+          cmp /tmp/cishare.sav /tmp/cishare-down.sav
+          # Keine echten Spielstaende: Muell muss abgelehnt werden.
+          code=$(head -c 64 /dev/zero | curl -s -o /dev/null -w "%{http_code}" -X POST --data-binary @- "$API/api/share?name=Muell")
+          [ "$code" = "400" ] || { echo "Fremdformat wurde nicht abgelehnt (HTTP $code)"; exit 1; }
+          echo "Cleanup..."
+          npx wrangler r2 object delete "openttd-saves/shares/$ID.sav" --remote > /dev/null 2>&1 || true
+          npx wrangler d1 execute openttd-web --remote --command "DELETE FROM shares WHERE id = '$ID'" > /dev/null
+          echo "Welt-Teilen OK"
+
       - name: Verify auth flow end-to-end
         run: |
           API=https://openttd-api.marcelweissgerber81.workers.dev

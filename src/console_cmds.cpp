@@ -483,6 +483,15 @@ static bool ConStationPad(std::span<std::string_view>)
 	return true;
 }
 
+/* Fork: Welt teilen (Diagnose-Einstieg fuer den Browser-Test). */
+static bool ConShareWorld(std::span<std::string_view>)
+{
+	extern void ShareCurrentWorld();
+	ShareCurrentWorld();
+	IConsolePrint(CC_DEFAULT, "Welt wird geteilt...");
+	return true;
+}
+
 /* Fork: Gefuehrten Einstieg oeffnen; "tutorial reset" zeigt ihn beim
  * naechsten neuen Spiel wieder von selbst. */
 static bool ConTutorial(std::span<std::string_view> argv)
@@ -3145,6 +3154,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("ridealong",               ConRideAlong);
 	IConsole::CmdRegister("cab",                     ConCabView);
 	IConsole::CmdRegister("tutorial",                ConTutorial);
+	IConsole::CmdRegister("share",                   ConShareWorld);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

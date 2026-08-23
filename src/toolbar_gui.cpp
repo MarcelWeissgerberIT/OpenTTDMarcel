@@ -385,6 +385,7 @@ enum class SaveLoadEditorMenuEntries : uint8_t {
 enum class SaveLoadNormalMenuEntries : uint8_t {
 	SaveGame = 0, ///< Save the game.
 	LoadGame, ///< Load a save.
+	ShareWorld, ///< Fork: Welt als Link teilen.
 	ExitToMainMenu, ///< Exit to main menu.
 	ExitGame, ///< Exit to desktop.
 };
@@ -397,8 +398,8 @@ enum class SaveLoadNormalMenuEntries : uint8_t {
  */
 static CallBackFunction ToolbarSaveClick(Window *w)
 {
-	PopupMainToolbarMenu(w, WID_TN_SAVE, {STR_FILE_MENU_SAVE_GAME, STR_FILE_MENU_LOAD_GAME, STR_FILE_MENU_QUIT_GAME,
-			STR_NULL, STR_FILE_MENU_EXIT});
+	PopupMainToolbarMenu(w, WID_TN_SAVE, {STR_FILE_MENU_SAVE_GAME, STR_FILE_MENU_LOAD_GAME, STR_FILE_MENU_SHARE_WORLD,
+			STR_FILE_MENU_QUIT_GAME, STR_NULL, STR_FILE_MENU_EXIT});
 	return CallBackFunction::None;
 }
 
@@ -437,6 +438,11 @@ static CallBackFunction MenuClickSaveLoad(int index = 0)
 		switch (SaveLoadNormalMenuEntries(index)) {
 			case SaveLoadNormalMenuEntries::SaveGame: ShowSaveLoadDialog(AbstractFileType::Savegame, SaveLoadOperation::Save); break;
 			case SaveLoadNormalMenuEntries::LoadGame: ShowSaveLoadDialog(AbstractFileType::Savegame, SaveLoadOperation::Load); break;
+			case SaveLoadNormalMenuEntries::ShareWorld: {
+				extern void ShareCurrentWorld();
+				ShareCurrentWorld();
+				break;
+			}
 			case SaveLoadNormalMenuEntries::ExitToMainMenu: AskExitToGameMenu(); break;
 			case SaveLoadNormalMenuEntries::ExitGame: HandleExitGameRequest(); break;
 		}
