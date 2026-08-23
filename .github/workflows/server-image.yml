@@ -1,0 +1,80 @@
+name: Server-Image (Mehrspieler)
+
+# Baut den Fork als Dedicated Server samt WebSocket-Uebersetzer und legt
+# das Bild in der GitHub-Registry ab. Laeuft bei jedem Push mit, weil
+# Server und Browser-Fassung dieselbe Versionskennung tragen muessen -
+# sonst weist der Server jeden Beitritt ab.
+
+on:
+  push:
+    branches: [claude/candyland-scrolling]
+    paths:
+      - 'src/**'
+      - 'os/server/**'
+      - 'web/baseset/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/server-image.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: server-image
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: An der GitHub-Registry anmelden
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Namen kleinschreiben (die Registry verlangt das)
+        id: name
+        run: echo "image=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')-server" >> "$GITHUB_OUTPUT"
+
+      - name: Bild bauen und ablegen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: os/server/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.name.outputs.image }}:latest
+            ${{ steps.name.outputs.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Server im Bild starten und Beitritt pruefen
+        run: |
+          IMAGE="${{ steps.name.outputs.image }}:${{ github.sha }}"
+          docker run -d --name ottd-test -p 8080:8080 "$IMAGE"
+          echo "Warte auf den Server..."
+          for i in $(seq 1 60); do
+            if docker logs ottd-test 2>&1 | grep -q "Map generated, starting game"; then
+              echo "Welt steht."
+              break
+            fi
+            sleep 2
+          done
+          docker logs ottd-test 2>&1 | tail -20
+          # Der Uebersetzer muss den Spielport erreichen: eine WebSocket-
+          # Verbindung ohne Handshake wird abgelehnt (HTTP 400) - genau das
+          # beweist, dass er lauscht und antwortet.
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://127.0.0.1:8080/ || true)
+          echo "WebSocket-Uebersetzer antwortet mit HTTP $code"
+          [ -n "$code" ] && [ "$code" != "000" ] || { echo "Uebersetzer antwortet nicht"; docker logs ottd-test; exit 1; }
+          docker logs ottd-test 2>&1 | grep -q "Listening on 0.0.0.0:3979" || { echo "Spielserver lauscht nicht"; exit 1; }
+          docker rm -f ottd-test
+
+      - name: Adresse melden
+        run: |
+          echo "Bild: ${{ steps.name.outputs.image }}:latest"
+          echo "Naechster Schritt: auf einem Host starten und web/server.json auf dessen Adresse setzen."

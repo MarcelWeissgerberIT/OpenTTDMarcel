@@ -1315,6 +1315,12 @@ bool NetworkValidateClientName(std::string &client_name)
 	StrTrimInPlace(client_name);
 	if (NetworkIsValidClientName(client_name)) return true;
 
+	/* Fork: Ohne Namen weist jeder Server den Beitritt ab - fuer Neulinge
+	 * eine Sackgasse mit einer Fehlermeldung, die nichts erklaert. Wir
+	 * vergeben lieber einen Namen; umbenennen kann man sich jederzeit. */
+	client_name = fmt::format("Spieler {}", 1000 + (InteractiveRandom() % 9000));
+	if (NetworkIsValidClientName(client_name)) return true;
+
 	ShowErrorMessage(GetEncodedString(STR_NETWORK_ERROR_BAD_PLAYER_NAME), {}, WarningLevel::Error);
 	return false;
 }

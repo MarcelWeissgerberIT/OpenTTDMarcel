@@ -452,6 +452,10 @@ public:
 		this->FinishInitNested(NetworkWindowNumber::Game);
 
 		this->querystrings[WID_NG_CLIENT] = &this->name_editbox;
+		/* Fork: Ohne Spielernamen laesst kein Server jemanden herein. Statt
+		 * den Neuling in eine Fehlermeldung laufen zu lassen, steht hier
+		 * gleich ein Name - umbenennen kann er sich sofort. */
+		NetworkValidateOurClientName();
 		this->name_editbox.text.Assign(_settings_client.network.client_name);
 
 		this->querystrings[WID_NG_FILTER] = &this->filter_editbox;

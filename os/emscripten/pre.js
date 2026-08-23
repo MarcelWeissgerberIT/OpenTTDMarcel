@@ -44,10 +44,21 @@
 
 /* Sound läuft über SDL-Audio (OpenSFX ist gebündelt); Musik bleibt aus. */
 Module.arguments.push('-mnull', '-vsdl');
+/* Adresse unseres Mehrspieler-Servers; wird beim Start aus server.json
+ * gefuellt, damit sie sich ohne neuen Spielbau aendern laesst. */
+var ottd_mp_server = null;
+
 Module['websocket'] = { url: function(host, port, proto) {
     /* openttd.org hosts a WebSocket proxy for the content service. */
     if (host == "content.openttd.org" && port == 3978 && proto == "tcp") {
         return "wss://bananas-server.openttd.org/";
+    }
+
+    /* Unser eigener Server steht hinter einem WebSocket-Uebersetzer mit
+     * TLS auf dem ueblichen Port - der Spielport aus der Serverliste
+     * gehoert deshalb nicht in die Adresse. */
+    if (ottd_mp_server && host == ottd_mp_server.host) {
+        return (ottd_mp_server.secure === false ? 'ws://' : 'wss://') + ottd_mp_server.host + '/';
     }
 
     /* Everything else just tries to make a default WebSocket connection.
@@ -308,6 +319,37 @@ Module.preRun.push(function() {
                 box.querySelector('[data-close]').onclick = function() { box.remove(); };
             });
     };
+
+    /* ---------- Mehrspieler: unseren Server vorbelegen ---------- */
+
+    /* Adresse aus server.json neben dem Spiel; fehlt sie oder ist der Host
+     * leer, bleibt die Serverliste einfach unveraendert. */
+    function loadMultiplayerServer() {
+        fetch('server.json', { cache: 'no-store' })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(cfg) {
+                if (!cfg || !cfg.host) return;
+                ottd_mp_server = cfg;
+                try {
+                    Module.ccall('em_openttd_add_server', null, ['string'], [cfg.host]);
+                } catch (e) {}
+                /* Ohne Spielernamen weist jeder Server den Beitritt ab.
+                 * Angemeldete Nutzer bekommen ihren Kontonamen. */
+                var mail = '';
+                try { mail = localStorage.getItem('ottd_email') || ''; } catch (e) {}
+                if (mail) {
+                    try { Module.ccall('em_openttd_set_client_name', null, ['string'], [mail.split('@')[0].slice(0, 24)]); } catch (e) {}
+                }
+            })
+            .catch(function() {});
+    }
+
+    if (!Module.postRun) Module.postRun = [];
+    Module.postRun.push(loadMultiplayerServer);
+    /* Das Spiel ruft das beim Oeffnen des Mehrspieler-Fensters auf - so
+     * steht der Eintrag auch dann da, wenn server.json beim Start noch
+     * nicht durch war. */
+    window.openttd_server_list = loadMultiplayerServer;
 
     /* Beim Start: "?share=<id>" laedt die geteilte Welt und startet damit. */
     function shareLoad(done) {

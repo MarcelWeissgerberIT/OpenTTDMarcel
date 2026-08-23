@@ -1359,5 +1359,18 @@ void CDECL em_openttd_add_server(const char *connection_string)
 	NetworkAddServer(connection_string, false, true);
 }
 
+/**
+ * Fork: Spielername aus der Seite setzen (z. B. aus dem Cloud-Konto).
+ * Ein bereits vom Spieler gewaehlter Name bleibt unangetastet.
+ */
+void CDECL em_openttd_set_client_name(const char *name)
+{
+	if (name == nullptr || *name == '\0') return;
+	std::string current = _settings_client.network.client_name;
+	StrTrimInPlace(current);
+	if (!current.empty() && current != "Unnamed Client" && current.compare(0, 8, "Spieler ") != 0) return;
+	_settings_client.network.client_name = name;
+}
+
 }
 #endif

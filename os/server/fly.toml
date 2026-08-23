@@ -1,0 +1,39 @@
+# Fly.io-Konfiguration fuer den Mehrspieler-Server.
+# Fly liefert von sich aus einen Namen mit gueltigem Zertifikat
+# (<app>.fly.dev) - damit spart man sich Domain und TLS-Handarbeit.
+#
+# Einrichten (einmalig, auf Marcels Rechner):
+#   fly launch --no-deploy --name openttd-marcel --copy-config \
+#     --config os/server/fly.toml
+#   fly volume create ottd_data --size 1 --region fra
+#   fly deploy --image ghcr.io/marcelweissgerberit/openttdmarcel-server:latest
+#
+# Danach in web/server.json "host" auf "openttd-marcel.fly.dev" setzen
+# und die Seite neu deployen - fertig.
+
+app = "openttd-marcel"
+primary_region = "fra"
+
+[build]
+  image = "ghcr.io/marcelweissgerberit/openttdmarcel-server:latest"
+
+[env]
+  OTTD_WS_PORT = "8080"
+  OTTD_DATA_DIR = "/data"
+
+[[mounts]]
+  source = "ottd_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Der Server muss laufen, damit die Welt weiterlaeuft - nicht
+  # schlafen legen, sonst friert die Zeit ein, sobald niemand da ist.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
