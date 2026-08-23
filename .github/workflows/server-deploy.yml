@@ -18,6 +18,12 @@ on:
         description: 'Rechenzentrum (fra = Frankfurt)'
         required: true
         default: 'fra'
+  # Von Hand ausloesen geht nur vom Hauptbranch aus. Auf dem Arbeits-
+  # branch stossen wir den Deploy stattdessen ueber diese Markierung an:
+  # Datei anfassen, pushen, fertig.
+  push:
+    branches: [claude/candyland-scrolling]
+    paths: ['os/server/deploy.trigger']
 
 concurrency:
   group: server-deploy
@@ -31,8 +37,8 @@ jobs:
       packages: read
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      APP: ${{ inputs.app }}
-      REGION: ${{ inputs.region }}
+      APP: ${{ inputs.app || 'openttd-marcel' }}
+      REGION: ${{ inputs.region || 'fra' }}
     steps:
       - uses: actions/checkout@v4
 
