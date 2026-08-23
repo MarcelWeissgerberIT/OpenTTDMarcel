@@ -72,6 +72,9 @@ enum class CabTile : uint8_t {
 	Tunnel,   ///< Tunnel- oder Brueckenkopf.
 };
 
+/** So viele Kachelreihen links und rechts der Strecke werden gelesen. */
+static const int CAB_SIDE_ROWS = 4;
+
 /** Was auf einer Seitenkachel steht - mit den Daten fuer die echte Grafik. */
 struct CabObject {
 	CabTile what = CabTile::Ground;   ///< Art des Objekts.
@@ -83,10 +86,10 @@ struct CabObject {
 
 /** Ein abgetasteter Punkt der Strecke. */
 struct CabSample {
-	CabObject left;                   ///< Was links neben der Strecke steht.
-	CabObject right;                  ///< Was rechts steht.
-	CabObject left2;                  ///< Zweite Reihe links (mehr Landschaft).
-	CabObject right2;                 ///< Zweite Reihe rechts.
+	/* Vier Reihen je Seite: mit nur zweien blieb die Landschaft leer,
+	 * und genau das liess den Fuehrerstand karg aussehen. */
+	CabObject left[CAB_SIDE_ROWS];    ///< Kacheln links der Strecke, von innen nach aussen.
+	CabObject right[CAB_SIDE_ROWS];   ///< Kacheln rechts der Strecke.
 	CabTile ahead = CabTile::Ground;  ///< Was auf der Strecke selbst liegt.
 	PixelColour ground{PC_GRASS_LAND}; ///< Bodenfarbe der Streckenkachel.
 	StationID station = StationID::Invalid(); ///< Bahnhof voraus (fuer das Schild).
@@ -96,6 +99,7 @@ struct CabSample {
 	bool tunnel_mouth = false;        ///< Hier faehrt die Strecke in einen Tunnel.
 	bool on_bridge = false;           ///< Strecke verlaeuft hier auf einer Bruecke.
 	int height = 0;                   ///< Gelaendehoehe (fuer Kuppen und Senken).
+	TileIndex tile = INVALID_TILE;    ///< Die Kachel selbst - fuer ortsfeste Bodenmuster.
 	bool valid = false;               ///< Kachel liegt noch auf der Karte.
 };
 
@@ -205,6 +209,20 @@ static CabTile ClassifyTile(TileIndex t, PixelColour *ground = nullptr)
 	}
 }
 
+/**
+ * Fork: Das Bodenbild einer Kachel - die ECHTE Spielgrafik. Vorher lag
+ * hier nur eine Farbflaeche, und genau das liess den Fuehrerstand wie
+ * ein Modell statt wie OpenTTD aussehen.
+ */
+static SpriteID CabGroundSprite(CabTile what, PixelColour ground)
+{
+	if (what == CabTile::Water) return SPR_FLAT_WATER_TILE;
+	if (ground.p == PC_ROUGH_LAND.p) return SPR_FLAT_ROUGH_LAND;
+	if (ground.p == PC_BARE_LAND.p) return SPR_FLAT_BARE_LAND;
+	if (ground.p == PC_FIELDS.p) return SPR_FLAT_BARE_LAND;
+	return SPR_FLAT_GRASS_TILE;
+}
+
 /** Kachel samt Sprite-Daten einlesen. */
 static CabObject ReadObject(TileIndex t)
 {
@@ -288,6 +306,7 @@ struct CabViewWindow : Window {
 			DiagDirection rgt = ChangeDiagDir(fwd, DiagDirDiff::Right90);
 			CabSample &s = out[d];
 			s.valid = true;
+			s.tile = tile;
 			s.lateral = lateral;
 			s.ahead = ClassifyTile(tile, &s.ground);
 			s.height = (int)TileHeight(tile) - base_height;
@@ -304,17 +323,19 @@ struct CabViewWindow : Window {
 				s.signal = true;
 				s.signal_red = GetSignalStates(tile) == 0;
 			}
-			TileIndex l = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(lft));
-			TileIndex r = AddTileIndexDiffCWrap(tile, TileIndexDiffCByDiagDir(rgt));
-			if (l != INVALID_TILE) {
-				s.left = ReadObject(l);
-				TileIndex l2 = AddTileIndexDiffCWrap(l, TileIndexDiffCByDiagDir(lft));
-				if (l2 != INVALID_TILE) s.left2 = ReadObject(l2);
-			}
-			if (r != INVALID_TILE) {
-				s.right = ReadObject(r);
-				TileIndex r2 = AddTileIndexDiffCWrap(r, TileIndexDiffCByDiagDir(rgt));
-				if (r2 != INVALID_TILE) s.right2 = ReadObject(r2);
+			/* Reihenweise nach aussen tasten - so fuellt sich die
+			 * Landschaft bis zum Bildrand mit echten Kacheln. */
+			TileIndex lt = tile;
+			TileIndex rt = tile;
+			for (int row = 0; row < CAB_SIDE_ROWS; row++) {
+				if (lt != INVALID_TILE) {
+					lt = AddTileIndexDiffCWrap(lt, TileIndexDiffCByDiagDir(lft));
+					if (lt != INVALID_TILE) s.left[row] = ReadObject(lt);
+				}
+				if (rt != INVALID_TILE) {
+					rt = AddTileIndexDiffCWrap(rt, TileIndexDiffCByDiagDir(rgt));
+					if (rt != INVALID_TILE) s.right[row] = ReadObject(rt);
+				}
 			}
 		}
 		return out;
@@ -355,6 +376,61 @@ struct CabViewWindow : Window {
 	{
 		float t = 1.0f / (1.0f + d * 0.42f);
 		return (r.right - r.left) * 0.22f * t;
+	}
+
+	/**
+	 * Bodenmuster einer Tiefe. Echte Kachelgrafiken taugen hier nicht:
+	 * OpenTTD-Rauten sind immer 2:1, eine Kachel in der Ferne ist aber
+	 * flach und breit - gezeichnet stapeln sie sich zu einer Wand.
+	 * Stattdessen streuen wir Halme, Furchen und Wellen perspektivisch
+	 * korrekt: Groesse und Dichte richten sich nach der Entfernung, die
+	 * Positionen haengen an der Kachel und wandern deshalb mit der
+	 * Fahrt mit, statt am Bildschirm zu kleben.
+	 */
+	void DrawGroundTexture(const Rect &r, const CabSample &s, int d, float dn) const
+	{
+		if (!s.valid || s.tile == INVALID_TILE) return;
+		float t = 1.0f / (1.0f + dn * 0.42f);
+		if (t < 0.06f) return; /* Zu weit weg - dort traegt die Flaeche. */
+		int specks = (dn < 4.0f) ? 44 : (dn < 9.0f ? 30 : 16);
+
+		for (int k = 0; k < specks; k++) {
+			/* Deterministisch aus Kachel und Zaehler: kein Flackern. */
+			uint32_t h = (uint32_t)(TileX(s.tile) * 73856093u ^ TileY(s.tile) * 19349663u ^ (uint32_t)k * 83492791u);
+			float frac = ((h >> 8) & 0xFF) / 255.0f;          /* Tiefe in der Kachel */
+			float lat = (((h >> 16) & 0xFF) / 255.0f - 0.5f) * 26.4f; /* bis zu drei Kacheln seitlich */
+			float dd = dn + frac;
+			int y = this->GroundY(r, dd, s.height);
+			if (y <= this->horizon) continue;
+			int x = this->CenterX(r, dd, s.lateral + lat);
+			if (x < r.left || x > r.right) continue;
+
+			float tt = 1.0f / (1.0f + dd * 0.42f);
+			int sz = std::max(1, (int)(13 * tt));
+
+			/* Was auf der Kachel liegt, bestimmt das Muster. */
+			int row = std::min(CAB_SIDE_ROWS - 1, (int)(std::fabs(lat) / 2.2f));
+			const CabObject *side = (lat < 0.0f) ? &s.left[row] : &s.right[row];
+			PixelColour base = side->ground;
+			if (side->what == CabTile::Water) {
+				/* Kurze, versetzte Wellenkaemme - lange Striche sehen aus
+				 * wie ein Streifenmuster statt wie Wasser. */
+				GfxFillRect(x - sz, y, x + sz, y + std::max(1, sz / 4), PC_LIGHT_BLUE);
+			} else if (base.p == PC_FIELDS.p) {
+				/* Ackerfurchen, dunkler als der Boden. */
+				GfxFillRect(x - sz, y, x + sz, y + std::max(1, sz / 3), PC_BARE_LAND);
+			} else if (base.p == PC_ROUGH_LAND.p || base.p == PC_BARE_LAND.p) {
+				/* Steppe: Steine und trockene Bueschel. */
+				GfxFillRect(x - sz / 2, y - sz / 2, x + sz / 2, y, PC_GREY);
+			} else {
+				/* Wiese: erst ein breiter Fuss, darauf ein Halm - so sieht
+				 * es nach Bewuchs aus und nicht nach Bildrauschen. */
+				PixelColour tuft = ((h >> 3) & 1) ? PC_TREES : PC_RAINFOREST;
+				GfxFillRect(x - sz, y - std::max(1, sz / 3), x + sz, y, tuft);
+				GfxFillRect(x - std::max(1, sz / 4), y - sz - sz / 2, x + std::max(1, sz / 4), y, tuft);
+			}
+		}
+		(void)d;
 	}
 
 	/**
@@ -535,14 +611,17 @@ struct CabViewWindow : Window {
 		int w = r.right - r.left;
 		int sky = this->horizon - r.top;
 		if (sky < 20) return;
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 6; i++) {
 			/* Feste Startpunkte, damit die Wolken nicht flackern. */
-			int cw = w / (6 + i);
-			int ch = std::max(3, sky / (10 + i));
-			int cx = r.left + ((i * 37 + (int)(this->anim / 6)) % (w + cw)) - cw;
-			int cy = r.top + sky / 6 + (i * sky) / 9;
+			int cw = w / (7 + i);
+			int ch = std::max(3, sky / (12 + i));
+			int cx = r.left + ((i * 211 + (int)(this->anim / 10)) % (w + cw * 2)) - cw;
+			int cy = r.top + sky / 8 + (i * sky) / 11;
+			if (cy + ch > this->horizon - sky / 10) continue;
+			/* Weicher Rand: Kern voll, Saum als Schachbrett. */
 			GfxFillRect(cx, cy, cx + cw, cy + ch, PC_WHITE);
-			GfxFillRect(cx + cw / 4, cy - ch / 2, cx + cw - cw / 4, cy, PC_WHITE);
+			GfxFillRect(cx + cw / 5, cy - ch / 2, cx + cw - cw / 5, cy, PC_WHITE);
+			GfxFillRect(cx - cw / 6, cy, cx + cw + cw / 6, cy + ch + ch / 2, PC_WHITE, FillRectMode::Checker);
 		}
 	}
 
@@ -563,10 +642,30 @@ struct CabViewWindow : Window {
 		GfxFillRect(r.left, r.top, r.left + strut, r.bottom, body);
 		GfxFillRect(r.right - strut, r.top, r.right, r.bottom, body);
 
+		/* Scheibenecken abschraegen: eine rechteckige Oeffnung sieht aus
+		 * wie ein Bilderrahmen, eine abgerundete wie eine Windschutz-
+		 * scheibe. Zeilenweise, damit die Schraege sauber laeuft. */
+		int corner = std::max(6, w / 9);
+		for (int i = 0; i < corner; i++) {
+			int cut = corner - i;
+			int y = r.top + strut / 2 + i;
+			GfxFillRect(r.left + strut, y, r.left + strut + cut, y, body);
+			GfxFillRect(r.right - strut - cut, y, r.right - strut, y, body);
+		}
+
 		/* Pult am unteren Rand, leicht nach vorn gewoelbt. */
 		int desk = r.bottom - h / 5;
 		GfxFillRect(r.left, desk, r.right, r.bottom, body);
+		/* Kante: heller Grat oben, dunkler Schatten darunter - das gibt
+		 * dem Pult Tiefe statt einer flachen Flaeche. */
 		GfxFillRect(r.left, desk, r.right, desk + std::max(2, h / 160), PC_GREY);
+		GfxFillRect(r.left, desk + std::max(2, h / 160), r.right, desk + std::max(4, h / 70), PC_BLACK);
+		/* Griffmulden im Pult, damit es nicht leer wirkt. */
+		int slot_h = std::max(2, h / 90);
+		for (int k = 1; k <= 3; k++) {
+			int sx = r.left + strut + w * k / 6;
+			GfxFillRect(sx, r.bottom - h / 14, sx + w / 40, r.bottom - h / 14 + slot_h, PC_BLACK);
+		}
 
 		if (v == nullptr) return;
 
@@ -605,13 +704,45 @@ struct CabViewWindow : Window {
 		if (v != nullptr && v->type == VehicleType::Ship) horizon_pct = 46;
 		const_cast<CabViewWindow *>(this)->horizon = r.top + (r.bottom - r.top) * horizon_pct / 100;
 
-		/* Himmel mit Bandverlauf, Sonne knapp ueber dem Horizont. */
-		static const PixelColour sky[] = {PC_DARK_BLUE, PC_DARK_BLUE, PC_LIGHT_BLUE, PC_LIGHT_BLUE};
-		int bands = lengthof(sky);
-		for (int i = 0; i < bands; i++) {
-			int y0 = r.top + (this->horizon - r.top) * i / bands;
-			int y1 = r.top + (this->horizon - r.top) * (i + 1) / bands;
-			GfxFillRect(r.left, y0, r.right, y1, sky[i]);
+		/* Himmel: von oben dunkel nach unten hell. Die Palette hat nur
+		 * wenige Blautoene - die Zwischenstufen entstehen durch ein
+		 * Schachbrett aus zwei Nachbartoenen, sonst stehen dort Balken. */
+		{
+			int sky_h = std::max(1, this->horizon - r.top);
+			static const PixelColour sky[] = {PC_DARK_BLUE, PC_DARK_BLUE, PC_LIGHT_BLUE, PC_LIGHT_BLUE, PC_LIGHT_BLUE};
+			int bands = lengthof(sky) - 1;
+			for (int i = 0; i < bands; i++) {
+				int y0 = r.top + sky_h * i / bands;
+				int y1 = r.top + sky_h * (i + 1) / bands;
+				GfxFillRect(r.left, y0, r.right, y1, sky[i]);
+				/* Untere Haelfte des Bandes zum naechsten Ton hin auflösen. */
+				int mid = (y0 + y1) / 2;
+				GfxFillRect(r.left, mid, r.right, y1, sky[i + 1], FillRectMode::Checker);
+			}
+			/* Dunstband direkt ueber dem Horizont - laesst die Ferne
+			 * zurueckweichen, statt hart abzuschneiden. */
+			int haze = std::max(2, sky_h / 12);
+			GfxFillRect(r.left, this->horizon - haze, r.right, this->horizon, PC_WHITE, FillRectMode::Checker);
+
+			/* Sonne: fester Platz, damit sie nicht mitwandert. */
+			int sun_r = std::max(4, sky_h / 9);
+			int sun_x = r.left + (r.right - r.left) * 3 / 4;
+			int sun_y = r.top + sky_h / 3;
+			for (int dy = -sun_r; dy <= sun_r; dy++) {
+				int dx = (int)(std::sqrt((float)(sun_r * sun_r - dy * dy)));
+				GfxFillRect(sun_x - dx, sun_y + dy, sun_x + dx, sun_y + dy, PC_YELLOW);
+			}
+			for (int dy = -sun_r / 2; dy <= sun_r / 2; dy++) {
+				int rr = sun_r / 2;
+				int dx = (int)(std::sqrt((float)std::max(0, rr * rr - dy * dy)));
+				GfxFillRect(sun_x - dx, sun_y + dy, sun_x + dx, sun_y + dy, PC_WHITE);
+			}
+			for (int dy = -sun_r - sun_r / 2; dy <= sun_r + sun_r / 2; dy++) {
+				int rr = sun_r + sun_r / 2;
+				if (rr * rr - dy * dy < 0) continue;
+				int dx = (int)(std::sqrt((float)(rr * rr - dy * dy)));
+				GfxFillRect(sun_x - dx, sun_y + dy, sun_x + dx, sun_y + dy, PC_YELLOW, FillRectMode::Checker);
+			}
 		}
 		if (v == nullptr) return;
 
@@ -647,8 +778,8 @@ struct CabViewWindow : Window {
 			int cx = this->CenterX(r, dn, s.lateral);
 			int cx_far = this->CenterX(r, df, next.lateral);
 			PixelColour col = s.ground;
-			PixelColour col_l = s.left.ground;
-			PixelColour col_r = s.right.ground;
+			PixelColour col_l = s.left[0].ground;
+			PixelColour col_r = s.right[0].ground;
 			if (d > 14) { col = PC_ROUGH_LAND; col_l = PC_ROUGH_LAND; col_r = PC_ROUGH_LAND; }
 			/* Die Baender laufen perspektivisch zusammen - zeilenweise
 			 * gezeichnet, sonst stehen dort harte Kloetze statt Landschaft. */
@@ -658,8 +789,8 @@ struct CabViewWindow : Window {
 			 * Kachel als Schachbrett daruebergelegt: so verlaufen die
 			 * Farben ineinander statt als harte Streifenkanten zu stehen. */
 			PixelColour far_col = (d > 14) ? PC_ROUGH_LAND : next.ground;
-			PixelColour far_l = (d > 14) ? PC_ROUGH_LAND : next.left.ground;
-			PixelColour far_r = (d > 14) ? PC_ROUGH_LAND : next.right.ground;
+			PixelColour far_l = (d > 14) ? PC_ROUGH_LAND : next.left[0].ground;
+			PixelColour far_r = (d > 14) ? PC_ROUGH_LAND : next.right[0].ground;
 			int blend = std::max(1, (y_near - y_far) / 3);
 			for (int y = y_far; y <= y_near; y++) {
 				float f = (y_near == y_far) ? 1.0f : (float)(y - y_far) / (float)(y_near - y_far);
@@ -676,11 +807,14 @@ struct CabViewWindow : Window {
 			}
 
 			bool flying_view = v->type == VehicleType::Aircraft;
-			/* Hintere Reihe zuerst, damit die vordere sie ueberdeckt. */
-			this->DrawSideObject(r, s.left2, dn, true, flying_view, 3.4f, s.height, s.lateral);
-			this->DrawSideObject(r, s.right2, dn, false, flying_view, 3.4f, s.height, s.lateral);
-			this->DrawSideObject(r, s.left, dn, true, flying_view, 2.0f, s.height, s.lateral);
-			this->DrawSideObject(r, s.right, dn, false, flying_view, 2.0f, s.height, s.lateral);
+			/* Struktur auf die Flaeche: Halme, Furchen, Wellen. */
+			if (!flying_view) this->DrawGroundTexture(r, s, d, dn);
+			/* Aeussere Reihen zuerst, damit die naeheren sie ueberdecken. */
+			for (int row = CAB_SIDE_ROWS - 1; row >= 0; row--) {
+				float spread = 2.0f + row * 1.5f;
+				this->DrawSideObject(r, s.left[row], dn, true, flying_view, spread, s.height, s.lateral);
+				this->DrawSideObject(r, s.right[row], dn, false, flying_view, spread, s.height, s.lateral);
+			}
 			this->DrawWayside(r, v, d, dn, s.height, s.lateral);
 			if (s.on_bridge) this->DrawBridgeRails(r, dn, s.height, s.lateral);
 			if (s.tunnel_mouth) this->DrawTunnelMouth(r, dn, s.height, s.lateral);
@@ -708,17 +842,42 @@ struct CabViewWindow : Window {
 			if (rail) {
 				GfxDrawLine(cx_far - (int)(hw_far * 0.6f), y_far, cx - (int)(hw_near * 0.6f), y_near, PC_GREY, std::max(1, (int)(hw_near / 12)));
 				GfxDrawLine(cx_far + (int)(hw_far * 0.6f), y_far, cx + (int)(hw_near * 0.6f), y_near, PC_GREY, std::max(1, (int)(hw_near / 12)));
-				/* Schwellen wandern mit dem Tempo auf den Betrachter zu. */
-				int sleeper = y_near - (int)((this->anim % 24) * (y_near - y_far) / 24);
-				if (sleeper > y_far && sleeper < y_near) {
-					float f = (float)(sleeper - y_far) / (float)std::max(1, y_near - y_far);
+				/* Schwellen wandern mit dem Tempo auf den Betrachter zu -
+				 * mehrere je Kachel, sonst fehlt der Bewegungseindruck. */
+				int span = std::max(1, y_near - y_far);
+				for (int k = 0; k < 4; k++) {
+					int off = (int)(((this->anim % 24) + k * 6) % 24);
+					int sleeper = y_near - off * span / 24;
+					if (sleeper <= y_far || sleeper >= y_near) continue;
+					float f = (float)(sleeper - y_far) / (float)span;
 					float hw = hw_far + (hw_near - hw_far) * f;
-					GfxFillRect(cx - (int)(hw * 0.75f), sleeper, cx + (int)(hw * 0.75f), sleeper + std::max(1, (int)(hw / 16)), PC_DARK_GREY);
+					int mx = cx_far + (int)((cx - cx_far) * f);
+					GfxFillRect(mx - (int)(hw * 0.78f), sleeper, mx + (int)(hw * 0.78f),
+							sleeper + std::max(1, (int)(hw / 18)), PC_DARK_GREY);
 				}
 			} else if (v->type == VehicleType::Road) {
-				int dash = y_near - (int)((this->anim % 20) * (y_near - y_far) / 20);
-				if (dash > y_far && dash < y_near) {
-					GfxFillRect(cx - std::max(1, (int)(hw_near / 14)), dash, cx + std::max(1, (int)(hw_near / 14)), dash + std::max(1, (int)(hw_near / 8)), PC_WHITE);
+				/* Fahrbahnrand: heller Saum links und rechts. */
+				for (int y = y_far; y <= y_near; y++) {
+					float f = (y_near == y_far) ? 0.0f : (float)(y - y_far) / (float)(y_near - y_far);
+					float hw = hw_far + (hw_near - hw_far) * f;
+					int mx = cx_far + (int)((cx - cx_far) * f);
+					int lw = std::max(1, (int)(hw / 22));
+					GfxFillRect(mx - (int)hw, y, mx - (int)hw + lw, y, PC_GREY);
+					GfxFillRect(mx + (int)hw - lw, y, mx + (int)hw, y, PC_GREY);
+				}
+				/* Mittelstreifen: mehrere Striche je Kachel, sonst wirkt die
+				 * Fahrbahn leer und man sieht keine Bewegung. */
+				int span = std::max(1, y_near - y_far);
+				for (int k = 0; k < 3; k++) {
+					int off = (int)(((this->anim % 20) + k * 20 / 3) % 20);
+					int dash = y_near - off * span / 20;
+					if (dash <= y_far || dash >= y_near) continue;
+					float f = (float)(dash - y_far) / (float)span;
+					float hw = hw_far + (hw_near - hw_far) * f;
+					int mx = cx_far + (int)((cx - cx_far) * f);
+					int dw = std::max(1, (int)(hw / 16));
+					int dh = std::max(1, (int)(hw / 7));
+					GfxFillRect(mx - dw, dash, mx + dw, std::min(dash + dh, y_near), PC_WHITE);
 				}
 			} else if (v->type == VehicleType::Ship) {
 				/* Wellenkaemme laufen dem Bug entgegen. */
@@ -737,7 +896,7 @@ struct CabViewWindow : Window {
 			}
 		}
 
-		if (v->type == VehicleType::Aircraft) this->DrawClouds(r);
+		this->DrawClouds(r);
 		this->DrawCabInterior(r, v);
 	}
 
