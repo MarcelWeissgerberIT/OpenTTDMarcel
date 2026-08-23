@@ -14,7 +14,10 @@
 enum AutoConnectWidgets : WidgetID {
 	WID_AC_TOWN_A,     ///< Button: pick town A.
 	WID_AC_TOWN_B,     ///< Button: pick town B.
-	WID_AC_MODE,       ///< Toggle transport mode.
+	WID_AC_MODE_AIR,   ///< Umschalter oben: Flugzeuge.
+	WID_AC_MODE_BUS,   ///< Umschalter oben: Busse.
+	WID_AC_MODE_RAIL,  ///< Umschalter oben: Zuege.
+	WID_AC_MODE_SHIP,  ///< Umschalter oben: Schiffe.
 	WID_AC_CARGO,      ///< Toggle cargo type (passengers/mail).
 	WID_AC_STOPS,      ///< Cycle bus stops per town (auto/1-4).
 	WID_AC_TRAINLEN,   ///< Cycle train/platform length (3-7 tiles).
@@ -31,6 +34,12 @@ enum AutoConnectWidgets : WidgetID {
 	WID_AC_BIGAIR,     ///< Toggle: groessten verfuegbaren Flughafen bevorzugen.
 	WID_AC_BUILD,      ///< Build the connection.
 	WID_AC_STATUS,     ///< Status line.
+	WID_AC_SEL_LINE,   ///< Blende: Staedte-Linie (nur Busse).
+	WID_AC_SEL_CARGO,  ///< Blende: Fracht-Wahl (nicht bei Flugzeugen).
+	WID_AC_SEL_STOPS,  ///< Blende: Haltestellen je Stadt (nur Busse).
+	WID_AC_SEL_TRAIN,  ///< Blende: Zuglaenge und Antrieb (nur Zuege).
+	WID_AC_SEL_GROUND, ///< Blende: Planieren (Flugzeuge und Zuege).
+	WID_AC_SEL_BIGAIR, ///< Blende: grosse Flughaefen (nur Flugzeuge).
 };
 
 #endif /* WIDGETS_AUTOCONNECT_WIDGET_H */

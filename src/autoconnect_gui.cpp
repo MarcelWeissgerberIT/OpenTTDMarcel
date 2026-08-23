@@ -1915,6 +1915,7 @@ struct AutoConnectWindow : Window {
 	AutoConnectWindow(WindowDesc &desc, WindowNumber number) : Window(desc)
 	{
 		this->InitNested(number);
+		this->UpdateVisibility();
 		this->status = GetString(STR_AUTOCONNECT_STATUS_PICK);
 	}
 
@@ -1956,10 +1957,6 @@ struct AutoConnectWindow : Window {
 			case WID_AC_LINE:
 				if (this->picking_line) return GetString(STR_AUTOCONNECT_LINE_PICKING, (uint)this->line.size());
 				return this->line.empty() ? GetString(STR_AUTOCONNECT_LINE_START) : GetString(STR_AUTOCONNECT_LINE_N, (uint)this->line.size());
-			case WID_AC_MODE: {
-				static const StringID modes[] = {STR_AUTOCONNECT_MODE_AIR, STR_AUTOCONNECT_MODE_BUS, STR_AUTOCONNECT_MODE_TRAIN, STR_AUTOCONNECT_MODE_SHIP};
-				return GetString(modes[this->mode]);
-			}
 			case WID_AC_CARGO: {
 				static const StringID cargos[] = {STR_AUTOCONNECT_CARGO_PAX, STR_AUTOCONNECT_CARGO_MAIL, STR_AUTOCONNECT_CARGO_BOTH};
 				return GetString(cargos[this->cargo]);
@@ -1984,8 +1981,12 @@ struct AutoConnectWindow : Window {
 				this->SetDirty();
 				break;
 
-			case WID_AC_MODE:
-				this->mode = (this->mode + 1) % 4;
+			case WID_AC_MODE_AIR:
+			case WID_AC_MODE_BUS:
+			case WID_AC_MODE_RAIL:
+			case WID_AC_MODE_SHIP:
+				this->mode = widget - WID_AC_MODE_AIR;
+				this->UpdateVisibility();
 				this->SetDirty();
 				break;
 
@@ -2229,7 +2230,29 @@ struct AutoConnectWindow : Window {
 	{
 		this->SetWidgetLoweredState(WID_AC_TERRAFORM, _ac_allow_terraform);
 		this->SetWidgetLoweredState(WID_AC_BIGAIR, _ac_big_airports);
+		for (uint i = 0; i < 4; i++) {
+			this->SetWidgetLoweredState(WID_AC_MODE_AIR + i, this->mode == (int)i);
+		}
 		this->DrawWidgets();
+	}
+
+	/**
+	 * Fork: Nur die Optionen zeigen, die zum gewaehlten Verkehrsmittel
+	 * passen. Vorher stand alles gleichzeitig da - beim Flugzeug auch
+	 * die Zuglaenge, beim Schiff die Haltestellen je Stadt.
+	 */
+	void UpdateVisibility()
+	{
+		auto show = [this](WidgetID id, bool visible) {
+			this->GetWidget<NWidgetStacked>(id)->SetDisplayedPlane(visible ? 0 : SZSP_NONE);
+		};
+		show(WID_AC_SEL_LINE, this->mode == 1);
+		show(WID_AC_SEL_CARGO, this->mode != 0);
+		show(WID_AC_SEL_STOPS, this->mode == 1);
+		show(WID_AC_SEL_TRAIN, this->mode == 2);
+		show(WID_AC_SEL_GROUND, this->mode == 0 || this->mode == 2);
+		show(WID_AC_SEL_BIGAIR, this->mode == 0);
+		this->ReInit();
 	}
 
 	void DrawWidget(const Rect &r, WidgetID widget) const override
@@ -2247,14 +2270,30 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 	EndContainer(),
 	NWidget(WWT_PANEL, Colours::DarkGreen),
 		NWidget(NWID_VERTICAL), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0), SetPadding(WidgetDimensions::unscaled.sparse),
+			/* Ganz oben: was gebaut wird. Darunter nur passende Optionen. */
+			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
+				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_MODE_AIR), SetFill(1, 0), SetMinimalSize(55, 14), SetStringTip(STR_AUTOCONNECT_MODE_AIR, STR_AUTOCONNECT_MODE_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_MODE_BUS), SetFill(1, 0), SetMinimalSize(55, 14), SetStringTip(STR_AUTOCONNECT_MODE_BUS, STR_AUTOCONNECT_MODE_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_MODE_RAIL), SetFill(1, 0), SetMinimalSize(55, 14), SetStringTip(STR_AUTOCONNECT_MODE_TRAIN, STR_AUTOCONNECT_MODE_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_MODE_SHIP), SetFill(1, 0), SetMinimalSize(55, 14), SetStringTip(STR_AUTOCONNECT_MODE_SHIP, STR_AUTOCONNECT_MODE_TOOLTIP),
+			EndContainer(),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TOWN_A), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_PICK_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TOWN_B), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_PICK_TOOLTIP),
-			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_MODE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_MODE_TOOLTIP),
-			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CARGO), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_CARGO_TOOLTIP),
-			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_STOPS), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_STOPS_TOOLTIP),
-			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TRAINLEN), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_TRAINLEN_TOOLTIP),
-			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_LINE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_LINE_TOOLTIP),
-			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TRACTION), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_TRACTION_TOOLTIP),
+			NWidget(NWID_SELECTION, Colours::Invalid, WID_AC_SEL_LINE),
+				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_LINE), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_LINE_TOOLTIP),
+			EndContainer(),
+			NWidget(NWID_SELECTION, Colours::Invalid, WID_AC_SEL_CARGO),
+				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_CARGO), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_CARGO_TOOLTIP),
+			EndContainer(),
+			NWidget(NWID_SELECTION, Colours::Invalid, WID_AC_SEL_STOPS),
+				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_STOPS), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_STOPS_TOOLTIP),
+			EndContainer(),
+			NWidget(NWID_SELECTION, Colours::Invalid, WID_AC_SEL_TRAIN),
+				NWidget(NWID_VERTICAL), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0),
+					NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TRAINLEN), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_TRAINLEN_TOOLTIP),
+					NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_TRACTION), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_TRACTION_TOOLTIP),
+				EndContainer(),
+			EndContainer(),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_PREF), SetFill(1, 0), SetMinimalSize(220, 14), SetToolTip(STR_AUTOCONNECT_PREF_TOOLTIP),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_DOWN), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_MINUS),
@@ -2262,8 +2301,12 @@ static constexpr std::initializer_list<NWidgetPart> _nested_autoconnect_widgets 
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_COUNT_UP), SetMinimalSize(20, 14), SetStringTip(STR_AUTOCONNECT_PLUS),
 			EndContainer(),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
-				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_TERRAFORM), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_TERRAFORM, STR_AUTOCONNECT_TERRAFORM_TOOLTIP),
-				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_BIGAIR), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_BIGAIR, STR_AUTOCONNECT_BIGAIR_TOOLTIP),
+				NWidget(NWID_SELECTION, Colours::Invalid, WID_AC_SEL_GROUND),
+					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_TERRAFORM), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_TERRAFORM, STR_AUTOCONNECT_TERRAFORM_TOOLTIP),
+				EndContainer(),
+				NWidget(NWID_SELECTION, Colours::Invalid, WID_AC_SEL_BIGAIR),
+					NWidget(WWT_TEXTBTN, Colours::Yellow, WID_AC_BIGAIR), SetFill(1, 0), SetMinimalSize(106, 14), SetStringTip(STR_AUTOCONNECT_BIGAIR, STR_AUTOCONNECT_BIGAIR_TOOLTIP),
+				EndContainer(),
 			EndContainer(),
 			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 				NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_AC_ESTIMATE), SetFill(1, 0), SetMinimalSize(106, 16), SetStringTip(STR_AUTOCONNECT_ESTIMATE, STR_AUTOCONNECT_ESTIMATE_TOOLTIP),
@@ -2302,6 +2345,7 @@ void ShowAutoConnectWindowForBeginners()
 	AutoConnectWindow *w = dynamic_cast<AutoConnectWindow *>(FindWindowById(WindowClass::AutoConnect, 0));
 	if (w == nullptr) return;
 	w->mode = 1; /* Busse */
+	w->UpdateVisibility();
 	w->SetDirty();
 }
 

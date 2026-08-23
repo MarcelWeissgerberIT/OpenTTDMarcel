@@ -368,7 +368,13 @@ static bool ConZoomToLevel(std::span<std::string_view> argv)
 static bool ConAutoConnect(std::span<std::string_view> argv)
 {
 	if (argv.size() < 2) {
-		IConsolePrint(CC_HELP, "Baut eine Auto-Verbindung. Usage: 'autoconnect <air|bus|rail|ship> [<townA> <townB>|auto] [count]'.");
+		IConsolePrint(CC_HELP, "Baut eine Auto-Verbindung. Usage: 'autoconnect <air|bus|rail|ship|window|engine> [<townA> <townB>|auto] [count]'.");
+		return true;
+	}
+	if (argv[1] == "window") {
+		extern void ShowAutoConnectWindow();
+		ShowAutoConnectWindow();
+		IConsolePrint(CC_DEFAULT, "Auto-Verbindung geoeffnet.");
 		return true;
 	}
 	if (argv[1] == "engine") {

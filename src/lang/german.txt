@@ -2488,21 +2488,21 @@ STR_AUTOCONNECT_ERR_BUILD_FAILED                                :{BLACK}Bau fehl
 STR_AUTOCONNECT_ERR_NO_VEHICLE                                  :{BLACK}Noch kein passendes Flugzeug verfügbar
 STR_AUTOCONNECT_ERR_NO_MONEY_VEHICLE                            :{BLACK}Nicht genug Geld für Flugzeuge
 STR_AUTOCONNECT_ERR_TOO_CLOSE                                   :{BLACK}Flughäfen brauchen mindestens 12 Kacheln Abstand zwischen den Städten - bitte weiter entfernte Städte wählen
-STR_AUTOCONNECT_MODE_AIR                                        :{BLACK}Modus: Flugzeuge
-STR_AUTOCONNECT_MODE_BUS                                        :{BLACK}Modus: Busse
-STR_AUTOCONNECT_MODE_TOOLTIP                                    :{BLACK}Zwischen Flugzeug-, Bus-, Zug- und Schiffsverbindung umschalten
+STR_AUTOCONNECT_MODE_AIR                                        :{BLACK}Flugzeug
+STR_AUTOCONNECT_MODE_BUS                                        :{BLACK}Bus
+STR_AUTOCONNECT_MODE_TOOLTIP                                    :{BLACK}Wählen, was gebaut wird - darunter stehen nur die passenden Optionen
 STR_AUTOCONNECT_COUNT_BUS                                       :{BLACK}Busse: {NUM}
 STR_AUTOCONNECT_ERR_NO_STOP_SITE                                :{BLACK}Keine geeignete Straße für eine Haltestelle nahe einer der Städte
 STR_AUTOCONNECT_ERR_NO_ROAD_PATH                                :{BLACK}Keine Straßenroute zwischen den Städten gefunden (Wasser im Weg?)
 STR_AUTOCONNECT_ERR_NO_DEPOT                                    :{BLACK}Kein Platz für ein Depot entlang der Route
-STR_AUTOCONNECT_MODE_TRAIN                                      :{BLACK}Modus: Zug
+STR_AUTOCONNECT_MODE_TRAIN                                      :{BLACK}Zug
 STR_AUTOCONNECT_COUNT_TRAIN                                     :{BLACK}Züge: {NUM}
 STR_AUTOCONNECT_ERR_NO_RAIL_SITE                                :{BLACK}Kein Platz für einen Bahnhof in der Nähe einer der Städte
 STR_AUTOCONNECT_ERR_NO_MONEY_TOTAL                              :{BLACK}Nicht genug Geld für Strecke plus Züge - erst Geld verdienen oder Kredit aufnehmen
 STR_AUTOCONNECT_ERR_NO_MONEY_DETAIL                              :{BLACK}Kostet etwa {CURRENCY_LONG} - du hast {CURRENCY_LONG}. Nimm einen Kredit auf oder baue kürzer.
 STR_AUTOCONNECT_ERR_DETOUR                                      :{BLACK}Es wurde nur eine große Umweg-Route gefunden - nichts gebaut. LKW-Option probieren oder Hindernisse beseitigen
 STR_AUTOCONNECT_ERR_NO_RAIL_PATH                                :{BLACK}Keine Bahnstrecke zwischen den Städten möglich (Wasser im Weg?)
-STR_AUTOCONNECT_MODE_SHIP                                       :{BLACK}Modus: Schiffe
+STR_AUTOCONNECT_MODE_SHIP                                       :{BLACK}Schiff
 STR_AUTOCONNECT_COUNT_SHIP                                      :{BLACK}Schiffe: {NUM}
 STR_AUTOCONNECT_ERR_NO_DOCK_SITE                                :{BLACK}Keine Küste für einen Hafen in der Nähe einer der Städte
 STR_AUTOCONNECT_ERR_NO_SHIP_DEPOT                               :{BLACK}Kein Platz für ein Schiffsdepot beim Hafen
