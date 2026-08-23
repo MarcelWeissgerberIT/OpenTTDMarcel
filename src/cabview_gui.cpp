@@ -72,6 +72,9 @@ enum class CabTile : uint8_t {
 	Tunnel,   ///< Tunnel- oder Brueckenkopf.
 };
 
+/** Bis zu dieser Tiefe zeichnen wir Gebaeude selbst statt als Sprite. */
+static const float CAB_FACADE_UNTIL = 5.0f;
+
 /** So viele Kachelreihen links und rechts der Strecke werden gelesen. */
 static const int CAB_SIDE_ROWS = 4;
 
@@ -225,6 +228,54 @@ static SpriteID CabGroundSprite(CabTile what, PixelColour ground)
 	if (ground.p == PC_BARE_LAND.p) return SPR_FLAT_BARE_LAND;
 	if (ground.p == PC_FIELDS.p) return SPR_FLAT_BARE_LAND;
 	return SPR_FLAT_GRASS_TILE;
+}
+
+/**
+ * Fork: Aussehen eines Hauses fuer die Nahansicht im Fuehrerstand.
+ *
+ * Die Original-Sprites sind von schraeg oben gezeichnet - man sieht ihr
+ * Dach. Aus dem Fahrersitz stimmt das nicht: dort schaut man eine Wand
+ * an. In der Naehe zeichnen wir Gebaeude deshalb selbst und leiten
+ * Hoehe und Farben aus dem echten Haustyp ab, damit eine Reihenhaus-
+ * siedlung nicht wie ein Hochhausviertel aussieht.
+ */
+struct CabFacade {
+	PixelColour front;  ///< Uns zugewandte Wand (Sonnenseite).
+	PixelColour side;   ///< Wand laengs der Strecke (Schattenseite).
+	PixelColour roof;   ///< Dachkante.
+	PixelColour window; ///< Fensterfarbe.
+	float storeys;      ///< Stockwerke - bestimmt die Hoehe.
+};
+
+static CabFacade CabFacadeStyle(HouseID id)
+{
+	const HouseSpec *hs = HouseSpec::Get(id);
+	uint pop = (hs != nullptr) ? hs->population : 8;
+	uint h = (uint)id * 2654435761u;
+
+	CabFacade f{};
+	/* Die Einwohnerzahl verraet, wie gross das Gebaeude ist. */
+	f.storeys = (pop >= 40) ? 7.0f : (pop >= 24 ? 4.5f : (pop >= 12 ? 2.8f : 1.6f));
+
+	if (pop >= 24) {
+		/* Grosse Bauten: Beton in verschiedenen Helligkeiten. */
+		static const uint8_t tones[] = {11, 9, 12, 10};
+		uint8_t t = tones[(h >> 5) % lengthof(tones)];
+		f.front = GREY_SCALE(t);
+		f.side = GREY_SCALE((uint8_t)std::max(2, t - 3));
+		f.roof = GREY_SCALE((uint8_t)std::max(2, t - 5));
+		f.window = ((h >> 9) & 3) == 0 ? PC_LIGHT_YELLOW : PC_VERY_DARK_BLUE;
+	} else {
+		/* Wohnhaeuser: Ziegel und Putz. */
+		static const PixelColour light[] = {PC_BARE_LAND, PC_FIELDS, PC_DARK_RED, PC_ORANGE};
+		static const PixelColour dark[]  = {PC_VERY_DARK_BROWN, PC_BARE_LAND, PC_VERY_DARK_RED, PC_DARK_RED};
+		uint i = (h >> 5) % lengthof(light);
+		f.front = light[i];
+		f.side = dark[i];
+		f.roof = PC_VERY_DARK_RED;
+		f.window = ((h >> 9) & 3) == 0 ? PC_LIGHT_YELLOW : PC_VERY_DARK_BLUE;
+	}
+	return f;
 }
 
 /** Kachel samt Sprite-Daten einlesen. */
@@ -489,6 +540,91 @@ struct CabViewWindow : Window {
 	}
 
 	/**
+	 * Ein Gebaeude in der Naehe: als Baukoerper mit Waenden, Fenstern und
+	 * Dachkante. Aus dem Fahrersitz schaut man ein Haus von der Seite an -
+	 * das Original-Sprite zeigt dagegen die Dachflaeche, weil es fuer den
+	 * Blick von schraeg oben gezeichnet ist.
+	 *
+	 * Sichtbar sind zwei Flaechen: die uns zugewandte Stirnseite bei
+	 * Tiefe d und die Laengswand zur Strecke hin, die nach hinten in die
+	 * Fluchtlinie laeuft.
+	 */
+	void DrawFacade(const Rect &r, const CabObject &o, float d, bool left_side, float spread, int height, float lateral) const
+	{
+		float dn = d;
+		float df = d + 1.0f;
+		CabFacade f = CabFacadeStyle(o.house);
+
+		int y_near = this->GroundY(r, dn, height);
+		int y_far = this->GroundY(r, df, height);
+		float hw_near = this->HalfWidth(r, dn);
+		float hw_far = this->HalfWidth(r, df);
+		int cx_near = this->CenterX(r, dn, lateral);
+		int cx_far = this->CenterX(r, df, lateral);
+		int side = left_side ? -1 : 1;
+
+		/* Ein Stockwerk ist rund ein Fuenftel einer Kachelbreite hoch. */
+		int h_near = (int)(f.storeys * 0.17f * 2.0f * hw_near);
+		int h_far = (int)(f.storeys * 0.17f * 2.0f * hw_far);
+		if (h_near < 4) return;
+
+		/* Kanten der Kachel: innen zur Strecke, aussen davon weg. */
+		int in_near = cx_near + side * (int)(hw_near * (spread - 1.0f));
+		int in_far = cx_far + side * (int)(hw_far * (spread - 1.0f));
+		int out_near = cx_near + side * (int)(hw_near * (spread + 1.0f));
+
+		/* Laengswand: spaltenweise, damit sie sauber in die Flucht laeuft. */
+		int x0 = std::min(in_near, in_far);
+		int x1 = std::max(in_near, in_far);
+		for (int x = x0; x <= x1; x++) {
+			float t = (x1 == x0) ? 0.0f : (float)(x - (side < 0 ? x0 : x1)) / (float)(x1 - x0);
+			if (side > 0) t = 1.0f - t;
+			float ft = std::clamp(std::fabs(t), 0.0f, 1.0f);
+			int yb = y_far + (int)((y_near - y_far) * ft);
+			int hh = h_far + (int)((h_near - h_far) * ft);
+			GfxFillRect(x, yb - hh, x, yb, f.side);
+		}
+
+		/* Stirnseite: das Rechteck, das uns direkt ansieht. */
+		int fx0 = std::min(in_near, out_near);
+		int fx1 = std::max(in_near, out_near);
+		GfxFillRect(fx0, y_near - h_near, fx1, y_near, f.front);
+
+		/* Dachkante als dunkler Streifen oben - gibt dem Bau einen Abschluss. */
+		int roof = std::max(1, h_near / 14);
+		GfxFillRect(fx0 - roof, y_near - h_near - roof, fx1 + roof, y_near - h_near, f.roof);
+
+		/* Fenster: je Stockwerk eine Reihe, etwa quadratisch. Breite
+		 * Baender ueber die halbe Wand sehen nach Bueroklotz aus, nicht
+		 * nach Haus. */
+		int rows = std::max(1, (int)f.storeys);
+		int wide = fx1 - fx0;
+		int floor_h = std::max(2, h_near / rows);
+		int cell_h = std::max(2, (int)(floor_h * 0.45f));
+		int cell_w = std::max(2, (int)(cell_h * 0.85f));
+		int cols = std::clamp(wide / std::max(3, cell_w * 2), 1, 6);
+		int gap = (cols > 0) ? std::max(1, (wide - cols * cell_w) / (cols + 1)) : 1;
+		if (cell_w >= 2 && cell_h >= 2 && wide > cell_w * 2) {
+			for (int row = 0; row < rows; row++) {
+				int wy = y_near - h_near + row * floor_h + (floor_h - cell_h) / 2;
+				if (wy < y_near - h_near) continue;
+				for (int col = 0; col < cols; col++) {
+					int wx = fx0 + gap + col * (cell_w + gap);
+					if (wx + cell_w > fx1) break;
+					/* Nicht jedes Fenster ist erleuchtet. */
+					bool lit = (((uint)o.house * 2654435761u >> (uint)((row * 3 + col) % 24)) & 3) == 0;
+					GfxFillRect(wx, wy, wx + cell_w, wy + cell_h, lit ? PC_LIGHT_YELLOW : f.window);
+				}
+			}
+			/* Eingang in der Mitte, ueber die volle Erdgeschosshoehe. */
+			int door_w = std::max(2, cell_w);
+			int door_h = std::max(3, (int)(floor_h * 0.75f));
+			int dx = (fx0 + fx1) / 2 - door_w / 2;
+			GfxFillRect(dx, y_near - door_h, dx + door_w, y_near - 1, f.roof);
+		}
+	}
+
+	/**
 	 * Ein Objekt neben der Strecke zeichnen - mit der ECHTEN Spielgrafik,
 	 * damit man Haeuser und Waelder im Fuehrerstand wiedererkennt. Die
 	 * Groesse kommt ueber die Zoomstufe (DrawSprite nimmt sie entgegen,
@@ -509,9 +645,16 @@ struct CabViewWindow : Window {
 
 		switch (o.what) {
 			case CabTile::House: {
-				/* Das echte Haus-Sprite; _gui_zoom steuert hier die Groesse.
-				 *
-				 * ACHTUNG: DrawHouseInGUI setzt an (x,y) die OBERE Ecke der
+				/* In der Naehe zeichnen wir das Gebaeude selbst: das
+				 * Original-Sprite zeigt seine Dachflaeche, weil es fuer den
+				 * Blick von schraeg oben gemacht ist - aus dem Fahrersitz
+				 * schaut man aber eine Wand an. Weiter weg faellt das nicht
+				 * auf, dort bleibt die echte Spielgrafik. */
+				if (d <= CAB_FACADE_UNTIL) {
+					this->DrawFacade(r, o, d, left_side, spread, height, lateral);
+					break;
+				}
+				/* ACHTUNG: DrawHouseInGUI setzt an (x,y) die OBERE Ecke der
 				 * Bodenraute an, nicht den Fuss des Hauses. Ohne Korrektur
 				 * sitzt das Gebaeude eine halbe Kachel zu tief und schleppt
 				 * seine Bodenkachel als Platte durchs Bild. Wir heben es um
