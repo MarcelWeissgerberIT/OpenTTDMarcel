@@ -465,6 +465,11 @@ enum class WindowClass : uint16_t {
 	HouseInfo,
 
 	/**
+	 * Immobilien-Pad (Fork): alle gekauften Haeuser auf einen Blick.
+	 */
+	HousePad,
+
+	/**
 	 * Gefuehrter Einstieg (Fork): Begleiter durch die ersten Schritte.
 	 */
 	Tutorial,

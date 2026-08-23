@@ -2400,6 +2400,17 @@ STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Klick au
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Klick nimmt in den Fahrplan, grün = wird angefahren, Rechtsklick springt hin
 STR_STATIONPAD_EMPTY                                            :{WHITE}Noch keine Stationen dieser Art
 STR_STATIONPAD_ERR_WRONG_TYPE                                   :{WHITE}Dieses Fahrzeug kann dort nicht halten
+STR_HOUSEPAD_CAPTION                                            :{WHITE}Immobilien-Pad
+STR_HOUSEPAD_MENU_ENTRY                                         :Immobilien-Pad
+STR_HOUSEPAD_SEARCH_HINT                                        :Stadt suchen
+STR_HOUSEPAD_SEARCH_TOOLTIP                                     :{BLACK}Nach Stadtnamen filtern
+STR_HOUSEPAD_ONLY_RISK                                          :{BLACK}Nur gefährdete
+STR_HOUSEPAD_ONLY_RISK_TOOLTIP                                  :{BLACK}Nur Häuser zeigen, die alt sind oder abgerissen werden sollen
+STR_HOUSEPAD_RENT                                               :{CURRENCY_SHORT}/Mon.
+STR_HOUSEPAD_SUMMARY                                            :{BLACK}{NUM} Häuser - {CURRENCY_SHORT} Miete je Monat - {NUM} gefährdet
+STR_HOUSEPAD_HINT                                               :{BLACK}Klick springt hin, Rechtsklick öffnet das Haus
+STR_HOUSEPAD_EMPTY                                              :{WHITE}Noch keine Häuser gekauft - im Haus-Dialog auf "Kaufen" klicken
+STR_HOUSEPAD_NO_MATCH                                           :{WHITE}Kein Haus passt zu diesem Filter
 STR_RIDEALONG_TOOLTIP                                           :{BLACK}Mitfahren: die Kamera bleibt dicht an diesem Fahrzeug
 STR_RIDEALONG_SPEED                                             :{WHITE}{VEHICLE}{BLACK} - {ORANGE}{VELOCITY}
 STR_RIDEALONG_NEXT_STOP                                         :{BLACK} - nächster Halt: {ORANGE}{STATION}

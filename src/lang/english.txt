@@ -2431,6 +2431,17 @@ STR_STATIONPAD_HINT_JUMP                                        :{BLACK}Click a 
 STR_STATIONPAD_HINT_ORDERS                                      :{BLACK}Click adds to the schedule, green = already served, right-click jumps there
 STR_STATIONPAD_EMPTY                                            :{WHITE}No stations of this kind yet
 STR_STATIONPAD_ERR_WRONG_TYPE                                   :{WHITE}This vehicle cannot stop at that station
+STR_HOUSEPAD_CAPTION                                            :{WHITE}Property pad
+STR_HOUSEPAD_MENU_ENTRY                                         :Property pad
+STR_HOUSEPAD_SEARCH_HINT                                        :Search town
+STR_HOUSEPAD_SEARCH_TOOLTIP                                     :{BLACK}Filter by town name
+STR_HOUSEPAD_ONLY_RISK                                          :{BLACK}At risk only
+STR_HOUSEPAD_ONLY_RISK_TOOLTIP                                  :{BLACK}Show only houses that are old or scheduled for demolition
+STR_HOUSEPAD_RENT                                               :{CURRENCY_SHORT}/mo
+STR_HOUSEPAD_SUMMARY                                            :{BLACK}{NUM} houses - {CURRENCY_SHORT} rent per month - {NUM} at risk
+STR_HOUSEPAD_HINT                                               :{BLACK}Click jumps there, right click opens the house
+STR_HOUSEPAD_EMPTY                                              :{WHITE}No houses bought yet - click "Buy" in the house window
+STR_HOUSEPAD_NO_MATCH                                           :{WHITE}No house matches this filter
 STR_RIDEALONG_TOOLTIP                                           :{BLACK}Ride along: the camera follows this vehicle up close
 STR_RIDEALONG_SPEED                                             :{WHITE}{VEHICLE}{BLACK} - {ORANGE}{VELOCITY}
 STR_RIDEALONG_NEXT_STOP                                         :{BLACK} - next stop: {ORANGE}{STATION}

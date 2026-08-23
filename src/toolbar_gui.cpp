@@ -528,12 +528,15 @@ enum class TownMenuEntries {
 	ShowDirectory = 0, ///< Open window with list of towns.
 	ShowFoundTown, ///< Open town generation window.
 	ShowPlaceHouses, ///< Open house selection window.
+	ShowHousePad, ///< Fork: Immobilien-Pad mit allen gekauften Haeusern.
 };
 
 static CallBackFunction ToolbarTownClick(Window *w)
 {
 	DropDownList list;
 	list.push_back(MakeDropDownListStringItem(STR_TOWN_MENU_TOWN_DIRECTORY, TownMenuEntries::ShowDirectory));
+	/* Fork: eigene Immobilien auf einen Blick. */
+	list.push_back(MakeDropDownListStringItem(STR_HOUSEPAD_MENU_ENTRY, TownMenuEntries::ShowHousePad));
 	/* Fork: Stadtgruendung immer anbieten - alte Spielstaende haben das
 	 * Spiel-Setting noch auf "verboten", der Klick schaltet es frei. */
 	list.push_back(MakeDropDownListStringItem(STR_TOWN_MENU_FOUND_TOWN, TownMenuEntries::ShowFoundTown));
@@ -563,6 +566,11 @@ static CallBackFunction MenuClickTown(int index)
 			}
 			ShowFoundTownWindow();
 			break;
+		case TownMenuEntries::ShowHousePad: {
+			extern void ShowHousePadWindow();
+			ShowHousePadWindow();
+			break;
+		}
 		case TownMenuEntries::ShowPlaceHouses: // Setting could be changed when the dropdown was open
 			if (_settings_game.economy.place_houses != PlaceHouses::Forbidden) ShowBuildHousePicker(nullptr);
 			break;

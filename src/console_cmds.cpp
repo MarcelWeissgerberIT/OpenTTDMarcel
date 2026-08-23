@@ -442,6 +442,28 @@ static bool ConHouseTest(std::span<std::string_view> argv)
 	if (argv.size() >= 2 && argv[1] == "buy") {
 		IConsolePrint(CC_DEFAULT, "Kauf: {}", HouseOwnBuy(best) ? "ok" : "fehlgeschlagen");
 	}
+	if (argv.size() >= 2 && argv[1] == "buymany") {
+		/* Diagnose: mehrere Haeuser in verschiedenen Staedten kaufen,
+		 * damit sich das Immobilien-Pad pruefen laesst. */
+		/* Diagnose braucht Bargeld - sonst scheitern die Kaeufe. */
+		Command<Commands::MoneyCheat>::Post(Money(20000000));
+		uint want = 6;
+		if (argv.size() >= 3) {
+			auto parsed = ParseInteger(argv[2], 10);
+			if (parsed.has_value()) want = (uint)*parsed;
+		}
+		uint done = 0;
+		for (const Town *t : Town::Iterate()) {
+			if (done >= want) break;
+			for (TileIndex tile : SpiralTileSequence(t->xy, 10)) {
+				if (done >= want) break;
+				if (!IsTileType(tile, TileType::House)) continue;
+				if (HouseSpec::Get(GetHouseType(tile))->population == 0) continue;
+				if (HouseOwnBuy(tile)) done++;
+			}
+		}
+		IConsolePrint(CC_DEFAULT, "Gekauft: {}", done);
+	}
 	if (argv.size() >= 2 && argv[1] == "why") {
 		extern std::string HouseOwnDebugWhy();
 		IConsolePrint(CC_DEFAULT, "{}", HouseOwnDebugWhy());
@@ -480,6 +502,15 @@ static bool ConStationPad(std::span<std::string_view>)
 	extern void ShowStationPadWindow();
 	ShowStationPadWindow();
 	IConsolePrint(CC_DEFAULT, "Stationen-Pad geoeffnet.");
+	return true;
+}
+
+/* Fork: Immobilien-Pad aus der Konsole oeffnen. */
+static bool ConHousePad(std::span<std::string_view>)
+{
+	extern void ShowHousePadWindow();
+	ShowHousePadWindow();
+	IConsolePrint(CC_DEFAULT, "Immobilien-Pad geoeffnet.");
 	return true;
 }
 
@@ -3151,6 +3182,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("pstest",                  ConPixelTest);
 	IConsole::CmdRegister("housetest",               ConHouseTest);
 	IConsole::CmdRegister("stationpad",              ConStationPad);
+	IConsole::CmdRegister("housepad",                ConHousePad);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);
 	IConsole::CmdRegister("cab",                     ConCabView);
 	IConsole::CmdRegister("tutorial",                ConTutorial);

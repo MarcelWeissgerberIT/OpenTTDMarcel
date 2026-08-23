@@ -17,6 +17,9 @@
 
 #include "stdafx.h"
 #include "window_gui.h"
+#include "querystring_gui.h"
+#include "timer/timer.h"
+#include "timer/timer_window.h"
 #include "window_func.h"
 #include "gfx_func.h"
 #include "strings_func.h"
@@ -41,6 +44,7 @@
 #include "command_func.h"
 
 #include "widgets/houseown_widget.h"
+#include "widgets/housepad_widget.h"
 
 /* town_gui.cpp: Haus samt Mehrfach-Kacheln im GUI zeichnen. */
 void DrawHouseInGUI(int x, int y, HouseID house_id, int view);
@@ -636,4 +640,235 @@ bool ShowHouseInfoOnClick(TileIndex tile)
 	TileIndex north = HouseNorthTile(tile);
 	AllocateWindowDescFront<HouseInfoWindow>(_houseown_desc, north.base());
 	return true;
+}
+
+/* ==================== Immobilien-Pad (Fork-Feature) ==================== */
+
+/**
+ * Alle gekauften Haeuser auf einen Blick - wie das Stationen-Pad, nur
+ * fuer Immobilien. Wer zwanzig Haeuser besitzt, findet sonst nicht mehr
+ * heraus, welches davon gerade Aerger macht.
+ *
+ * Die Farbe sagt den Zustand: Rot heisst, die Stadt hat den Abriss
+ * angekuendigt; Gelb heisst, das Haus ist alt genug, dass sie es bald
+ * darf; Gruen heisst, alles in Ordnung.
+ */
+static bool _hp_only_risk = false; ///< Nur gefaehrdete Haeuser zeigen.
+
+struct HousePadWindow : Window {
+	std::vector<uint32_t> tiles;  ///< Angezeigte Haeuser (Nordkacheln).
+	Scrollbar *vscroll = nullptr;
+	uint line_height = 0;
+	QueryString search_editbox;
+	std::string search;
+	static const uint COLUMNS = 2;
+
+	HousePadWindow(WindowDesc &desc, WindowNumber number) : Window(desc), search_editbox(50)
+	{
+		this->CreateNestedTree();
+		this->vscroll = this->GetScrollbar(WID_HP_SCROLLBAR);
+		this->FinishInitNested(number);
+		this->querystrings[WID_HP_SEARCH] = &this->search_editbox;
+		this->search_editbox.cancel_button = QueryString::ACTION_CLEAR;
+		this->BuildList();
+	}
+
+	/** Wie steht es um dieses Haus? 0 = gut, 1 = alt, 2 = Abriss droht. */
+	static int RiskOf(const OwnedHouse &h)
+	{
+		TileIndex t{h.tile};
+		if (!IsValidTile(t) || !IsTileType(t, TileType::House)) return 2;
+		if (h.warned != 0) return 2;
+		return GetHouseAge(t).base() >= HOUSEOWN_DEMOLITION_AGE ? 1 : 0;
+	}
+
+	/** Beschriftung: Stadt und Monatsmiete - danach sucht man. */
+	static std::string LabelOf(const OwnedHouse &h)
+	{
+		TileIndex t{h.tile};
+		const Town *town = IsValidTile(t) ? ClosestTownFromTile(t, UINT_MAX) : nullptr;
+		std::string name = town != nullptr ? town->GetCachedName() : std::string("?");
+		return name + " " + GetString(STR_HOUSEPAD_RENT, h.rent);
+	}
+
+	void BuildList()
+	{
+		this->tiles.clear();
+		HouseOwnLoad();
+		for (const OwnedHouse &h : _owned_houses) {
+			if (h.seed != CurrentSeed()) continue;
+			if (_hp_only_risk && RiskOf(h) == 0) continue;
+			if (!this->search.empty()) {
+				std::string label;
+				for (char c : LabelOf(h)) label += (char)tolower((unsigned char)c);
+				if (label.find(this->search) == std::string::npos) continue;
+			}
+			this->tiles.push_back(h.tile);
+		}
+		/* Die dringendsten Faelle nach oben. */
+		std::sort(this->tiles.begin(), this->tiles.end(), [](uint32_t a, uint32_t b) {
+			const OwnedHouse *ha = FindOwned(TileIndex{a});
+			const OwnedHouse *hb = FindOwned(TileIndex{b});
+			if (ha == nullptr || hb == nullptr) return false;
+			int ra = RiskOf(*ha), rb = RiskOf(*hb);
+			if (ra != rb) return ra > rb;
+			return LabelOf(*ha) < LabelOf(*hb);
+		});
+		uint rows = static_cast<uint>((this->tiles.size() + COLUMNS - 1) / COLUMNS);
+		this->vscroll->SetCount(rows);
+		this->SetDirty();
+	}
+
+	void OnEditboxChanged(WidgetID widget) override
+	{
+		if (widget != WID_HP_SEARCH) return;
+		this->search.clear();
+		for (char c : this->search_editbox.text.GetText()) this->search += (char)tolower((unsigned char)c);
+		this->BuildList();
+	}
+
+	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
+	{
+		if (widget != WID_HP_SUMMARY && widget != WID_HP_HINT) return this->Window::GetWidgetString(widget, stringid);
+		Money rent = 0;
+		uint risk = 0;
+		for (uint32_t tile : this->tiles) {
+			const OwnedHouse *h = FindOwned(TileIndex{tile});
+			if (h == nullptr) continue;
+			rent += h->rent;
+			if (RiskOf(*h) == 2) risk++;
+		}
+		if (widget == WID_HP_SUMMARY) return GetString(STR_HOUSEPAD_SUMMARY, (uint)this->tiles.size(), rent, risk);
+		return GetString(STR_HOUSEPAD_HINT);
+	}
+
+	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
+	{
+		if (widget != WID_HP_PANEL) return;
+		this->line_height = GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.framerect.Vertical() + ScaleGUITrad(2);
+		resize.height = this->line_height;
+		size.height = 8 * this->line_height;
+		size.width = std::max<uint>(size.width, ScaleGUITrad(340));
+	}
+
+	void DrawWidget(const Rect &r, WidgetID widget) const override
+	{
+		if (widget != WID_HP_PANEL) return;
+		Rect ir = r.Shrink(WidgetDimensions::scaled.framerect);
+		uint col_w = ir.Width() / COLUMNS;
+		uint first = this->vscroll->GetPosition() * COLUMNS;
+		uint last = std::min<uint>(static_cast<uint>(this->tiles.size()), first + this->vscroll->GetCapacity() * COLUMNS);
+
+		for (uint i = first; i < last; i++) {
+			const OwnedHouse *h = FindOwned(TileIndex{this->tiles[i]});
+			if (h == nullptr) continue;
+			uint slot = i - first;
+			int x = ir.left + (slot % COLUMNS) * col_w;
+			int y = ir.top + (slot / COLUMNS) * this->line_height;
+			Rect br = {x + 1, y + 1, x + (int)col_w - 2, y + (int)this->line_height - 2};
+			int risk = RiskOf(*h);
+			Colours colour = risk == 2 ? Colours::Red : (risk == 1 ? Colours::Orange : Colours::Green);
+			DrawFrameRect(br, colour, FrameFlags{});
+			DrawString(br.Shrink(WidgetDimensions::scaled.framerect), LabelOf(*h),
+					TextColour::Black, AlignmentH::Centre);
+		}
+
+		if (this->tiles.empty()) {
+			/* Zwischen "noch nichts gekauft" und "Filter zu eng" unterscheiden. */
+			bool filtered = !this->search.empty() || _hp_only_risk;
+			DrawString(ir, GetString(filtered ? STR_HOUSEPAD_NO_MATCH : STR_HOUSEPAD_EMPTY),
+					TextColour::White, AlignmentH::Centre);
+		}
+	}
+
+	/** Rasterplatz unter dem Mauszeiger; -1 wenn daneben. */
+	int SlotAt(Point pt) const
+	{
+		Rect r = this->GetWidget<NWidgetBase>(WID_HP_PANEL)->GetCurrentRect().Shrink(WidgetDimensions::scaled.framerect);
+		if (!IsInsideMM(pt.y, r.top, r.bottom + 1) || !IsInsideMM(pt.x, r.left, r.right + 1)) return -1;
+		uint col_w = r.Width() / COLUMNS;
+		uint col = std::min<uint>(COLUMNS - 1, (pt.x - r.left) / std::max<uint>(1, col_w));
+		uint row = (pt.y - r.top) / std::max<uint>(1, this->line_height);
+		return static_cast<int>((this->vscroll->GetPosition() + row) * COLUMNS + col);
+	}
+
+	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override
+	{
+		if (widget == WID_HP_ONLY_RISK) {
+			_hp_only_risk = !_hp_only_risk;
+			this->BuildList();
+			return;
+		}
+		if (widget != WID_HP_PANEL) return;
+		int index = this->SlotAt(pt);
+		if (index < 0 || index >= (int)this->tiles.size()) return;
+		ScrollMainWindowToTile(TileIndex{this->tiles[index]});
+	}
+
+	/** Rechtsklick oeffnet den Haus-Dialog - dort wird renoviert. */
+	bool OnRightClick([[maybe_unused]] Point pt, WidgetID widget) override
+	{
+		if (widget != WID_HP_PANEL) return false;
+		int index = this->SlotAt(pt);
+		if (index >= 0 && index < (int)this->tiles.size()) {
+			AllocateWindowDescFront<HouseInfoWindow>(_houseown_desc, this->tiles[index]);
+		}
+		return true;
+	}
+
+	void OnPaint() override
+	{
+		this->SetWidgetLoweredState(WID_HP_ONLY_RISK, _hp_only_risk);
+		this->DrawWidgets();
+	}
+
+	void OnResize() override
+	{
+		this->vscroll->SetCapacityFromWidget(this, WID_HP_PANEL);
+	}
+
+	/** Alter und Warnungen aendern sich im Spiel - Liste nachziehen. */
+	const IntervalTimer<TimerWindow> rebuild_interval = {std::chrono::seconds(3), [this](auto) {
+		this->BuildList();
+	}};
+};
+
+static constexpr std::initializer_list<NWidgetPart> _nested_housepad_widgets = {
+	NWidget(NWID_HORIZONTAL),
+		NWidget(WWT_CLOSEBOX, Colours::DarkGreen),
+		NWidget(WWT_CAPTION, Colours::DarkGreen, WID_HP_CAPTION), SetStringTip(STR_HOUSEPAD_CAPTION, STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS),
+		NWidget(WWT_SHADEBOX, Colours::DarkGreen),
+		NWidget(WWT_STICKYBOX, Colours::DarkGreen),
+	EndContainer(),
+	NWidget(WWT_PANEL, Colours::DarkGreen),
+		NWidget(NWID_VERTICAL), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0), SetPadding(WidgetDimensions::unscaled.sparse),
+			NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
+				NWidget(WWT_EDITBOX, Colours::Yellow, WID_HP_SEARCH), SetFill(1, 0), SetMinimalSize(150, 12), SetStringTip(STR_HOUSEPAD_SEARCH_HINT, STR_HOUSEPAD_SEARCH_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_HP_ONLY_RISK), SetMinimalSize(120, 12), SetStringTip(STR_HOUSEPAD_ONLY_RISK, STR_HOUSEPAD_ONLY_RISK_TOOLTIP),
+			EndContainer(),
+			NWidget(NWID_HORIZONTAL),
+				NWidget(WWT_PANEL, Colours::DarkGreen, WID_HP_PANEL), SetFill(1, 1), SetResize(1, 1), SetScrollbar(WID_HP_SCROLLBAR), EndContainer(),
+				NWidget(NWID_VSCROLLBAR, Colours::DarkGreen, WID_HP_SCROLLBAR),
+			EndContainer(),
+			NWidget(WWT_TEXT, Colours::Invalid, WID_HP_SUMMARY), SetFill(1, 0),
+			NWidget(WWT_TEXT, Colours::Invalid, WID_HP_HINT), SetFill(1, 0),
+		EndContainer(),
+	EndContainer(),
+	NWidget(NWID_HORIZONTAL),
+		NWidget(NWID_SPACER), SetFill(1, 0), SetResize(1, 0),
+		NWidget(WWT_RESIZEBOX, Colours::DarkGreen),
+	EndContainer(),
+};
+
+static WindowDesc _housepad_desc(
+	WindowPosition::Automatic, "housepad", 360, 280,
+	WindowClass::HousePad, WindowClass::None,
+	{},
+	_nested_housepad_widgets
+);
+
+/** Fork: Immobilien-Pad oeffnen. */
+void ShowHousePadWindow()
+{
+	AllocateWindowDescFront<HousePadWindow>(_housepad_desc, 0);
 }
