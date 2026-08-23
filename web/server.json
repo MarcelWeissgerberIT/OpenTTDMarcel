@@ -1,6 +1,6 @@
 {
   "_hinweis": "Adresse des Mehrspieler-Servers. Leerer host = Mehrspieler-Eintrag aus. Aenderung wirkt beim naechsten Web-Deploy, ohne Neubau des Spiels.",
-  "host": "",
+  "host": "openttd-marcel.fly.dev",
   "secure": true,
   "name": "Marcels Welt"
 }
