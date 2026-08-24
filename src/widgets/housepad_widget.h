@@ -19,6 +19,7 @@ enum HousePadWidgets : WidgetID {
 	WID_HP_SCROLLBAR, ///< Scrollbalken des Rasters.
 	WID_HP_SUMMARY,   ///< Zusammenfassung: Anzahl und Monatsmiete.
 	WID_HP_HINT,      ///< Hinweiszeile zur Bedienung.
+	WID_HP_RENOVATE_ALL, ///< Alle (bzw. alle gefaehrdeten) Haeuser renovieren.
 };
 
 #endif /* WIDGETS_HOUSEPAD_WIDGET_H */

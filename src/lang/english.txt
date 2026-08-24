@@ -2453,6 +2453,12 @@ STR_HOUSEPAD_SUMMARY                                            :{BLACK}{NUM} ho
 STR_HOUSEPAD_HINT                                               :{BLACK}Click jumps there, right click opens the house
 STR_HOUSEPAD_EMPTY                                              :{WHITE}No houses bought yet - click "Buy" in the house window
 STR_HOUSEPAD_NO_MATCH                                           :{WHITE}No house matches this filter
+STR_HOUSEPAD_RENOVATE_ALL                                       :{BLACK}Renovate all: {NUM} for {CURRENCY_SHORT}
+STR_HOUSEPAD_RENOVATE_RISK                                      :{BLACK}Renovate at risk: {NUM} for {CURRENCY_SHORT}
+STR_HOUSEPAD_RENOVATE_ALL_NONE                                  :{BLACK}Nothing to renovate
+STR_HOUSEPAD_RENOVATE_ALL_TOOLTIP                               :{BLACK}Renovate every listed house at once - this makes them ten years younger and clears demolition warnings
+STR_HOUSEPAD_RENOVATE_DONE                                      :{WHITE}{NUM} houses renovated for {CURRENCY_LONG}
+STR_HOUSEPAD_RENOVATE_NOTHING                                   :{WHITE}Nothing renovated - is there enough money?
 STR_FLEET_CAPTION                                                :{WHITE}Grow fleet
 STR_FLEET_VEHICLE                                               :{BLACK}Template: {ORANGE}{VEHICLE}{BLACK} - {NUM} vehicle(s) on this line
 STR_FLEET_VEHICLE_GONE                                          :{RED}That vehicle is gone

@@ -2422,6 +2422,12 @@ STR_HOUSEPAD_SUMMARY                                            :{BLACK}{NUM} H�
 STR_HOUSEPAD_HINT                                               :{BLACK}Klick springt hin, Rechtsklick öffnet das Haus
 STR_HOUSEPAD_EMPTY                                              :{WHITE}Noch keine Häuser gekauft - im Haus-Dialog auf "Kaufen" klicken
 STR_HOUSEPAD_NO_MATCH                                           :{WHITE}Kein Haus passt zu diesem Filter
+STR_HOUSEPAD_RENOVATE_ALL                                       :{BLACK}Alle renovieren: {NUM} für {CURRENCY_SHORT}
+STR_HOUSEPAD_RENOVATE_RISK                                      :{BLACK}Gefährdete renovieren: {NUM} für {CURRENCY_SHORT}
+STR_HOUSEPAD_RENOVATE_ALL_NONE                                  :{BLACK}Nichts zu renovieren
+STR_HOUSEPAD_RENOVATE_ALL_TOOLTIP                               :{BLACK}Alle aufgelisteten Häuser auf einmal renovieren - das verjüngt sie um zehn Jahre und nimmt Abriss-Warnungen zurück
+STR_HOUSEPAD_RENOVATE_DONE                                      :{WHITE}{NUM} Häuser für {CURRENCY_LONG} renoviert
+STR_HOUSEPAD_RENOVATE_NOTHING                                   :{WHITE}Nichts renoviert - reicht das Geld?
 STR_FLEET_CAPTION                                                :{WHITE}Flotte aufstocken
 STR_FLEET_VEHICLE                                               :{BLACK}Vorbild: {ORANGE}{VEHICLE}{BLACK} - {NUM} Fahrzeug(e) auf dieser Linie
 STR_FLEET_VEHICLE_GONE                                          :{RED}Das Fahrzeug gibt es nicht mehr

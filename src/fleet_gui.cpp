@@ -222,10 +222,16 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 							const Town *t = nullptr;
 							for (const Town *i : Town::Iterate()) { t = i; break; }
 							if (t != nullptr) {
+								extern std::pair<uint, Money> HouseOwnRenovateAll(bool only_risk);
 								auto [bought, spent] = HouseOwnBuyTown(t->index);
 								auto [up, up_cost] = HouseOwnUpgradeTown(t->index);
-								Debug(misc, 0, "Fulltest Stadt: {} gekauft ({}), {} ausgebaut ({})",
-										bought, (int64_t)spent, up, (int64_t)up_cost);
+								/* Fuer den Test altern lassen - frisch gekaufte Haeuser
+								 * sind null Jahre alt und brauchen keine Renovierung. */
+								extern void HouseOwnDebugAgeAll(uint years);
+								HouseOwnDebugAgeAll(90);
+								auto [reno, reno_cost] = HouseOwnRenovateAll(false);
+								Debug(misc, 0, "Fulltest Stadt: {} gekauft ({}), {} ausgebaut ({}), {} renoviert ({})",
+										bought, (int64_t)spent, up, (int64_t)up_cost, reno, (int64_t)reno_cost);
 							}
 						}
 						_fleet_fulltest_wait = 300;

@@ -485,6 +485,103 @@ static bool HouseOwnUpgradeOne(TileIndex tile)
 	return true;
 }
 
+/** Ein einzelnes Haus renovieren (verjuengt es um zehn Jahre). */
+static bool HouseOwnRenovateOne(TileIndex tile)
+{
+	OwnedHouse *owned = FindOwned(tile);
+	if (owned == nullptr) return false;
+	if (!IsValidTile(tile) || !IsTileType(tile, TileType::House)) return false;
+	if (GetHouseAge(tile).base() <= 0 && owned->warned == 0) return false;
+
+	Money cost = HouseRenovateCost(owned->price);
+	if (Company::Get(_local_company)->money < cost) return false;
+	SubtractMoneyFromCompany(_local_company, CommandCost(ExpensesType::Property, cost));
+
+	Tile t(tile);
+	t.m5() = static_cast<uint8_t>(std::max(0, (int)t.m5() - 10));
+	owned->warned = 0;
+	MarkTileDirtyByTile(tile);
+	return true;
+}
+
+/**
+ * Fork: Was kostet es, alle eigenen Haeuser zu renovieren?
+ * @param only_risk Nur Haeuser, denen der Abriss droht.
+ * @param[out] count Anzahl der betroffenen Haeuser.
+ * @return Gesamtkosten.
+ */
+Money HouseOwnRenovateAllCost(bool only_risk, uint &count)
+{
+	count = 0;
+	Money sum = 0;
+	HouseOwnLoad();
+	for (const OwnedHouse &h : _owned_houses) {
+		if (h.seed != CurrentSeed()) continue;
+		TileIndex tile{h.tile};
+		if (!IsValidTile(tile) || !IsTileType(tile, TileType::House)) continue;
+		bool risky = h.warned != 0 || GetHouseAge(tile).base() >= HOUSEOWN_DEMOLITION_AGE;
+		if (only_risk && !risky) continue;
+		if (GetHouseAge(tile).base() <= 0 && h.warned == 0) continue;
+		sum += HouseRenovateCost(h.price);
+		count++;
+	}
+	return sum;
+}
+
+/** Fork-Diagnose: alle eigenen Haeuser altern lassen (fuer den Test). */
+void HouseOwnDebugAgeAll(uint years)
+{
+	HouseOwnLoad();
+	for (const OwnedHouse &h : _owned_houses) {
+		if (h.seed != CurrentSeed()) continue;
+		TileIndex tile{h.tile};
+		if (!IsValidTile(tile) || !IsTileType(tile, TileType::House)) continue;
+		Tile t(tile);
+		t.m5() = static_cast<uint8_t>(std::min<uint>(255, years));
+	}
+}
+
+/**
+ * Fork: Alle eigenen Haeuser renovieren.
+ * @param only_risk Nur die gefaehrdeten.
+ * @return Anzahl renovierter Haeuser und Kosten.
+ */
+std::pair<uint, Money> HouseOwnRenovateAll(bool only_risk)
+{
+	if (!Company::IsValidID(_local_company) || _game_mode != GameMode::Normal) return {0, 0};
+
+	uint want = 0;
+	Money needed = HouseOwnRenovateAllCost(only_risk, want);
+	if (want == 0) return {0, 0};
+	HouseOwnEnsureFunds(needed);
+
+	uint done = 0;
+	Money before = Company::Get(_local_company)->money;
+	/* Auf einer Kopie der Kachelliste arbeiten - renovieren aendert die
+	 * Eintraege, und wer waehrend des Laufs die Liste umbaut, verliert
+	 * den Ueberblick. */
+	std::vector<uint32_t> tiles;
+	for (const OwnedHouse &h : _owned_houses) {
+		if (h.seed != CurrentSeed()) continue;
+		TileIndex tile{h.tile};
+		if (!IsValidTile(tile) || !IsTileType(tile, TileType::House)) continue;
+		bool risky = h.warned != 0 || GetHouseAge(tile).base() >= HOUSEOWN_DEMOLITION_AGE;
+		if (only_risk && !risky) continue;
+		tiles.push_back(h.tile);
+	}
+	for (uint32_t raw : tiles) {
+		if (HouseOwnRenovateOne(TileIndex{raw})) done++;
+	}
+	Money spent = before - Company::Get(_local_company)->money;
+	if (done > 0) {
+		HouseOwnSave();
+		SetWindowClassesDirty(WindowClass::HouseInfo);
+		SetWindowClassesDirty(WindowClass::HousePad);
+	}
+	Debug(misc, 0, "Immobilien: {} von {} Haeusern renoviert ({})", done, want, (int64_t)spent);
+	return {done, spent};
+}
+
 /**
  * Fork: Alle freien Haeuser einer Stadt kaufen.
  * @return Anzahl gekaufter Haeuser und ausgegebenes Geld.
@@ -925,8 +1022,13 @@ struct HousePadWindow : Window {
 		return name + " " + GetString(STR_HOUSEPAD_RENT, h.rent);
 	}
 
+	uint reno_count = 0;  ///< Wieviele Haeuser koennte man renovieren?
+	Money reno_cost = 0;  ///< Was wuerde das kosten?
+
 	void BuildList()
 	{
+		extern Money HouseOwnRenovateAllCost(bool only_risk, uint &count);
+		this->reno_cost = HouseOwnRenovateAllCost(_hp_only_risk, this->reno_count);
 		this->tiles.clear();
 		HouseOwnLoad();
 		for (const OwnedHouse &h : _owned_houses) {
@@ -963,6 +1065,12 @@ struct HousePadWindow : Window {
 
 	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
 	{
+		if (widget == WID_HP_RENOVATE_ALL) {
+			return this->reno_count == 0
+					? GetString(STR_HOUSEPAD_RENOVATE_ALL_NONE)
+					: GetString(_hp_only_risk ? STR_HOUSEPAD_RENOVATE_RISK : STR_HOUSEPAD_RENOVATE_ALL,
+							this->reno_count, this->reno_cost);
+		}
 		if (widget != WID_HP_SUMMARY && widget != WID_HP_HINT) return this->Window::GetWidgetString(widget, stringid);
 		Money rent = 0;
 		uint risk = 0;
@@ -1033,6 +1141,14 @@ struct HousePadWindow : Window {
 			this->BuildList();
 			return;
 		}
+		if (widget == WID_HP_RENOVATE_ALL) {
+			extern std::pair<uint, Money> HouseOwnRenovateAll(bool only_risk);
+			auto [done, spent] = HouseOwnRenovateAll(_hp_only_risk);
+			ShowErrorMessage(done == 0 ? GetEncodedString(STR_HOUSEPAD_RENOVATE_NOTHING)
+					: GetEncodedString(STR_HOUSEPAD_RENOVATE_DONE, done, spent), {}, WarningLevel::Info);
+			this->BuildList();
+			return;
+		}
 		if (widget != WID_HP_PANEL) return;
 		int index = this->SlotAt(pt);
 		if (index < 0 || index >= (int)this->tiles.size()) return;
@@ -1053,6 +1169,7 @@ struct HousePadWindow : Window {
 	void OnPaint() override
 	{
 		this->SetWidgetLoweredState(WID_HP_ONLY_RISK, _hp_only_risk);
+		this->SetWidgetDisabledState(WID_HP_RENOVATE_ALL, this->reno_count == 0);
 		this->DrawWidgets();
 	}
 
@@ -1080,6 +1197,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_housepad_widgets = {
 				NWidget(WWT_EDITBOX, Colours::Yellow, WID_HP_SEARCH), SetFill(1, 0), SetMinimalSize(150, 12), SetStringTip(STR_HOUSEPAD_SEARCH_HINT, STR_HOUSEPAD_SEARCH_TOOLTIP),
 				NWidget(WWT_TEXTBTN, Colours::Yellow, WID_HP_ONLY_RISK), SetMinimalSize(120, 12), SetStringTip(STR_HOUSEPAD_ONLY_RISK, STR_HOUSEPAD_ONLY_RISK_TOOLTIP),
 			EndContainer(),
+			NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_HP_RENOVATE_ALL), SetFill(1, 0), SetMinimalSize(240, 12), SetToolTip(STR_HOUSEPAD_RENOVATE_ALL_TOOLTIP),
 			NWidget(NWID_HORIZONTAL),
 				NWidget(WWT_PANEL, Colours::DarkGreen, WID_HP_PANEL), SetFill(1, 1), SetResize(1, 1), SetScrollbar(WID_HP_SCROLLBAR), EndContainer(),
 				NWidget(NWID_VSCROLLBAR, Colours::DarkGreen, WID_HP_SCROLLBAR),
