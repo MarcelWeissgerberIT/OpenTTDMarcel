@@ -577,6 +577,7 @@ SettingsContainer &GetSettingsTree()
 		/* Fork: eigene Seite mit allen Feature-Schaltern der Marcel Edition. */
 		SettingsPage *marcel = main->Add(new SettingsPage(STR_CONFIG_SETTING_MARCEL_EDITION));
 		{
+			marcel->Add(new SettingEntry("gui.fork_future_engines"));
 			marcel->Add(new SettingEntry("gui.fork_citizens"));
 			marcel->Add(new SettingEntry("gui.fork_houseown"));
 			marcel->Add(new SettingEntry("gui.fork_politics"));

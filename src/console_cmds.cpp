@@ -511,6 +511,29 @@ static bool ConStationPad(std::span<std::string_view>)
 	return true;
 }
 
+/* Fork: Kaufmenue eines Fahrzeugtyps oeffnen (Diagnose). */
+static bool ConBuildVeh(std::span<std::string_view> argv)
+{
+	extern void ShowBuildVehicleWindow(TileIndex tile, VehicleType type);
+	VehicleType t = VehicleType::Aircraft;
+	if (argv.size() >= 2) {
+		if (argv[1] == "train") t = VehicleType::Train;
+		else if (argv[1] == "road") t = VehicleType::Road;
+		else if (argv[1] == "ship") t = VehicleType::Ship;
+	}
+	ShowBuildVehicleWindow(INVALID_TILE, t);
+	IConsolePrint(CC_DEFAULT, "Kaufmenue geoeffnet.");
+	return true;
+}
+
+/* Fork: Zukunfts-Modelle auflisten. */
+static bool ConFutureEngines(std::span<std::string_view>)
+{
+	extern std::string ForkFutureEnginesDebug();
+	IConsolePrint(CC_DEFAULT, "{}", ForkFutureEnginesDebug());
+	return true;
+}
+
 /* Fork: Flotten-Fenster und Taktungs-Diagnose. */
 static bool ConFleet(std::span<std::string_view> argv)
 {
@@ -3214,6 +3237,8 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("stationpad",              ConStationPad);
 	IConsole::CmdRegister("housepad",                ConHousePad);
 	IConsole::CmdRegister("fleet",                   ConFleet);
+	IConsole::CmdRegister("futureengines",           ConFutureEngines);
+	IConsole::CmdRegister("buildveh",                ConBuildVeh);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);
 	IConsole::CmdRegister("cab",                     ConCabView);
 	IConsole::CmdRegister("tutorial",                ConTutorial);

@@ -2323,6 +2323,8 @@ STR_TOWN_MAYOR_NO_MONEY                                         :{WHITE}Nicht ge
 STR_ASSISTANT_LOG_MAYOR                                         :Bürgermeister in {TOWN} eingesetzt
 STR_ASSISTANT_LOG_LOST                                          :{VEHICLE} findet keinen Weg - Strecke prüfen!
 STR_CONFIG_SETTING_MARCEL_EDITION                               :{ORANGE}Marcel Edition
+STR_CONFIG_SETTING_FORK_FUTURE_ENGINES                          :Zukunfts-Fahrzeuge bis 2500: {STRING}
+STR_CONFIG_SETTING_FORK_FUTURE_ENGINES_HELPTEXT                 :Die Entwicklung geht nach dem letzten Originalmodell weiter: alle 40 Jahre erscheint eine stärkere Generation - größere Flugzeuge (bis 1000 Sitze), stärkere Loks, schnellere Schiffe. Gleiche Grafik, bessere Werte
 STR_CONFIG_SETTING_FORK_CITIZENS                                :Bürger in Städten und an Stationen anzeigen: {STRING}
 STR_CONFIG_SETTING_FORK_CITIZENS_HELPTEXT                       :Sichtbare Menschen mit Namen und Porträts, Wartemengen am Bahnsteig und Einsteige-Animationen. Ausschalten für den klassischen, ruhigeren Look
 STR_CONFIG_SETTING_FORK_HOUSEOWN                                :Immobilien-Modus (Häuser per Klick kaufen): {STRING}

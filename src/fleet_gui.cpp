@@ -48,6 +48,7 @@
 #include "misc_cmd.h"
 #include "openttd.h"
 #include "command_func.h"
+#include "economy_func.h"
 #include "signal_func.h"
 #include "core/backup_type.hpp"
 #include "error.h"
@@ -199,6 +200,10 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 		if (c != nullptr) {
 			Backup<CompanyID> local(_local_company, c->index);
 			if (_fleet_fulltest_stage == 1) {
+				/* Zukunfts-Modelle sind teuer - der Test braucht Kapital.
+				 * Der Geld-Cheat wirkt nur ueber den Kommando-Wrapper,
+				 * deshalb hier direkt verbuchen. */
+				SubtractMoneyFromCompany(c->index, CommandCost(ExpensesType::Other, -Money(500000000)));
 				extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
 				Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("air", 0, 1, 2, true));
 				_fleet_fulltest_stage = 2;

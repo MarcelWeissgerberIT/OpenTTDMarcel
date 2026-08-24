@@ -835,6 +835,12 @@ void StartupOneEngine(Engine *e, const TimerGameCalendar::YearMonthDay &aging_ym
  */
 void StartupEngines()
 {
+	/* Fork: Zukunfts-Modelle ergaenzen, bevor die Startwerte berechnet
+	 * werden - so bekommen sie Zuverlaessigkeit und Verfuegbarkeit wie
+	 * jedes andere Modell. Laeuft bei neuem Spiel und nach dem Laden. */
+	extern void ForkEnsureFutureEngines();
+	ForkEnsureFutureEngines();
+
 	/* Aging of vehicles stops, so account for that when starting late */
 	const TimerGameCalendar::Date aging_date = std::min(TimerGameCalendar::date, TimerGameCalendar::ConvertYMDToDate(_year_engine_aging_stops, 0, 1));
 	TimerGameCalendar::YearMonthDay aging_ymd = TimerGameCalendar::ConvertDateToYMD(aging_date);

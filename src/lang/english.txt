@@ -2354,6 +2354,8 @@ STR_TOWN_MAYOR_NO_MONEY                                         :{WHITE}Not enou
 STR_ASSISTANT_LOG_MAYOR                                         :Installed the mayor of {TOWN}
 STR_ASSISTANT_LOG_LOST                                          :{VEHICLE} cannot find a path - check the track!
 STR_CONFIG_SETTING_MARCEL_EDITION                               :{ORANGE}Marcel Edition
+STR_CONFIG_SETTING_FORK_FUTURE_ENGINES                          :Future vehicles up to 2500: {STRING}
+STR_CONFIG_SETTING_FORK_FUTURE_ENGINES_HELPTEXT                 :Development continues past the last original model: every 40 years a stronger generation appears - bigger aircraft (up to 1000 seats), stronger locomotives, faster ships. Same graphics, better figures
 STR_CONFIG_SETTING_FORK_CITIZENS                                :Show citizens in towns and at stations: {STRING2}
 STR_CONFIG_SETTING_FORK_CITIZENS_HELPTEXT                       :Visible people with names and portraits, waiting crowds on platforms and boarding animations. Turn off for a classic, quieter look
 STR_CONFIG_SETTING_FORK_HOUSEOWN                                :Real-estate mode (click houses to buy them): {STRING2}
