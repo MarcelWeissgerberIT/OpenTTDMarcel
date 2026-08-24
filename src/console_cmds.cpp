@@ -511,6 +511,19 @@ static bool ConStationPad(std::span<std::string_view>)
 	return true;
 }
 
+/* Fork: Flotten-Fenster und Taktungs-Diagnose. */
+static bool ConFleet(std::span<std::string_view> argv)
+{
+	extern std::string FleetDebugOpen();
+	extern std::string FleetDebugStatus();
+	if (argv.size() >= 2 && argv[1] == "status") {
+		IConsolePrint(CC_DEFAULT, "{}", FleetDebugStatus());
+		return true;
+	}
+	IConsolePrint(CC_DEFAULT, "{}", FleetDebugOpen());
+	return true;
+}
+
 /* Fork: Immobilien-Pad aus der Konsole oeffnen. */
 static bool ConHousePad(std::span<std::string_view>)
 {
@@ -3189,6 +3202,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("housetest",               ConHouseTest);
 	IConsole::CmdRegister("stationpad",              ConStationPad);
 	IConsole::CmdRegister("housepad",                ConHousePad);
+	IConsole::CmdRegister("fleet",                   ConFleet);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);
 	IConsole::CmdRegister("cab",                     ConCabView);
 	IConsole::CmdRegister("tutorial",                ConTutorial);

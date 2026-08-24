@@ -31,6 +31,7 @@ enum VehicleViewWidgets : WidgetID {
 	WID_VV_HONK_HORN,          ///< Honk the vehicles horn (not drawn on UI, only used for hotkey).
 	WID_VV_MODERNIZE,          ///< Fork: Fahrzeug modernisieren (besseres oder fabrikneues Modell beim naechsten Depotbesuch).
 	WID_VV_RIDEALONG,          ///< Fork: Mitfahren - Kamera heftet sich ans Fahrzeug.
+	WID_VV_FLEET,              ///< Fork: Flotte aufstocken - mehrere Kopien mit Taktung.
 };
 
 /** Widgets of the #RefitWindow class. */

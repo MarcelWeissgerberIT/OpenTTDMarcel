@@ -197,6 +197,7 @@ add_files(
     fios.h
     fios_gui.cpp
     houseown_gui.cpp
+    fleet_gui.cpp
     pixelstudio_gui.cpp
     cabview_gui.cpp
     ridealong_gui.cpp

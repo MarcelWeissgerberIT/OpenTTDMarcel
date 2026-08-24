@@ -470,6 +470,11 @@ enum class WindowClass : uint16_t {
 	HousePad,
 
 	/**
+	 * Flotte aufstocken (Fork): Kopien in Menge und automatische Taktung.
+	 */
+	Fleet,
+
+	/**
 	 * Gefuehrter Einstieg (Fork): Begleiter durch die ersten Schritte.
 	 */
 	Tutorial,

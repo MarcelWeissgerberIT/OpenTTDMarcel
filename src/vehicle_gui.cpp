@@ -2990,6 +2990,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_vehicle_view_widgets
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_SHOW_DETAILS), SetMinimalSize(18, 18), SetSpriteTip(SPR_SHOW_VEHICLE_DETAILS),
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_MODERNIZE), SetMinimalSize(18, 18), SetSpriteTip(SPR_EMPTY /* filled later */, STR_MODERNIZE_TOOLTIP),
 			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_RIDEALONG), SetMinimalSize(18, 18), SetSpriteTip(SPR_IMG_ZOOMIN, STR_RIDEALONG_TOOLTIP),
+			NWidget(WWT_PUSHIMGBTN, Colours::Grey, WID_VV_FLEET), SetMinimalSize(18, 18), SetSpriteTip(SPR_EMPTY /* filled later */, STR_FLEET_TOOLTIP),
 			NWidget(WWT_PANEL, Colours::Grey), SetMinimalSize(18, 0), SetResize(0, 1), EndContainer(),
 		EndContainer(),
 	EndContainer(),
@@ -3158,6 +3159,7 @@ public:
 			SPR_CLONE_AIRCRAFT,
 		};
 		this->GetWidget<NWidgetCore>(WID_VV_CLONE)->SetSprite(vehicle_view_clone_sprites[v->type]);
+		this->GetWidget<NWidgetCore>(WID_VV_FLEET)->SetSprite(vehicle_view_clone_sprites[v->type]);
 
 		/* Fork: Sprite des Modernisieren-Knopfs je Fahrzeugtyp. */
 		static constexpr VehicleTypeIndexArray<const SpriteID> vehicle_view_modernize_sprites = {
@@ -3246,6 +3248,7 @@ public:
 		this->SetWidgetDisabledState(WID_VV_REFIT, !refittable_and_stopped_in_depot || !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_CLONE, !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_MODERNIZE, !is_localcompany);
+		this->SetWidgetDisabledState(WID_VV_FLEET, !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_RIDEALONG, _game_mode != GameMode::Normal);
 
 		/* Lower the Send To Depot button when clicking it would cause the
@@ -3454,14 +3457,27 @@ public:
 				}
 				break;
 			case WID_VV_CLONE: // clone vehicle
+				/* Fork: ohne Strg fragt der Knopf erst, wieviele Kopien es
+				 * sein sollen - mit Strg bleibt es beim schnellen Klonen
+				 * mit geteilten Auftraegen. */
+				if (!_ctrl_pressed) {
+					extern void ShowFleetWindow(VehicleID veh);
+					ShowFleetWindow(v->index);
+					break;
+				}
 				/* Suppress the vehicle GUI when share-cloning.
 				 * There is no point to it except for starting the vehicle.
 				 * For starting the vehicle the player has to open the depot GUI, which is
 				 * most likely already open, but is also visible in the vehicle viewport. */
 				Command<Commands::CloneVehicle>::Post(_vehicle_msg_translation_table[VCT_CMD_CLONE_VEH][v->type],
-										_ctrl_pressed ? nullptr : CcCloneVehicle,
-										v->tile, v->index, _ctrl_pressed);
+										v->tile, v->index, true);
 				break;
+
+			case WID_VV_FLEET: { // Fork: Flotte aufstocken
+				extern void ShowFleetWindow(VehicleID veh);
+				ShowFleetWindow(v->index);
+				break;
+			}
 			case WID_VV_TURN_AROUND: // turn around
 				assert(v->IsGroundVehicle());
 				if (v->type == VehicleType::Road) {

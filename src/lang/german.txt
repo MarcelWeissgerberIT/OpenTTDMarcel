@@ -2411,6 +2411,30 @@ STR_HOUSEPAD_SUMMARY                                            :{BLACK}{NUM} H�
 STR_HOUSEPAD_HINT                                               :{BLACK}Klick springt hin, Rechtsklick öffnet das Haus
 STR_HOUSEPAD_EMPTY                                              :{WHITE}Noch keine Häuser gekauft - im Haus-Dialog auf "Kaufen" klicken
 STR_HOUSEPAD_NO_MATCH                                           :{WHITE}Kein Haus passt zu diesem Filter
+STR_FLEET_CAPTION                                                :{WHITE}Flotte aufstocken
+STR_FLEET_VEHICLE                                               :{BLACK}Vorbild: {ORANGE}{VEHICLE}{BLACK} - {NUM} Fahrzeug(e) auf dieser Linie
+STR_FLEET_VEHICLE_GONE                                          :{RED}Das Fahrzeug gibt es nicht mehr
+STR_FLEET_COUNT                                                 :{BLACK}Kopien: {ORANGE}{NUM}
+STR_FLEET_SHARE                                                 :{BLACK}Aufträge teilen
+STR_FLEET_SHARE_TOOLTIP                                         :{BLACK}Die Kopien fahren dieselbe Route wie das Vorbild. Nur so lässt sich die Linie takten
+STR_FLEET_TIMETABLE                                             :{BLACK}Gleichmäßig takten
+STR_FLEET_TIMETABLE_TOOLTIP                                     :{BLACK}Das Spiel misst eine Runde und verteilt danach alle Fahrzeuge der Linie gleichmäßig darauf
+STR_FLEET_COST                                                  :{BLACK}Geschätzte Kosten: {ORANGE}{CURRENCY_LONG}
+STR_FLEET_COST_UNKNOWN                                          :{BLACK}Geschätzte Kosten: {ORANGE}unbekannt
+STR_FLEET_BUILD                                                 :{BLACK}Kopien bauen
+STR_FLEET_BUILD_TOOLTIP                                         :{BLACK}Kopien im nächsten passenden Depot bauen und gestaffelt losschicken
+STR_FLEET_STATUS_HINT                                           :{BLACK}Anzahl wählen und "Kopien bauen" - die Kopien starten nacheinander
+STR_FLEET_STATUS_DONE                                           :{BLACK}{NUM} Kopie(n) gebaut für {CURRENCY_LONG}
+STR_FLEET_STATUS_DONE_TIMETABLE                                 :{BLACK}{NUM} Kopie(n) gebaut für {CURRENCY_LONG}. Nach einer gemessenen Runde verteilt das Spiel alle {NUM} Fahrzeuge gleichmäßig
+STR_FLEET_ERR_NO_DEPOT                                          :{RED}Kein passendes Depot gefunden - erst eins in der Nähe der Strecke bauen
+STR_FLEET_ERR_FAILED                                            :{RED}Keine Kopie gebaut - reicht das Geld?
+STR_FLEET_ERR_SINGLEPLAYER                                      :{WHITE}Im Mehrspieler nicht verfügbar
+STR_FLEET_TOOLTIP                                               :{BLACK}Flotte aufstocken: mehrere Kopien bauen und gleichmäßig takten
+STR_FLEET_SPREAD                                                :{BLACK}Linie jetzt takten
+STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Alle Fahrzeuge dieser Linie gleichmäßig über eine Runde verteilen - auch ohne neue Kopien
+STR_FLEET_SPREAD_NOW                                            :{BLACK}Fahrzeuge gleichmäßig verteilt
+STR_FLEET_SPREAD_LATER                                          :{BLACK}Der Fahrplan wird gemessen - nach einer Runde verteilt das Spiel die Fahrzeuge von selbst
+STR_FLEET_ERR_NO_LINE                                           :{RED}Dafür braucht es mindestens zwei Fahrzeuge mit denselben Aufträgen
 STR_RIDEALONG_TOOLTIP                                           :{BLACK}Mitfahren: die Kamera bleibt dicht an diesem Fahrzeug
 STR_RIDEALONG_SPEED                                             :{WHITE}{VEHICLE}{BLACK} - {ORANGE}{VELOCITY}
 STR_RIDEALONG_NEXT_STOP                                         :{BLACK} - nächster Halt: {ORANGE}{STATION}
