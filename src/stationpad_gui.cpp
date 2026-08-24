@@ -228,7 +228,17 @@ struct StationPadWindow : Window {
 				list.push_back(MakeDropDownListStringItem(STR_STATIONPAD_NO_VEHICLE, -1));
 				for (const Vehicle *v : Vehicle::Iterate()) {
 					if (v->owner != _local_company || !v->IsPrimaryVehicle()) continue;
-					list.push_back(MakeDropDownListStringItem(GetString(STR_STATIONPAD_VEHICLE_ITEM, v->index), v->index.base()));
+					/* Typfilter gilt auch hier: bei "Flug" nur Flugzeuge. */
+					if (!PadVehicleMatchesFilter(v)) continue;
+					std::string label = GetString(STR_STATIONPAD_VEHICLE_ITEM, v->index);
+					/* Das Suchfeld filtert auch die Fahrzeuge - wer "Bus 3"
+					 * tippt, will nicht durch hundert Zeilen blaettern. */
+					if (!this->search.empty()) {
+						std::string lower;
+						for (char c : label) lower += (char)tolower((unsigned char)c);
+						if (lower.find(this->search) == std::string::npos) continue;
+					}
+					list.push_back(MakeDropDownListStringItem(std::move(label), v->index.base()));
 				}
 				ShowDropDownList(this, std::move(list), this->SelectedVehicle() == nullptr ? -1 : _sp_vehicle.base(), widget);
 				break;

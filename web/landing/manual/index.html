@@ -243,6 +243,8 @@
 <a href="#vehicles"><span class="de">Fahrzeuge</span><span class="en">Vehicles</span></a>
 <a href="#fleet"><span class="de">Flotte aufstocken</span><span class="en">Grow fleet</span></a>
 <a href="#stationpad"><span class="de">Stationen-Pad</span><span class="en">Station pad</span></a>
+<a href="#fleet"><span class="de">Flotte</span><span class="en">Fleet</span></a>
+<a href="#newsopt"><span class="de">Meldungen</span><span class="en">Messages</span></a>
 <a href="#housepad"><span class="de">Immobilien-Pad</span><span class="en">Property pad</span></a>
 <a href="#ridealong"><span class="de">Mitfahren</span><span class="en">Ride along</span></a>
 <a href="#speed"><span class="de">Zeitraffer &amp; Tempo</span><span class="en">Fast forward &amp; speed</span></a>
@@ -454,7 +456,7 @@
 <p>Alle deine Stationen als Knopfraster - zum Springen und zum Fahrplan-Bauen. Öffnen: Stationen-Icon in der Werkzeugleiste &rarr; <b>„Stationen-Pad"</b> (oder Konsole: <span class="kbd">stationpad</span>).</p>
 <ul>
 <li><b>Filter oben:</b> Alle, Bahn, Straße, Flug, Häfen - zeigt nur Stationen dieser Art. Ist „Flug" gewählt, stehen in der Fahrzeugliste auch nur Flugzeuge.</li>
-<li><b>Suchfeld:</b> Namen tippen - die Liste zeigt nur noch passende Stationen.</li>
+<li><b>Suchfeld:</b> Namen tippen - die Liste zeigt nur noch passende Stationen, und auch die Fahrzeugliste oben zeigt nur noch passende Fahrzeuge.</li>
 <li><b>Ohne Fahrzeug:</b> Ein Klick auf einen Stationsknopf springt sofort dorthin auf der Karte.</li>
 <li><b>Mit Fahrzeug:</b> Oben ein Fahrzeug wählen - dann nimmt ein Klick die Station in dessen Fahrplan auf, ein zweiter Klick nimmt sie wieder heraus. So klickst du eine ganze Route zusammen, ohne das Auftragsfenster zu öffnen.</li>
 <li><b>Grün</b> = wird von diesem Fahrzeug schon angefahren, <b>Gelb</b> = noch nicht im Fahrplan, <b>Grau</b> = dort kann dieses Fahrzeug nicht halten (z. B. Bus am Flughafen).</li>
@@ -463,11 +465,43 @@
 <p>All your stations as a button pad - for jumping around and for building schedules. Open: stations icon in the toolbar &rarr; <b>"Station pad"</b> (or console: <span class="kbd">stationpad</span>).</p>
 <ul>
 <li><b>Filters on top:</b> All, Rail, Road, Air, Docks - shows only stations of that kind. With "Air" selected, the vehicle list holds aircraft only.</li>
-<li><b>Search box:</b> type a name and the list narrows down to matching stations.</li>
+<li><b>Search box:</b> type a name and the list narrows down to matching stations - the vehicle list at the top narrows down too.</li>
 <li><b>Without a vehicle:</b> clicking a station button jumps straight to it on the map.</li>
 <li><b>With a vehicle:</b> pick one at the top - then a click adds the station to its schedule and a second click removes it again. Build a whole route by clicking, without opening the orders window.</li>
 <li><b>Green</b> = already served by this vehicle, <b>yellow</b> = not in the schedule yet, <b>grey</b> = this vehicle cannot stop there (a bus at an airport, say).</li>
 <li><b>Right-click</b> always jumps to the station, even with a vehicle selected.</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="fleet">
+  <div class="titlebar px"><span class="de">Flotte aufstocken &amp; Modell tauschen</span><span class="en">Grow fleet &amp; swap model</span></div>
+  <div class="body"><span class="de">
+<p>Im Fahrzeugfenster den <b>Kopieren-Knopf</b> drücken (oder Konsole: <span class="kbd">fleet</span>) - es öffnet sich das Flotten-Fenster.</p>
+<ul>
+<li><b>Kopien bauen:</b> Anzahl wählen (1-20), Kosten stehen darunter. Die Kopien teilen sich die Aufträge und fahren sofort los.</li>
+<li><b>Gleichmäßig takten:</b> Das Spiel misst eine Runde und verteilt danach alle Fahrzeuge der Linie gleichmäßig - kein Pulk mehr. „Linie jetzt takten" macht das auch für bestehende Linien ohne Neukauf.</li>
+<li><b>Modell tauschen:</b> Unten ein neues Modell wählen und „Alle baugleichen ersetzen" - jedes Fahrzeug mit demselben Modell fährt ins Depot, wird dort verkauft und durch das neue Modell ersetzt. <b>Aufträge und Fahrplan bleiben erhalten</b>, das neue Fahrzeug fährt sofort weiter.</li>
+<li><b>Strg+Klick</b> auf den Kopieren-Knopf klont wie früher ein einzelnes Fahrzeug sofort.</li>
+</ul></span><span class="en">
+<p>Hit the <b>clone button</b> in the vehicle window (or console: <span class="kbd">fleet</span>) - the fleet window opens.</p>
+<ul>
+<li><b>Build copies:</b> pick a number (1-20), the cost shows below. The copies share the orders and leave right away.</li>
+<li><b>Spread evenly:</b> the game measures one round and then spreads all vehicles of the line evenly - no more convoys. "Spread line now" does the same for existing lines without buying anything.</li>
+<li><b>Swap model:</b> pick a new model at the bottom and hit "Replace all identical" - every vehicle of the same model drives into a depot, gets sold and replaced by the new model. <b>Orders and timetable are kept</b>, the new vehicle continues right away.</li>
+<li><b>Ctrl+click</b> on the clone button still clones a single vehicle instantly.</li>
+</ul></span></div>
+</div>
+<div class="win" id="newsopt">
+  <div class="titlebar px"><span class="de">Meldungen einstellen</span><span class="en">Message settings</span></div>
+  <div class="body"><span class="de">
+<p>Zu viele Zeitungen? Zeitungs-Icon in der Werkzeugleiste &rarr; <b>„Meldungen einstellen..."</b>.</p>
+<ul>
+<li><b>Alle aus / Nur Laufband / Alle an</b> - ein Klick für alles.</li>
+<li>Oder je Kategorie klicken: <b>aus</b> (grau) &rarr; <b>Laufband</b> (grün, nur Kurzmeldung unten) &rarr; <b>Zeitung</b> (orange).</li>
+</ul></span><span class="en">
+<p>Too many newspapers? Newspaper icon in the toolbar &rarr; <b>"Message settings..."</b>.</p>
+<ul>
+<li><b>All off / Ticker only / All on</b> - one click for everything.</li>
+<li>Or click each category: <b>off</b> (grey) &rarr; <b>ticker</b> (green, short line at the bottom) &rarr; <b>newspaper</b> (orange).</li>
 </ul></span></div>
 </div>
 <div class="win" id="housepad">

@@ -475,6 +475,11 @@ enum class WindowClass : uint16_t {
 	Fleet,
 
 	/**
+	 * Meldungen einstellen (Fork): Mitteilungen abschalten oder daempfen.
+	 */
+	NewsOptions,
+
+	/**
 	 * Gefuehrter Einstieg (Fork): Begleiter durch die ersten Schritte.
 	 */
 	Tutorial,
