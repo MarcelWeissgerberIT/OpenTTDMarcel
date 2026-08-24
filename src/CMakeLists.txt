@@ -197,6 +197,7 @@ add_files(
     fios.h
     fios_gui.cpp
     houseown_gui.cpp
+    airdivert.cpp
     fleet_gui.cpp
     linemgr_gui.cpp
     futureengines.cpp

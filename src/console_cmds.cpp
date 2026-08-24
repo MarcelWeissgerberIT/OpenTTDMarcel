@@ -572,6 +572,15 @@ static bool ConFleet(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Diagnose der Flugzeug-Ausweichlogik. */
+static bool ConAirDivert(std::span<std::string_view> argv)
+{
+	extern std::string AirDivertRun(bool report, bool force);
+	bool force = argv.size() >= 2 && argv[1] == "force";
+	IConsolePrint(CC_DEFAULT, "{}", AirDivertRun(true, force));
+	return true;
+}
+
 /* Fork: Linien-Manager - Uebersicht und Vorschlaege. */
 static bool ConLines(std::span<std::string_view> argv)
 {
@@ -3267,6 +3276,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("housepad",                ConHousePad);
 	IConsole::CmdRegister("fleet",                   ConFleet);
 	IConsole::CmdRegister("lines",                   ConLines);
+	IConsole::CmdRegister("airdivert",               ConAirDivert);
 	IConsole::CmdRegister("futureengines",           ConFutureEngines);
 	IConsole::CmdRegister("buildveh",                ConBuildVeh);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);

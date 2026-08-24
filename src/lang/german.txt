@@ -2475,6 +2475,9 @@ STR_LINEMGR_ERR_NO_DEPOT                                        :{RED}Kein passe
 STR_LINEMGR_ERR_BUILD                                           :{RED}Kein Fahrzeug gebaut - reicht das Geld?
 STR_LINEMGR_ERR_SELL                                            :{RED}Kein Fahrzeug zum Verkauf gefunden
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Im Mehrspieler nicht verfügbar
+STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} weicht aus: {STATION} ist überlastet, Landung in {STATION}
+STR_CONFIG_SETTING_FORK_AIRDIVERT                               :Flugzeuge weichen überfüllten Flughäfen aus: {STRING}
+STR_CONFIG_SETTING_FORK_AIRDIVERT_HELPTEXT                      :Kreist ein Flugzeug zu lange über einem überlasteten Flughafen, landet es auf einem freieren eigenen Flughafen in der Nähe. Der Fahrplan bleibt unberührt
 STR_FLEET_TOOLTIP                                               :{BLACK}Flotte aufstocken: mehrere Kopien bauen und gleichmäßig takten
 STR_FLEET_SPREAD                                                :{BLACK}Linie jetzt takten
 STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Alle Fahrzeuge dieser Linie gleichmäßig über eine Runde verteilen - auch ohne neue Kopien

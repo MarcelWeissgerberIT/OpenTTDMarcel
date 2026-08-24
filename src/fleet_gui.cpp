@@ -211,7 +211,10 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 						/* Startkapital fuer den Test - der Geld-Cheat wirkt nur
 						 * ueber den Kommando-Wrapper, deshalb direkt verbuchen. */
 						SubtractMoneyFromCompany(c->index, CommandCost(ExpensesType::Other, -Money(500000000)));
-						Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("bus", 0, 1, 8, true));
+						/* Stau-Szenario: viele Flugzeuge auf eine Strecke, damit
+						 * die Ausweichlogik etwas zu tun bekommt. */
+						Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("air", 0, 1, 8, true));
+						Debug(misc, 0, "Fulltest Bau2: {}", AutoConnectDebugBuild("air", 0, 2, 1, false));
 						{
 							/* Immobilien-Massenkauf gleich mitpruefen. */
 							extern std::pair<uint, Money> HouseOwnBuyTown(TownID town_id);
@@ -228,15 +231,21 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 						_fleet_fulltest_wait = 300;
 						_fleet_fulltest_stage = 2;
 						break;
-					case 2:
-						Debug(misc, 0, "Fulltest Linien: {}", LineManagerDebug(true));
+					case 2: {
+						extern std::string AirDivertRun(bool report, bool force);
+						Debug(misc, 0, "Fulltest Ausweichen: {}", AirDivertRun(true, true));
+						Debug(misc, 0, "Fulltest Linien: {}", LineManagerDebug(false));
 						_fleet_fulltest_wait = 200;
 						_fleet_fulltest_stage = 3;
 						break;
-					default:
+					}
+					default: {
+						extern std::string AirDivertRun(bool report, bool force);
+						Debug(misc, 0, "Fulltest Ausweichen 2: {}", AirDivertRun(true, false));
 						Debug(misc, 0, "Fulltest Kontrolle: {}", LineManagerDebug(false));
 						_fleet_fulltest_stage = 0;
 						break;
+					}
 				}
 				local.Restore();
 			}

@@ -2506,6 +2506,9 @@ STR_LINEMGR_ERR_NO_DEPOT                                        :{RED}No suitabl
 STR_LINEMGR_ERR_BUILD                                           :{RED}No vehicle built - is there enough money?
 STR_LINEMGR_ERR_SELL                                            :{RED}No vehicle found to sell
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Not available in multiplayer
+STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} diverts: {STATION} is congested, landing at {STATION}
+STR_CONFIG_SETTING_FORK_AIRDIVERT                               :Aircraft divert away from congested airports: {STRING}
+STR_CONFIG_SETTING_FORK_AIRDIVERT_HELPTEXT                      :When an aircraft circles a congested airport for too long, it lands at a quieter airport of yours nearby. Its orders are left untouched
 STR_FLEET_TOOLTIP                                               :{BLACK}Grow fleet: build several copies and spread them evenly
 STR_FLEET_SPREAD                                                :{BLACK}Spread line now
 STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Spread all vehicles of this line evenly over one round - even without new copies
