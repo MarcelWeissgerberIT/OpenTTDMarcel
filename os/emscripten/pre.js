@@ -10,7 +10,10 @@
         w.onmessage = function () {
             if (!document.hidden) return; /* Tab aktiv: RequestAnimationFrame uebernimmt. */
             try {
-                if (Module['calledRun'] && Module['_openttd_background_tick']) Module['_openttd_background_tick']();
+                /* Kein calledRun-Check: dieses Flag gibt es am Module-Objekt
+                 * nicht mehr - der Export selbst erscheint erst, wenn die
+                 * Laufzeit steht, und ist damit das richtige Signal. */
+                if (typeof Module['_openttd_background_tick'] === 'function') Module['_openttd_background_tick']();
             } catch (e) { /* Spiel (noch) nicht bereit. */ }
         };
     } catch (e) { /* Ohne Worker bleibt das bisherige Verhalten. */ }
