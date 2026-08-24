@@ -42,6 +42,7 @@
 #include "depot_base.h"
 #include "depot_map.h"
 #include "station_base.h"
+#include "town.h"
 #include "company_base.h"
 #include "company_func.h"
 #include "company_gui.h"
@@ -211,6 +212,19 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 						 * ueber den Kommando-Wrapper, deshalb direkt verbuchen. */
 						SubtractMoneyFromCompany(c->index, CommandCost(ExpensesType::Other, -Money(500000000)));
 						Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("bus", 0, 1, 8, true));
+						{
+							/* Immobilien-Massenkauf gleich mitpruefen. */
+							extern std::pair<uint, Money> HouseOwnBuyTown(TownID town_id);
+							extern std::pair<uint, Money> HouseOwnUpgradeTown(TownID town_id);
+							const Town *t = nullptr;
+							for (const Town *i : Town::Iterate()) { t = i; break; }
+							if (t != nullptr) {
+								auto [bought, spent] = HouseOwnBuyTown(t->index);
+								auto [up, up_cost] = HouseOwnUpgradeTown(t->index);
+								Debug(misc, 0, "Fulltest Stadt: {} gekauft ({}), {} ausgebaut ({})",
+										bought, (int64_t)spent, up, (int64_t)up_cost);
+							}
+						}
 						_fleet_fulltest_wait = 300;
 						_fleet_fulltest_stage = 2;
 						break;

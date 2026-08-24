@@ -18,6 +18,8 @@ enum HouseOwnWidgets : WidgetID {
 	WID_HO_UPGRADE, ///< Ausbauen-Knopf (groesseres Gebaeude).
 	WID_HO_RENOVATE, ///< Renovieren-Knopf (verjuengt das Gebaeude).
 	WID_HO_VIEW,    ///< Ansicht zentrieren.
+	WID_HO_BUY_TOWN,     ///< Alle freien Haeuser der Stadt kaufen.
+	WID_HO_UPGRADE_TOWN, ///< Alle eigenen Haeuser der Stadt ausbauen.
 };
 
 #endif /* WIDGETS_HOUSEOWN_WIDGET_H */

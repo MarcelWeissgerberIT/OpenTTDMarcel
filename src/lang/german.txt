@@ -2369,6 +2369,15 @@ STR_HOUSEOWN_NO_MONEY                                           :{WHITE}Nicht ge
 STR_NEWS_HOUSEOWN_DEMOLISHED                                    :{BIG_FONT}{BLACK}Ihr Miethaus in {TOWN} wurde von der Stadt abgerissen
 STR_NEWS_HOUSEOWN_DECAY_WARNING                                 :{BIG_FONT}{BLACK}Baufällig: Ihr Gebäude in {TOWN} ist {NUM} Jahre alt. Die Stadt plant den Abriss in einem Jahr - jetzt renovieren und das Haus retten!
 STR_HOUSEOWN_DECAY_WARNED                                       :{RED}Abriss angekündigt - jetzt renovieren!
+STR_HOUSEOWN_BUY_TOWN                                           :{BLACK}Stadt kaufen: {NUM} für {CURRENCY_SHORT}
+STR_HOUSEOWN_BUY_TOWN_NONE                                      :{BLACK}Stadt gehört schon dir
+STR_HOUSEOWN_BUY_TOWN_TOOLTIP                                   :{BLACK}Alle noch freien Gebäude dieser Stadt auf einmal kaufen - notfalls wird ein Kredit aufgenommen
+STR_HOUSEOWN_UPGRADE_TOWN                                       :{BLACK}Alle ausbauen: {NUM} für {CURRENCY_SHORT}
+STR_HOUSEOWN_UPGRADE_TOWN_NONE                                  :{BLACK}Nichts auszubauen
+STR_HOUSEOWN_UPGRADE_TOWN_TOOLTIP                               :{BLACK}Alle eigenen Gebäude dieser Stadt auf einmal zum nächstgrößeren Typ ausbauen
+STR_HOUSEOWN_TOWN_BOUGHT                                        :{WHITE}{NUM} Gebäude für {CURRENCY_LONG} gekauft
+STR_HOUSEOWN_TOWN_UPGRADED                                      :{WHITE}{NUM} Gebäude für {CURRENCY_LONG} ausgebaut
+STR_HOUSEOWN_TOWN_NOTHING                                       :{WHITE}Nichts zu tun - reicht das Geld?
 STR_STATIONPAD_CAPTION                                          :{WHITE}Stationen-Pad
 STR_STATIONPAD_MENU_ENTRY                                       :Stationen-Pad
 STR_STATIONPAD_FILTER_ALL                                       :{BLACK}Alle

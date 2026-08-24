@@ -448,6 +448,20 @@ static bool ConHouseTest(std::span<std::string_view> argv)
 	if (argv.size() >= 2 && argv[1] == "buy") {
 		IConsolePrint(CC_DEFAULT, "Kauf: {}", HouseOwnBuy(best) ? "ok" : "fehlgeschlagen");
 	}
+	if (argv.size() >= 2 && argv[1] == "town") {
+		/* Diagnose: ganze Stadt kaufen und danach ausbauen. */
+		extern std::pair<uint, Money> HouseOwnBuyTown(TownID town_id);
+		extern std::pair<uint, Money> HouseOwnUpgradeTown(TownID town_id);
+		Command<Commands::MoneyCheat>::Post(Money(2000000000));
+		const Town *t = nullptr;
+		for (const Town *i : Town::Iterate()) { t = i; break; }
+		if (t == nullptr) { IConsolePrint(CC_DEFAULT, "Keine Stadt."); return true; }
+		auto [bought, spent] = HouseOwnBuyTown(t->index);
+		auto [up, up_cost] = HouseOwnUpgradeTown(t->index);
+		IConsolePrint(CC_DEFAULT, "Stadt {}: {} gekauft ({}), {} ausgebaut ({})",
+				t->index, bought, (int64_t)spent, up, (int64_t)up_cost);
+		return true;
+	}
 	if (argv.size() >= 2 && argv[1] == "buymany") {
 		/* Diagnose: mehrere Haeuser in verschiedenen Staedten kaufen,
 		 * damit sich das Immobilien-Pad pruefen laesst. */

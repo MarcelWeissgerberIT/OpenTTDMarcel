@@ -49,6 +49,8 @@
 /* town_gui.cpp: Haus samt Mehrfach-Kacheln im GUI zeichnen. */
 void DrawHouseInGUI(int x, int y, HouseID house_id, int view);
 
+#include "misc_cmd.h"
+#include "core/geometry_func.hpp"
 #include "table/strings.h"
 
 #include <fstream>
@@ -388,15 +390,197 @@ bool HouseOwnBuy(TileIndex tile)
 	return true;
 }
 
+/* ---------- Ganze Stadt auf einmal ---------- */
+
+/**
+ * Alle Haeuser einer Stadt einsammeln (je Gebaeude nur die Nordkachel).
+ * Ueber eine Spirale statt die ganze Karte: eine Stadt ist selten
+ * groesser als vierzig Kacheln im Radius.
+ */
+static std::vector<TileIndex> TownHouses(const Town *t)
+{
+	std::vector<TileIndex> out;
+	if (t == nullptr) return out;
+	std::set<uint32_t> seen;
+	for (TileIndex tile : SpiralTileSequence(t->xy, 44)) {
+		if (!IsTileType(tile, TileType::House)) continue;
+		if (GetTownIndex(tile) != t->index) continue;
+		TileIndex north = HouseNorthTile(tile);
+		if (!seen.insert(north.base()).second) continue;
+		out.push_back(north);
+	}
+	return out;
+}
+
+/**
+ * Was kostet es, die ganze Stadt zu kaufen?
+ * @param[out] count Anzahl der noch freien Haeuser.
+ * @return Gesamtpreis.
+ */
+static Money TownBuyCost(const Town *t, uint &count)
+{
+	count = 0;
+	Money sum = 0;
+	for (TileIndex tile : TownHouses(t)) {
+		if (FindOwned(tile) != nullptr) continue;
+		sum += HousePrice(HouseSpec::Get(GetHouseType(tile)));
+		count++;
+	}
+	return sum;
+}
+
+/**
+ * Was kostet es, alle eigenen Haeuser der Stadt auszubauen?
+ * @param[out] count Anzahl der ausbaufaehigen Haeuser.
+ * @return Gesamtkosten.
+ */
+static Money TownUpgradeCost(const Town *t, uint &count)
+{
+	count = 0;
+	Money sum = 0;
+	for (TileIndex tile : TownHouses(t)) {
+		if (FindOwned(tile) == nullptr) continue;
+		HouseID cur = GetHouseType(tile);
+		HouseID up = FindUpgradeHouse(cur);
+		if (up == INVALID_HOUSE_ID) continue;
+		sum += HouseUpgradeCost(HouseSpec::Get(cur), HouseSpec::Get(up));
+		count++;
+	}
+	return sum;
+}
+
+/** Genug Geld beschaffen - notfalls per Kredit, wie beim Streckenbau. */
+static bool HouseOwnEnsureFunds(Money needed)
+{
+	const Company *c = Company::Get(_local_company);
+	if (c->money >= needed) return true;
+	Money avail = c->money + (c->GetMaxLoan() - c->current_loan);
+	if (avail < needed) return false;
+	Command<Commands::IncreaseLoan>::Do(DoCommandFlag::Execute, LoanCommand::Amount, needed - c->money);
+	return Company::Get(_local_company)->money >= needed;
+}
+
+/** Ein einzelnes Haus ausbauen. @return true bei Erfolg. */
+static bool HouseOwnUpgradeOne(TileIndex tile)
+{
+	OwnedHouse *owned = FindOwned(tile);
+	if (owned == nullptr) return false;
+	HouseID cur_id = GetHouseType(tile);
+	HouseID up = FindUpgradeHouse(cur_id);
+	if (up == INVALID_HOUSE_ID) return false;
+	const HouseSpec *up_hs = HouseSpec::Get(up);
+	Money cost = HouseUpgradeCost(HouseSpec::Get(cur_id), up_hs);
+	if (Company::Get(_local_company)->money < cost) return false;
+
+	Backup<CompanyID> deity(_current_company, OWNER_DEITY);
+	AutoRestoreBackup place(_settings_game.economy.place_houses, PlaceHouses::Allowed);
+	CommandCost res = Command<Commands::PlaceHouse>::Do(DoCommandFlag::Execute, tile, up, false, true);
+	deity.Restore();
+	if (res.Failed()) return false;
+
+	SubtractMoneyFromCompany(_local_company, CommandCost(ExpensesType::Property, cost));
+	owned->house_type = GetHouseType(tile);
+	owned->price = HousePrice(up_hs);
+	owned->rent = HouseRent(up_hs);
+	return true;
+}
+
+/**
+ * Fork: Alle freien Haeuser einer Stadt kaufen.
+ * @return Anzahl gekaufter Haeuser und ausgegebenes Geld.
+ */
+std::pair<uint, Money> HouseOwnBuyTown(TownID town_id)
+{
+	const Town *t = Town::GetIfValid(town_id);
+	if (t == nullptr || !Company::IsValidID(_local_company)) return {0, 0};
+
+	uint want = 0;
+	Money needed = TownBuyCost(t, want);
+	if (want == 0) return {0, 0};
+	HouseOwnEnsureFunds(needed);
+
+	uint bought = 0;
+	Money spent = 0;
+	for (TileIndex tile : TownHouses(t)) {
+		if (FindOwned(tile) != nullptr) continue;
+		Money price = HousePrice(HouseSpec::Get(GetHouseType(tile)));
+		if (Company::Get(_local_company)->money < price) break;
+		if (!HouseOwnBuy(tile)) continue;
+		bought++;
+		spent += price;
+	}
+	Debug(misc, 0, "Immobilien: {} von {} Haeusern in {} gekauft ({})", bought, want, t->index, (int64_t)spent);
+	return {bought, spent};
+}
+
+/**
+ * Fork: Alle eigenen Haeuser einer Stadt ausbauen.
+ * @return Anzahl ausgebauter Haeuser und Kosten.
+ */
+std::pair<uint, Money> HouseOwnUpgradeTown(TownID town_id)
+{
+	const Town *t = Town::GetIfValid(town_id);
+	if (t == nullptr || !Company::IsValidID(_local_company)) return {0, 0};
+
+	uint want = 0;
+	Money needed = TownUpgradeCost(t, want);
+	if (want == 0) return {0, 0};
+	HouseOwnEnsureFunds(needed);
+
+	uint done = 0;
+	Money before = Company::Get(_local_company)->money;
+	for (TileIndex tile : TownHouses(t)) {
+		if (HouseOwnUpgradeOne(tile)) done++;
+	}
+	Money spent = before - Company::Get(_local_company)->money;
+	if (done > 0) {
+		HouseOwnSave();
+		SetWindowClassesDirty(WindowClass::HouseInfo);
+		MarkWholeScreenDirty();
+	}
+	Debug(misc, 0, "Immobilien: {} von {} Haeusern in {} ausgebaut ({})", done, want, t->index, (int64_t)spent);
+	return {done, spent};
+}
+
 /* ---------- Der Haus-Dialog ---------- */
 
 struct HouseInfoWindow : Window {
 	TileIndex tile; ///< Nordkachel des Hauses.
+	/* Die Stadt-Zahlen kosten eine Spirale ueber tausende Kacheln -
+	 * einmal rechnen und merken, nicht bei jedem Neuzeichnen. */
+	uint town_buy_count = 0;
+	Money town_buy_cost = 0;
+	uint town_up_count = 0;
+	Money town_up_cost = 0;
 
 	HouseInfoWindow(WindowDesc &desc, WindowNumber number) : Window(desc), tile(number)
 	{
 		this->InitNested(number);
+		this->RefreshTown();
 	}
+
+	/** Stadt-Zahlen neu berechnen. */
+	void RefreshTown()
+	{
+		const Town *t = IsValidTile(this->tile) && IsTileType(this->tile, TileType::House)
+				? Town::GetByTile(this->tile) : nullptr;
+		this->town_buy_cost = TownBuyCost(t, this->town_buy_count);
+		this->town_up_cost = TownUpgradeCost(t, this->town_up_count);
+	}
+
+	/** Alle paar Sekunden nachziehen - Staedte wachsen. */
+	const IntervalTimer<TimerWindow> town_refresh = {std::chrono::seconds(5), [this](auto) {
+		uint old_buy = this->town_buy_count, old_up = this->town_up_count;
+		Money old_bc = this->town_buy_cost, old_uc = this->town_up_cost;
+		this->RefreshTown();
+		/* Nur neu vermessen, wenn sich wirklich etwas geaendert hat -
+		 * ein ReInit bei jedem Tick laesst das Fenster zappeln. */
+		if (old_buy != this->town_buy_count || old_up != this->town_up_count ||
+				old_bc != this->town_buy_cost || old_uc != this->town_up_cost) {
+			this->ReInit();
+		}
+		this->SetDirty();
+	}};
 
 	const HouseSpec *Spec() const
 	{
@@ -410,11 +594,30 @@ struct HouseInfoWindow : Window {
 			const HouseSpec *hs = this->Spec();
 			return GetString(STR_HOUSEOWN_CAPTION, hs != nullptr ? hs->building_name : STR_EMPTY);
 		}
+		if (widget == WID_HO_BUY_TOWN) {
+			return this->town_buy_count == 0
+					? GetString(STR_HOUSEOWN_BUY_TOWN_NONE)
+					: GetString(STR_HOUSEOWN_BUY_TOWN, this->town_buy_count, this->town_buy_cost);
+		}
+		if (widget == WID_HO_UPGRADE_TOWN) {
+			return this->town_up_count == 0
+					? GetString(STR_HOUSEOWN_UPGRADE_TOWN_NONE)
+					: GetString(STR_HOUSEOWN_UPGRADE_TOWN, this->town_up_count, this->town_up_cost);
+		}
 		return this->Window::GetWidgetString(widget, stringid);
 	}
 
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
 	{
+		if (widget == WID_HO_BUY_TOWN || widget == WID_HO_UPGRADE_TOWN) {
+			/* Die Zahlen stehen auf dem Knopf - das Fenster muss dafuer
+			 * breit genug sein, sonst schneidet es den Preis ab. */
+			Dimension d = GetStringBoundingBox(this->GetWidgetString(widget, STR_NULL));
+			d.width += WidgetDimensions::scaled.framerect.Horizontal();
+			d.height += WidgetDimensions::scaled.framerect.Vertical();
+			size = maxdim(size, d);
+			return;
+		}
 		if (widget != WID_HO_INFO) return;
 		/* Breite an den laengsten Text anpassen - vorher wurde die
 		 * Besitz-Zeile bei grossen Betraegen abgeschnitten. */
@@ -516,6 +719,9 @@ struct HouseInfoWindow : Window {
 				_game_mode == GameMode::Normal && Company::IsValidID(_local_company) &&
 				GetHouseAge(this->tile).base() > 0;
 		this->SetWidgetDisabledState(WID_HO_RENOVATE, !can_renovate);
+		bool playing = _game_mode == GameMode::Normal && Company::IsValidID(_local_company);
+		this->SetWidgetDisabledState(WID_HO_BUY_TOWN, !playing || this->town_buy_count == 0);
+		this->SetWidgetDisabledState(WID_HO_UPGRADE_TOWN, !playing || this->town_up_count == 0);
 		this->DrawWidgets();
 	}
 
@@ -525,6 +731,30 @@ struct HouseInfoWindow : Window {
 			case WID_HO_VIEW:
 				ScrollMainWindowToTile(this->tile);
 				break;
+
+			case WID_HO_BUY_TOWN: {
+				if (!IsValidTile(this->tile) || !IsTileType(this->tile, TileType::House)) break;
+				const Town *t = Town::GetByTile(this->tile);
+				if (t == nullptr) break;
+				auto [bought, spent] = HouseOwnBuyTown(t->index);
+				ShowErrorMessage(bought == 0 ? GetEncodedString(STR_HOUSEOWN_TOWN_NOTHING)
+						: GetEncodedString(STR_HOUSEOWN_TOWN_BOUGHT, bought, spent), {}, WarningLevel::Info);
+				this->RefreshTown();
+				this->ReInit();
+				break;
+			}
+
+			case WID_HO_UPGRADE_TOWN: {
+				if (!IsValidTile(this->tile) || !IsTileType(this->tile, TileType::House)) break;
+				const Town *t = Town::GetByTile(this->tile);
+				if (t == nullptr) break;
+				auto [done, spent] = HouseOwnUpgradeTown(t->index);
+				ShowErrorMessage(done == 0 ? GetEncodedString(STR_HOUSEOWN_TOWN_NOTHING)
+						: GetEncodedString(STR_HOUSEOWN_TOWN_UPGRADED, done, spent), {}, WarningLevel::Info);
+				this->RefreshTown();
+				this->ReInit();
+				break;
+			}
 
 			case WID_HO_BUY:
 				if (HouseOwnBuy(this->tile)) this->SetDirty();
@@ -612,6 +842,10 @@ static constexpr std::initializer_list<NWidgetPart> _nested_houseown_widgets = {
 		NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_HO_RENOVATE), SetStringTip(STR_HOUSEOWN_RENOVATE, STR_HOUSEOWN_RENOVATE_TOOLTIP), SetFill(1, 0),
 		NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_HO_UPGRADE), SetStringTip(STR_HOUSEOWN_UPGRADE, STR_HOUSEOWN_UPGRADE_TOOLTIP), SetFill(1, 0),
 		NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_HO_BUY), SetStringTip(STR_HOUSEOWN_BUY, STR_HOUSEOWN_BUY_TOOLTIP), SetFill(1, 0),
+	EndContainer(),
+	NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
+		NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_HO_BUY_TOWN), SetToolTip(STR_HOUSEOWN_BUY_TOWN_TOOLTIP), SetFill(1, 0),
+		NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_HO_UPGRADE_TOWN), SetToolTip(STR_HOUSEOWN_UPGRADE_TOWN_TOOLTIP), SetFill(1, 0),
 	EndContainer(),
 };
 
