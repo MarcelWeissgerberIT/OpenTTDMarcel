@@ -37,6 +37,7 @@
 #include "dropdown_func.h"
 #include "dropdown_type.h"
 #include "timetable_cmd.h"
+#include "settings_cmd.h"
 #include "order_base.h"
 #include "depot_base.h"
 #include "depot_map.h"
@@ -89,6 +90,40 @@ struct FleetPendingReplace {
 };
 static std::vector<FleetPendingReplace> _fleet_pending_replaces;
 
+/**
+ * Fork: Die Fahrzeug-Obergrenze soll dem Spieler nicht in den Ruecken
+ * fallen. Reicht sie fuer @p extra weitere Fahrzeuge nicht, wird die
+ * Einstellung automatisch angehoben (auf volle Hunderter gerundet).
+ * @return true, wenn danach genug Platz ist.
+ */
+static bool FleetEnsureVehicleLimit(CompanyID owner, VehicleType type, uint extra)
+{
+	uint have = 0;
+	for (const Vehicle *w : Vehicle::Iterate()) {
+		if (w->owner == owner && w->type == type && w->IsPrimaryVehicle()) have++;
+	}
+	uint limit;
+	const char *name;
+	switch (type) {
+		case VehicleType::Train:    limit = _settings_game.vehicle.max_trains;   name = "vehicle.max_trains";   break;
+		case VehicleType::Road:     limit = _settings_game.vehicle.max_roadveh;  name = "vehicle.max_roadveh";  break;
+		case VehicleType::Ship:     limit = _settings_game.vehicle.max_ships;    name = "vehicle.max_ships";    break;
+		case VehicleType::Aircraft: limit = _settings_game.vehicle.max_aircraft; name = "vehicle.max_aircraft"; break;
+		default: return true;
+	}
+	if (have + extra <= limit) return true;
+	uint want = std::min<uint>(10000, ((have + extra + 99) / 100) * 100);
+	CommandCost res = Command<Commands::ChangeSetting>::Do(DoCommandFlag::Execute, std::string(name), (int32_t)want);
+	Debug(misc, 0, "Flotte: Obergrenze {} -> {} ({})", name, want, res.Succeeded() ? "ok" : "abgelehnt");
+	switch (type) {
+		case VehicleType::Train:    limit = _settings_game.vehicle.max_trains;   break;
+		case VehicleType::Road:     limit = _settings_game.vehicle.max_roadveh;  break;
+		case VehicleType::Ship:     limit = _settings_game.vehicle.max_ships;    break;
+		default:                    limit = _settings_game.vehicle.max_aircraft; break;
+	}
+	return have + extra <= limit;
+}
+
 /** Genug Geld fuer den Tausch beschaffen - notfalls per Kredit. */
 static bool FleetEnsureFunds(CompanyID owner, Money needed)
 {
@@ -115,6 +150,7 @@ static bool FleetSwapInDepot(const Vehicle *v, EngineID to)
 		if (!v->vehstatus.Test(VehState::Stopped)) return false;
 	}
 	FleetEnsureFunds(v->owner, Engine::Get(to)->GetCost() + Engine::Get(to)->GetCost() / 5);
+	FleetEnsureVehicleLimit(v->owner, v->type, 1);
 	TileIndex depot_tile = v->tile;
 	CompanyID owner = v->owner;
 	CommandCost swap = Command<Commands::AutoreplaceVehicle>::Do(DoCommandFlag::Execute, v->index);
@@ -545,6 +581,9 @@ struct FleetWindow : Window {
 			/* Geld fuer die erste Runde Kaeufe sichern - der Rest folgt
 			 * gestaffelt, wenn die Verkaufserloese wieder reinkommen. */
 			FleetEnsureFunds(v->owner, Engine::Get(this->new_engine)->GetCost() * (int)std::min<size_t>(same.size(), 4));
+			/* Der Tausch baut erst das neue Fahrzeug und verkauft dann das
+			 * alte - am Limit braucht er dafuer einen Slot Luft. */
+			FleetEnsureVehicleLimit(v->owner, v->type, 1);
 		}
 		cur_company.Restore();
 
@@ -584,12 +623,19 @@ struct FleetWindow : Window {
 
 		uint already = FleetSharedCount(v);
 		Backup<CompanyID> cur_company(_current_company, v->owner);
+		/* Die Fahrzeug-Obergrenze (Standard: 200 Flugzeuge) soll die
+		 * Massenkopie nicht stumm ausbremsen - bei Bedarf anheben. */
+		FleetEnsureVehicleLimit(v->owner, v->type, this->count);
 		Money spent = 0;
 		uint built = 0;
+		StringID fail_reason = INVALID_STRING_ID;
 		std::vector<VehicleID> fresh;
 		for (uint i = 0; i < this->count; i++) {
 			auto [cost, new_id] = Command<Commands::CloneVehicle>::Do(DoCommandFlag::Execute, depot, this->veh, _fleet_share);
-			if (cost.Failed()) break;
+			if (cost.Failed()) {
+				fail_reason = cost.GetErrorMessage();
+				break;
+			}
 			spent += cost.GetCost();
 			fresh.push_back(new_id);
 			built++;
@@ -607,6 +653,10 @@ struct FleetWindow : Window {
 
 		if (built == 0) {
 			this->status = GetString(STR_FLEET_ERR_FAILED);
+			if (fail_reason != INVALID_STRING_ID) {
+				this->status += "\n";
+				this->status += GetString(fail_reason);
+			}
 		} else if (spreading) {
 			this->status = GetString(STR_FLEET_STATUS_DONE_TIMETABLE, built, spent, already + built);
 		} else {
