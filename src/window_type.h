@@ -475,6 +475,11 @@ enum class WindowClass : uint16_t {
 	Fleet,
 
 	/**
+	 * Linien-Manager (Fork): Auslastung und Gewinn je Linie.
+	 */
+	LineManager,
+
+	/**
 	 * Meldungen einstellen (Fork): Mitteilungen abschalten oder daempfen.
 	 */
 	NewsOptions,

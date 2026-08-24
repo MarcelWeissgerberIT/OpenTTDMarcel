@@ -183,36 +183,49 @@ static bool FleetSwapInDepot(const Vehicle *v, EngineID to)
  * stoesst dann den Fabrikneu-Tausch an - der komplette Ersetzen-Pfad
  * ohne einen einzigen Klick, damit Abstuerze headless reproduzierbar sind.
  */
-int _fleet_fulltest_stage = 0; ///< 0 = aus, 1 = Linie bauen, 2 = Tausch anstossen.
+int _fleet_fulltest_stage = 0;
+static int _fleet_fulltest_wait = 0; ///< Tage bis zur naechsten Teststufe. ///< 0 = aus, 1 = Linie bauen, 2 = Tausch anstossen.
 
 /** Taeglich: fertig gemessene Fahrplaene gleichmaessig verteilen. */
 static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar::Trigger::Day, TimerGameCalendar::Priority::None}, [](auto) {
 	if (_fleet_fulltest_stage > 0) {
-		/* Headless-Start (null-Video): dort gibt es keine Spielerfirma -
-		 * fuer den Test eine gruenden und NUR fuer die Dauer des Zweigs
-		 * uebernehmen (StateGameLoop stellt die Firma am Tick-Ende selbst
-		 * wieder her und prueft die Invariante). */
-		extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
-		const Company *c = nullptr;
-		for (const Company *i : Company::Iterate()) { c = i; break; }
-		if (c == nullptr) c = DoStartupNewCompany(false, CompanyID::Invalid());
-		if (_pause_mode.Any()) Command<Commands::Pause>::Do(DoCommandFlag::Execute, PauseMode::Normal, false);
-		if (c != nullptr) {
-			Backup<CompanyID> local(_local_company, c->index);
-			if (_fleet_fulltest_stage == 1) {
-				/* Zukunfts-Modelle sind teuer - der Test braucht Kapital.
-				 * Der Geld-Cheat wirkt nur ueber den Kommando-Wrapper,
-				 * deshalb hier direkt verbuchen. */
-				SubtractMoneyFromCompany(c->index, CommandCost(ExpensesType::Other, -Money(500000000)));
+		if (_fleet_fulltest_wait > 0) {
+			_fleet_fulltest_wait--;
+		} else {
+			/* Headless-Start (null-Video): dort gibt es keine Spielerfirma -
+			 * fuer den Test eine gruenden und NUR fuer die Dauer des Zweigs
+			 * uebernehmen (StateGameLoop stellt die Firma am Tick-Ende selbst
+			 * wieder her und prueft die Invariante). */
+			extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
+			const Company *c = nullptr;
+			for (const Company *i : Company::Iterate()) { c = i; break; }
+			if (c == nullptr) c = DoStartupNewCompany(false, CompanyID::Invalid());
+			if (_pause_mode.Any()) Command<Commands::Pause>::Do(DoCommandFlag::Execute, PauseMode::Normal, false);
+			if (c != nullptr) {
+				Backup<CompanyID> local(_local_company, c->index);
 				extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
-				Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("air", 0, 1, 2, true));
-				_fleet_fulltest_stage = 2;
-			} else {
-				extern std::string FleetDebugSwapTest();
-				Debug(misc, 0, "Fulltest Swap: {}", FleetDebugSwapTest());
-				_fleet_fulltest_stage = 0;
+				extern std::string LineManagerDebug(bool apply);
+				switch (_fleet_fulltest_stage) {
+					case 1:
+						/* Startkapital fuer den Test - der Geld-Cheat wirkt nur
+						 * ueber den Kommando-Wrapper, deshalb direkt verbuchen. */
+						SubtractMoneyFromCompany(c->index, CommandCost(ExpensesType::Other, -Money(500000000)));
+						Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("bus", 0, 1, 8, true));
+						_fleet_fulltest_wait = 300;
+						_fleet_fulltest_stage = 2;
+						break;
+					case 2:
+						Debug(misc, 0, "Fulltest Linien: {}", LineManagerDebug(true));
+						_fleet_fulltest_wait = 200;
+						_fleet_fulltest_stage = 3;
+						break;
+					default:
+						Debug(misc, 0, "Fulltest Kontrolle: {}", LineManagerDebug(false));
+						_fleet_fulltest_stage = 0;
+						break;
+				}
+				local.Restore();
 			}
-			local.Restore();
 		}
 	}
 
@@ -331,6 +344,12 @@ void FleetQueueReplace(VehicleID veh, EngineID to)
 	_fleet_pending_replaces.push_back({veh, v->engine_type, to, v->owner, 365});
 }
 
+/** Fork: Taktung der Linie aus dem Linien-Manager anstossen. */
+void FleetSpreadLine(const Vehicle *v)
+{
+	FleetStartSpreading(v);
+}
+
 /* ==================== Hilfsfunktionen ==================== */
 
 /** Wieviele Fahrzeuge teilen sich die Auftraege dieses Fahrzeugs? */
@@ -343,6 +362,20 @@ static uint FleetSharedCount(const Vehicle *v)
 }
 
 /** Passendes Depot (bzw. Hangar) zum Klonen finden. */
+static TileIndex FleetFindDepot(const Vehicle *v);
+
+/** Fork: dieselbe Depot-Suche fuer den Linien-Manager. */
+TileIndex FleetFindDepotFor(const Vehicle *v)
+{
+	return FleetFindDepot(v);
+}
+
+/** Fork: Fahrzeug-Obergrenze fuer den Linien-Manager anheben. */
+bool FleetEnsureLimitFor(CompanyID owner, VehicleType type, uint extra)
+{
+	return FleetEnsureVehicleLimit(owner, type, extra);
+}
+
 static TileIndex FleetFindDepot(const Vehicle *v)
 {
 	/* Steht das Fahrzeug schon im Depot, ist die Sache einfach. */

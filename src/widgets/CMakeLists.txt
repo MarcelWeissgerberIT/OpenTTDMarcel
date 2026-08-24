@@ -23,6 +23,7 @@ add_files(
     tutorial_widget.h
     difficulty_widget.h
     fleet_widget.h
+    linemgr_widget.h
     newsopt_widget.h
     housepad_widget.h
     stationpad_widget.h

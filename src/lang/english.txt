@@ -2462,6 +2462,41 @@ STR_FLEET_STATUS_DONE_TIMETABLE                                 :{BLACK}{NUM} co
 STR_FLEET_ERR_NO_DEPOT                                          :{RED}No suitable depot found - build one near the route first
 STR_FLEET_ERR_FAILED                                            :{RED}No copy built - is there enough money?
 STR_FLEET_ERR_SINGLEPLAYER                                      :{WHITE}Not available in multiplayer
+STR_LINEMGR_CAPTION                                             :{WHITE}Line manager
+STR_LINEMGR_MENU_ENTRY                                          :Line manager
+STR_LINEMGR_FILTER_ALL                                          :{BLACK}All lines
+STR_LINEMGR_FILTER_ALL_TOOLTIP                                  :{BLACK}Show every line
+STR_LINEMGR_FILTER_TODO                                         :{BLACK}Needs attention only
+STR_LINEMGR_FILTER_TODO_TOOLTIP                                 :{BLACK}Only show lines that lack vehicles or have too many
+STR_LINEMGR_APPLY_ALL                                           :{BLACK}Apply all suggestions
+STR_LINEMGR_APPLY_ALL_TOOLTIP                                   :{BLACK}Build or sell as many vehicles on every line as suggested
+STR_LINEMGR_COL_LINE                                            :{TINY_FONT}{WHITE}Line
+STR_LINEMGR_COL_VEHICLES                                        :{TINY_FONT}{WHITE}Veh
+STR_LINEMGR_COL_OCCUPANCY                                       :{TINY_FONT}{WHITE}Occupancy
+STR_LINEMGR_COL_PROFIT                                          :{TINY_FONT}{WHITE}Profit (year)
+STR_LINEMGR_COL_WAITING                                         :{TINY_FONT}{WHITE}waiting
+STR_LINEMGR_COL_ADVICE                                          :{TINY_FONT}{WHITE}Suggestion
+STR_LINEMGR_ROUTE                                               :{STATION} - {STATION}
+STR_LINEMGR_ROUTE_MORE                                          : (+{NUM})
+STR_LINEMGR_NO_STOPS                                            :No stops
+STR_LINEMGR_PERCENT                                             :{NUM}%
+STR_LINEMGR_NO_DATA                                             :-
+STR_LINEMGR_ADVICE_MORE                                         :+{NUM} build
+STR_LINEMGR_ADVICE_LESS                                         :{NUM} sell
+STR_LINEMGR_ADVICE_OK                                           :fine
+STR_LINEMGR_SUMMARY                                             :{BLACK}{NUM} lines with {NUM} vehicles - profit {CURRENCY_LONG} - {NUM} need attention. Click jumps there, clicking the suggestion applies it, right click shows the vehicles
+STR_LINEMGR_EMPTY                                               :{WHITE}No lines yet - vehicles sharing orders form a line
+STR_LINEMGR_ALL_FINE                                            :{WHITE}All good - no line needs changes
+STR_LINEMGR_STATUS_HINT                                         :{BLACK}Red = vehicles run half empty, orange = passengers are left behind
+STR_LINEMGR_STATUS_NOTHING                                      :{BLACK}Nothing to do - every line is well used
+STR_LINEMGR_STATUS_GONE                                         :{RED}That line is gone
+STR_LINEMGR_STATUS_BUILT                                        :{BLACK}{NUM} vehicle(s) built for {CURRENCY_LONG} - they get spread evenly
+STR_LINEMGR_STATUS_SELLING                                      :{BLACK}{NUM} vehicle(s) heading to a depot to be sold
+STR_LINEMGR_STATUS_ALL                                          :{BLACK}{NUM} lines adjusted
+STR_LINEMGR_ERR_NO_DEPOT                                        :{RED}No suitable depot found on this line
+STR_LINEMGR_ERR_BUILD                                           :{RED}No vehicle built - is there enough money?
+STR_LINEMGR_ERR_SELL                                            :{RED}No vehicle found to sell
+STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Not available in multiplayer
 STR_FLEET_TOOLTIP                                               :{BLACK}Grow fleet: build several copies and spread them evenly
 STR_FLEET_SPREAD                                                :{BLACK}Spread line now
 STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Spread all vehicles of this line evenly over one round - even without new copies

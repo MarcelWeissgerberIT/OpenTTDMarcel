@@ -558,6 +558,21 @@ static bool ConFleet(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Linien-Manager - Uebersicht und Vorschlaege. */
+static bool ConLines(std::span<std::string_view> argv)
+{
+	extern std::string LineManagerDebug(bool apply);
+	extern void ShowLineManagerWindow();
+	if (argv.size() >= 2 && argv[1] == "window") {
+		ShowLineManagerWindow();
+		IConsolePrint(CC_DEFAULT, "Linien-Manager geoeffnet.");
+		return true;
+	}
+	bool apply = argv.size() >= 2 && argv[1] == "apply";
+	IConsolePrint(CC_DEFAULT, "{}", LineManagerDebug(apply));
+	return true;
+}
+
 /* Fork: Immobilien-Pad aus der Konsole oeffnen. */
 static bool ConHousePad(std::span<std::string_view>)
 {
@@ -3237,6 +3252,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("stationpad",              ConStationPad);
 	IConsole::CmdRegister("housepad",                ConHousePad);
 	IConsole::CmdRegister("fleet",                   ConFleet);
+	IConsole::CmdRegister("lines",                   ConLines);
 	IConsole::CmdRegister("futureengines",           ConFutureEngines);
 	IConsole::CmdRegister("buildveh",                ConBuildVeh);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);

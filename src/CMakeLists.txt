@@ -198,6 +198,7 @@ add_files(
     fios_gui.cpp
     houseown_gui.cpp
     fleet_gui.cpp
+    linemgr_gui.cpp
     futureengines.cpp
     newsopt_gui.cpp
     pixelstudio_gui.cpp

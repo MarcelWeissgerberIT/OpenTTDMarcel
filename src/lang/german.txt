@@ -2431,6 +2431,41 @@ STR_FLEET_STATUS_DONE_TIMETABLE                                 :{BLACK}{NUM} Ko
 STR_FLEET_ERR_NO_DEPOT                                          :{RED}Kein passendes Depot gefunden - erst eins in der Nähe der Strecke bauen
 STR_FLEET_ERR_FAILED                                            :{RED}Keine Kopie gebaut - reicht das Geld?
 STR_FLEET_ERR_SINGLEPLAYER                                      :{WHITE}Im Mehrspieler nicht verfügbar
+STR_LINEMGR_CAPTION                                             :{WHITE}Linien-Manager
+STR_LINEMGR_MENU_ENTRY                                          :Linien-Manager
+STR_LINEMGR_FILTER_ALL                                          :{BLACK}Alle Linien
+STR_LINEMGR_FILTER_ALL_TOOLTIP                                  :{BLACK}Jede Linie anzeigen
+STR_LINEMGR_FILTER_TODO                                         :{BLACK}Nur mit Handlungsbedarf
+STR_LINEMGR_FILTER_TODO_TOOLTIP                                 :{BLACK}Nur Linien zeigen, bei denen Fahrzeuge fehlen oder zu viel sind
+STR_LINEMGR_APPLY_ALL                                           :{BLACK}Alle Vorschläge umsetzen
+STR_LINEMGR_APPLY_ALL_TOOLTIP                                   :{BLACK}Auf jeder Linie so viele Fahrzeuge bauen oder verkaufen, wie vorgeschlagen
+STR_LINEMGR_COL_LINE                                            :{TINY_FONT}{WHITE}Linie
+STR_LINEMGR_COL_VEHICLES                                        :{TINY_FONT}{WHITE}Fz
+STR_LINEMGR_COL_OCCUPANCY                                       :{TINY_FONT}{WHITE}Auslastung
+STR_LINEMGR_COL_PROFIT                                          :{TINY_FONT}{WHITE}Gewinn (Jahr)
+STR_LINEMGR_COL_WAITING                                         :{TINY_FONT}{WHITE}wartet
+STR_LINEMGR_COL_ADVICE                                          :{TINY_FONT}{WHITE}Vorschlag
+STR_LINEMGR_ROUTE                                               :{STATION} - {STATION}
+STR_LINEMGR_ROUTE_MORE                                          : (+{NUM})
+STR_LINEMGR_NO_STOPS                                            :Ohne Halt
+STR_LINEMGR_PERCENT                                             :{NUM}%
+STR_LINEMGR_NO_DATA                                             :-
+STR_LINEMGR_ADVICE_MORE                                         :+{NUM} bauen
+STR_LINEMGR_ADVICE_LESS                                         :{NUM} verkaufen
+STR_LINEMGR_ADVICE_OK                                           :passt
+STR_LINEMGR_SUMMARY                                             :{BLACK}{NUM} Linien mit {NUM} Fahrzeugen - Gewinn {CURRENCY_LONG} - {NUM} mit Handlungsbedarf. Klick springt hin, Klick auf den Vorschlag setzt ihn um, Rechtsklick zeigt die Fahrzeuge
+STR_LINEMGR_EMPTY                                               :{WHITE}Noch keine Linien - Fahrzeuge mit gemeinsamen Aufträgen bilden eine Linie
+STR_LINEMGR_ALL_FINE                                            :{WHITE}Alles im grünen Bereich - keine Linie braucht Änderungen
+STR_LINEMGR_STATUS_HINT                                         :{BLACK}Rot = Fahrzeuge fahren halb leer, Orange = Fahrgäste bleiben stehen
+STR_LINEMGR_STATUS_NOTHING                                      :{BLACK}Nichts zu tun - alle Linien sind gut ausgelastet
+STR_LINEMGR_STATUS_GONE                                         :{RED}Diese Linie gibt es nicht mehr
+STR_LINEMGR_STATUS_BUILT                                        :{BLACK}{NUM} Fahrzeug(e) für {CURRENCY_LONG} gebaut - sie werden gleichmäßig eingetaktet
+STR_LINEMGR_STATUS_SELLING                                      :{BLACK}{NUM} Fahrzeug(e) fahren ins Depot und werden dort verkauft
+STR_LINEMGR_STATUS_ALL                                          :{BLACK}{NUM} Linien angepasst
+STR_LINEMGR_ERR_NO_DEPOT                                        :{RED}Kein passendes Depot an dieser Linie gefunden
+STR_LINEMGR_ERR_BUILD                                           :{RED}Kein Fahrzeug gebaut - reicht das Geld?
+STR_LINEMGR_ERR_SELL                                            :{RED}Kein Fahrzeug zum Verkauf gefunden
+STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Im Mehrspieler nicht verfügbar
 STR_FLEET_TOOLTIP                                               :{BLACK}Flotte aufstocken: mehrere Kopien bauen und gleichmäßig takten
 STR_FLEET_SPREAD                                                :{BLACK}Linie jetzt takten
 STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Alle Fahrzeuge dieser Linie gleichmäßig über eine Runde verteilen - auch ohne neue Kopien
