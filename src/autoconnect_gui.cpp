@@ -33,6 +33,7 @@
 #include "bridge.h"
 #include "tunnelbridge_cmd.h"
 #include "terraform_cmd.h"
+#include "signal_func.h"
 #include "water_cmd.h"
 #include "newgrf_station.h"
 #include "newgrf_roadstop.h"
@@ -171,8 +172,20 @@ static void AcLogBegin() { _ac_build_log.clear(); _ac_log_active = true; }
 static void AcLogEnd() { _ac_log_active = false; _ac_build_log.clear(); }
 static void AcLogTile(TileIndex t) { if (_ac_log_active) _ac_build_log.push_back(t); }
 
+/**
+ * Fork: Direkt ausgefuehrte Baubefehle (Command::Do) fuellen den
+ * Signal-Puffer, den sonst DoCommandP nach jedem Spielerkommando leert.
+ * Bleibt er gefuellt, bricht der naechste Zug-Tick an der Invariante in
+ * UpdateSignalsOnSegment ab. Dieser Waechter leert ihn beim Verlassen
+ * der Baufunktion - egal ueber welchen return sie endet.
+ */
+struct AcSignalFlush {
+	~AcSignalFlush() { UpdateSignalsInBuffer(); }
+};
+
 static void AcRollback()
 {
+	AcSignalFlush signal_flush;
 	if (!_ac_log_active) return;
 	_ac_log_active = false;
 	for (auto it = _ac_build_log.rbegin(); it != _ac_build_log.rend(); ++it) {
@@ -1330,6 +1343,7 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	AutoConnectResult result;
 	DoCommandFlags do_flags = estimate ? DoCommandFlags{} : DoCommandFlags{DoCommandFlag::Execute};
 	Backup<CompanyID> cur_company(_current_company, _local_company);
+	AcSignalFlush signal_flush;
 	bool loop = train_count > 1;
 	uint8_t numtracks = loop ? 2 : 1;
 
@@ -1349,9 +1363,11 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 			cur_company.Restore();
 			return result;
 		}
-		cur_company.Restore();
+		/* Der Trockenlauf legt sein eigenes Firmen-Backup an - das
+		 * aeussere muss dafuer NICHT aufgeloest werden. Ein Restore mit
+		 * anschliessendem Change liess das Backup ungueltig zurueck und
+		 * beendete das Spiel mit einem Assert. */
 		AutoConnectResult dry = BuildRailConnection(center_a, center_b, train_count, cargo_mode, freight, true);
-		cur_company.Change(_local_company);
 		if (dry.error == 0) {
 			/* Ein Zehntel Luft fuer Kleinigkeiten, die der Trockenlauf
 			 * nicht sieht (Planieren am Hang, Signale). */
@@ -2423,6 +2439,10 @@ static bool AcEnsureFunds(Money needed, Money *short_by)
  */
 std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick)
 {
+	/* Ohne Firma (Zuschauer, Server-Konsole) wuerden die Baubefehle
+	 * weiter unten in Asserts laufen - sauber ablehnen. */
+	if (!Company::IsValidID(_local_company)) return "Keine eigene Firma - erst einem Spiel beitreten.";
+
 	std::vector<Town *> towns;
 	for (Town *t : Town::Iterate()) towns.push_back(t);
 	if (towns.size() < 2) return "Zu wenige Staedte auf der Karte.";

@@ -2440,7 +2440,7 @@ STR_FLEET_MODEL_ITEM                                            :{ENGINE} ({NUM}
 STR_FLEET_MODEL_TOOLTIP                                         :{BLACK}Das Modell, auf das alle baugleichen Fahrzeuge getauscht werden
 STR_FLEET_REPLACE                                               :{BLACK}Alle {NUM} baugleichen ersetzen
 STR_FLEET_REPLACE_TOOLTIP                                       :{BLACK}Alle Fahrzeuge mit demselben Modell ins Depot rufen, verkaufen und durch das gewählte Modell ersetzen - Aufträge und Fahrplan bleiben erhalten
-STR_FLEET_REPLACE_DONE                                          :{BLACK}{NUM} sofort getauscht, {NUM} unterwegs ins Depot - dort wird beim Halt getauscht, der Fahrplan bleibt erhalten
+STR_FLEET_REPLACE_DONE                                          :{BLACK}{NUM} Fahrzeug(e) werden getauscht - sie halten dafür kurz im Depot, Aufträge und Fahrplan bleiben erhalten
 STR_FLEET_ERR_PICK_MODEL                                        :{RED}Erst oben ein neues Modell wählen
 STR_FLEET_ERR_NO_MODEL                                          :{RED}Kein passendes Ersatzmodell verfügbar
 STR_NEWSOPT_CAPTION                                             :{WHITE}Meldungen einstellen

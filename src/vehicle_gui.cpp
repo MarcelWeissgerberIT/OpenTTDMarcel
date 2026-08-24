@@ -3509,11 +3509,15 @@ public:
 					Command<Commands::SetAutoreplace>::Post(ALL_GROUP, v->engine_type, target, false);
 				}
 				if (better == EngineID::Invalid()) ForkRegisterPendingRenew(v->index, v->engine_type, v->owner);
-				if (v->IsStoppedInDepot()) {
-					/* Steht schon im Depot: sofort tauschen. */
-					Command<Commands::AutoreplaceVehicle>::Post(v->index);
-				} else {
-					Command<Commands::SendVehicleToDepot>::Post(GetCmdSendToDepotMsg(v), v->index, DepotCommandFlags{DepotCommandFlag::Service}, {});
+				/* Der Tausch selbst laeuft ueber den Tages-Timer, nie
+				 * sofort im Klick: der Verkauf schliesst dieses Fenster,
+				 * und mitten im eigenen Klick geloescht zu werden liess
+				 * das Spiel abstuerzen. */
+				{
+					extern void FleetQueueReplace(VehicleID veh, EngineID to);
+					FleetQueueReplace(v->index, target);
+				}
+				if (!v->IsStoppedInDepot()) {
 					ShowErrorMessage(GetEncodedString(better != EngineID::Invalid() ? STR_MODERNIZE_INFO_UPGRADE : STR_MODERNIZE_INFO_RENEW), {}, WarningLevel::Info);
 				}
 				break;

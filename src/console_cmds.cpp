@@ -520,6 +520,17 @@ static bool ConFleet(std::span<std::string_view> argv)
 		IConsolePrint(CC_DEFAULT, "{}", FleetDebugStatus());
 		return true;
 	}
+	if (argv.size() >= 2 && argv[1] == "fulltest") {
+		extern int _fleet_fulltest_stage;
+		_fleet_fulltest_stage = 1;
+		IConsolePrint(CC_DEFAULT, "Fulltest vorgemerkt.");
+		return true;
+	}
+	if (argv.size() >= 2 && argv[1] == "swaptest") {
+		extern std::string FleetDebugSwapTest();
+		IConsolePrint(CC_DEFAULT, "{}", FleetDebugSwapTest());
+		return true;
+	}
 	IConsolePrint(CC_DEFAULT, "{}", FleetDebugOpen());
 	return true;
 }

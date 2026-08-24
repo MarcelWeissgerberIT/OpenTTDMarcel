@@ -2471,7 +2471,7 @@ STR_FLEET_MODEL_ITEM                                            :{ENGINE} ({NUM}
 STR_FLEET_MODEL_TOOLTIP                                         :{BLACK}The model every identical vehicle gets swapped to
 STR_FLEET_REPLACE                                               :{BLACK}Replace all {NUM} identical
 STR_FLEET_REPLACE_TOOLTIP                                       :{BLACK}Call every vehicle of the same model into a depot, sell it and replace it with the chosen model - orders and timetable are kept
-STR_FLEET_REPLACE_DONE                                          :{BLACK}{NUM} swapped right away, {NUM} heading to a depot - they are swapped on arrival, the timetable is kept
+STR_FLEET_REPLACE_DONE                                          :{BLACK}{NUM} vehicle(s) are being swapped - each stops briefly in a depot, orders and timetable are kept
 STR_FLEET_ERR_PICK_MODEL                                        :{RED}Pick a new model above first
 STR_FLEET_ERR_NO_MODEL                                          :{RED}No suitable replacement model available
 STR_NEWSOPT_CAPTION                                             :{WHITE}Message settings

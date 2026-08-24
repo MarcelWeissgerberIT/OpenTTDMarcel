@@ -43,7 +43,11 @@
 #include "station_base.h"
 #include "company_base.h"
 #include "company_func.h"
+#include "company_gui.h"
+#include "misc_cmd.h"
+#include "openttd.h"
 #include "command_func.h"
+#include "signal_func.h"
 #include "core/backup_type.hpp"
 #include "error.h"
 #include "debug.h"
@@ -104,10 +108,28 @@ static bool FleetEnsureFunds(CompanyID owner, Money needed)
 static bool FleetSwapInDepot(const Vehicle *v, EngineID to)
 {
 	if (v == nullptr || !v->IsChainInDepot()) return false;
+	/* Autoreplace erwartet ein haltendes Fahrzeug - ein Zug, der nur zum
+	 * Service durchrollt, wuerde die Invarianten des Tauschs verletzen. */
+	if (!v->vehstatus.Test(VehState::Stopped)) {
+		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, v->index, false);
+		if (!v->vehstatus.Test(VehState::Stopped)) return false;
+	}
 	FleetEnsureFunds(v->owner, Engine::Get(to)->GetCost() + Engine::Get(to)->GetCost() / 5);
 	TileIndex depot_tile = v->tile;
 	CompanyID owner = v->owner;
-	if (Command<Commands::AutoreplaceVehicle>::Do(DoCommandFlag::Execute, v->index).Failed()) return false;
+	CommandCost swap = Command<Commands::AutoreplaceVehicle>::Do(DoCommandFlag::Execute, v->index);
+	/* Direktes Do umgeht den Kommando-Wrapper, der den Signal-Puffer
+	 * leert - hier nachholen, sonst stolpert der naechste Zug-Tick. */
+	UpdateSignalsInBuffer();
+	if (swap.Failed()) {
+		Debug(misc, 0, "Flotte: Autoreplace-Fehler {}", swap.GetErrorMessage().base());
+		if (swap.GetErrorMessage() == STR_ERROR_AUTOREPLACE_NOTHING_TO_DO) {
+			/* Nichts zu tauschen (z. B. fabrikneu und noch jung): das
+			 * Fahrzeug wieder losschicken statt es im Depot zu parken. */
+			Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, v->index, false);
+		}
+		return false;
+	}
 	/* Das neue Fahrzeug hat eine neue Nummer - auf dem Depotfeld suchen
 	 * und starten, damit es nicht vergessen im Depot steht. */
 	for (const Vehicle *w : Vehicle::Iterate()) {
@@ -119,8 +141,40 @@ static bool FleetSwapInDepot(const Vehicle *v, EngineID to)
 	return true;
 }
 
+/**
+ * Diagnose "fleet fulltest": baut nach Firmengruendung eine Zuglinie und
+ * stoesst dann den Fabrikneu-Tausch an - der komplette Ersetzen-Pfad
+ * ohne einen einzigen Klick, damit Abstuerze headless reproduzierbar sind.
+ */
+int _fleet_fulltest_stage = 0; ///< 0 = aus, 1 = Linie bauen, 2 = Tausch anstossen.
+
 /** Taeglich: fertig gemessene Fahrplaene gleichmaessig verteilen. */
 static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar::Trigger::Day, TimerGameCalendar::Priority::None}, [](auto) {
+	if (_fleet_fulltest_stage > 0) {
+		/* Headless-Start (null-Video): dort gibt es keine Spielerfirma -
+		 * fuer den Test eine gruenden und NUR fuer die Dauer des Zweigs
+		 * uebernehmen (StateGameLoop stellt die Firma am Tick-Ende selbst
+		 * wieder her und prueft die Invariante). */
+		extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
+		const Company *c = nullptr;
+		for (const Company *i : Company::Iterate()) { c = i; break; }
+		if (c == nullptr) c = DoStartupNewCompany(false, CompanyID::Invalid());
+		if (_pause_mode.Any()) Command<Commands::Pause>::Do(DoCommandFlag::Execute, PauseMode::Normal, false);
+		if (c != nullptr) {
+			Backup<CompanyID> local(_local_company, c->index);
+			if (_fleet_fulltest_stage == 1) {
+				extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
+				Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("rail", 0, 1, 1, true));
+				_fleet_fulltest_stage = 2;
+			} else {
+				extern std::string FleetDebugSwapTest();
+				Debug(misc, 0, "Fulltest Swap: {}", FleetDebugSwapTest());
+				_fleet_fulltest_stage = 0;
+			}
+			local.Restore();
+		}
+	}
+
 	for (auto it = _fleet_pending_spreads.begin(); it != _fleet_pending_spreads.end();) {
 		const Vehicle *v = Vehicle::GetIfValid(it->vehicle);
 		if (v == nullptr || v->orders == nullptr || --it->days_left <= 0) {
@@ -148,8 +202,14 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 
 	for (auto it = _fleet_pending_replaces.begin(); it != _fleet_pending_replaces.end();) {
 		const Vehicle *v = Vehicle::GetIfValid(it->vehicle);
-		/* Weg oder anderes Modell: der Tausch ist durch. Frist um: aufgeben. */
+		/* Weg oder anderes Modell: der Tausch ist durch. Frist um: aufgeben -
+		 * aber ein im Depot abgestelltes Fahrzeug vorher wieder losschicken. */
 		if (v == nullptr || v->engine_type != it->from || v->owner != it->owner || --it->days_left <= 0) {
+			if (v != nullptr && v->engine_type == it->from && v->IsChainInDepot() && v->vehstatus.Test(VehState::Stopped)) {
+				Backup<CompanyID> cur_company(_current_company, v->owner);
+				Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, v->index, false);
+				cur_company.Restore();
+			}
 			it = _fleet_pending_replaces.erase(it);
 			continue;
 		}
@@ -167,8 +227,12 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 		Backup<CompanyID> cur_company(_current_company, it->owner);
 		bool done = FleetSwapInDepot(v, it->to);
 		cur_company.Restore();
-		Debug(misc, 0, "Flotte: Tausch von Fahrzeug {} {}", it->vehicle.base(), done ? "erledigt" : "fehlgeschlagen, neuer Versuch morgen");
-		if (done) {
+		/* Faehrt das Fahrzeug wieder (Tausch unnoetig), ist der Eintrag
+		 * ebenfalls erledigt - sonst stuende es morgen wieder im Depot. */
+		bool moot = !done && !v->vehstatus.Test(VehState::Stopped);
+		Debug(misc, 0, "Flotte: Tausch von Fahrzeug {} {}", it->vehicle.base(),
+				done ? "erledigt" : (moot ? "unnoetig (faehrt weiter)" : "fehlgeschlagen, neuer Versuch morgen"));
+		if (done || moot) {
 			it = _fleet_pending_replaces.erase(it);
 		} else {
 			++it;
@@ -200,6 +264,30 @@ static bool FleetStartSpreading(const Vehicle *v)
 	}
 	cur_company.Restore();
 	return now;
+}
+
+/**
+ * Fork: Fahrzeug fuer den Modell-Tausch vormerken. Der Tages-Timer ruft
+ * es ins Depot und tauscht dort - bewusst NICHT sofort im Klick: der
+ * Verkauf schliesst das Fahrzeugfenster, und wer mitten im eigenen
+ * Klick-Handler geloescht wird, reisst das Spiel mit ab.
+ */
+void FleetQueueReplace(VehicleID veh, EngineID to)
+{
+	const Vehicle *v = Vehicle::GetIfValid(veh);
+	if (v == nullptr || !Engine::IsValidID(to)) return;
+	/* Fabrikneu-Tausch (gleiches Modell) macht das Spiel nur bei alten
+	 * Fahrzeugen - ein junges braeuchte den Depotbesuch umsonst. */
+	if (to == v->engine_type && !v->NeedsAutorenewing(Company::Get(v->owner), false)) return;
+	for (const FleetPendingReplace &p : _fleet_pending_replaces) {
+		if (p.vehicle == veh) return;
+	}
+	Backup<CompanyID> cur_company(_current_company, v->owner);
+	if (!v->IsChainInDepot() && !v->current_order.IsType(OT_GOTO_DEPOT)) {
+		Command<Commands::SendVehicleToDepot>::Do(DoCommandFlag::Execute, veh, DepotCommandFlags{}, {});
+	}
+	cur_company.Restore();
+	_fleet_pending_replaces.push_back({veh, v->engine_type, to, v->owner, 365});
 }
 
 /* ==================== Hilfsfunktionen ==================== */
@@ -453,36 +541,24 @@ struct FleetWindow : Window {
 		Backup<CompanyID> cur_company(_current_company, v->owner);
 		CommandCost rule = Command<Commands::SetAutoreplace>::Do(DoCommandFlag::Execute,
 				ALL_GROUP, from, this->new_engine, false);
-		uint sent = 0, swapped = 0;
 		if (rule.Succeeded()) {
 			/* Geld fuer die erste Runde Kaeufe sichern - der Rest folgt
 			 * gestaffelt, wenn die Verkaufserloese wieder reinkommen. */
 			FleetEnsureFunds(v->owner, Engine::Get(this->new_engine)->GetCost() * (int)std::min<size_t>(same.size(), 4));
-			for (VehicleID id : same) {
-				const Vehicle *w = Vehicle::GetIfValid(id);
-				if (w == nullptr) continue;
-				if (w->IsChainInDepot()) {
-					/* Steht schon im Depot: sofort tauschen. */
-					if (FleetSwapInDepot(w, this->new_engine)) {
-						swapped++;
-						continue;
-					}
-				}
-				/* Zum Halt ins Depot rufen - der Tages-Timer tauscht dort. */
-				if (Command<Commands::SendVehicleToDepot>::Do(DoCommandFlag::Execute, id,
-						DepotCommandFlags{}, {}).Succeeded()) {
-					sent++;
-					_fleet_pending_replaces.push_back({id, from, this->new_engine, w->owner, 365});
-				}
-			}
 		}
 		cur_company.Restore();
 
 		if (rule.Failed()) {
 			this->status = GetString(STR_FLEET_ERR_NO_MODEL);
-		} else {
-			this->status = GetString(STR_FLEET_REPLACE_DONE, swapped, sent);
+			this->SetDirty();
+			return;
 		}
+		/* Der Tausch selbst laeuft NICHT hier im Klick: der Verkauf
+		 * wuerde offene Fahrzeugfenster mitten im Ereignis schliessen.
+		 * Der Tages-Timer erledigt ihn gefahrlos - auch fuer Fahrzeuge,
+		 * die schon im Depot stehen. */
+		for (VehicleID id : same) FleetQueueReplace(id, this->new_engine);
+		this->status = GetString(STR_FLEET_REPLACE_DONE, (uint)same.size());
 		this->SetDirty();
 	}
 
@@ -594,6 +670,28 @@ std::string FleetDebugOpen()
 		ShowFleetWindow(v->index);
 		return fmt::format("Flotten-Fenster fuer Fahrzeug {} geoeffnet ({} auf der Linie).",
 				v->index.base(), FleetSharedCount(v));
+	}
+	return "Kein eigenes Fahrzeug gefunden.";
+}
+
+/**
+ * Fork: Diagnose - Fabrikneu-Tausch des ersten eigenen Fahrzeugs anstossen.
+ * Reproduziert den kompletten Ersetzen-Pfad (Depot-Ruf + Tausch im Depot)
+ * ohne Klicks, damit sich Abstuerze headless nachstellen lassen.
+ */
+std::string FleetDebugSwapTest()
+{
+	for (const Vehicle *v : Vehicle::Iterate()) {
+		if (!v->IsPrimaryVehicle() || v->owner != _local_company) continue;
+		Backup<CompanyID> cur_company(_current_company, v->owner);
+		CommandCost rule = Command<Commands::SetAutoreplace>::Do(DoCommandFlag::Execute, ALL_GROUP, v->engine_type, v->engine_type, false);
+		EngineID check = EngineReplacementForCompany(Company::Get(v->owner), v->engine_type, ALL_GROUP);
+		Debug(misc, 0, "SwapTest Regel: {} (hinterlegt: {})", rule.Succeeded() ? "ok" : "abgelehnt", check.base());
+		CommandCost sent = Command<Commands::SendVehicleToDepot>::Do(DoCommandFlag::Execute, v->index, DepotCommandFlags{}, {});
+		cur_company.Restore();
+		_fleet_pending_replaces.push_back({v->index, v->engine_type, v->engine_type, v->owner, 365});
+		return fmt::format("Swap-Test: Fahrzeug {} (Typ {}) -> Depot: {}", v->index.base(),
+				(int)v->type, sent.Succeeded() ? "unterwegs" : "abgelehnt");
 	}
 	return "Kein eigenes Fahrzeug gefunden.";
 }
