@@ -164,7 +164,7 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 			Backup<CompanyID> local(_local_company, c->index);
 			if (_fleet_fulltest_stage == 1) {
 				extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
-				Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("rail", 0, 1, 1, true));
+				Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("air", 0, 1, 2, true));
 				_fleet_fulltest_stage = 2;
 			} else {
 				extern std::string FleetDebugSwapTest();
@@ -683,15 +683,21 @@ std::string FleetDebugSwapTest()
 {
 	for (const Vehicle *v : Vehicle::Iterate()) {
 		if (!v->IsPrimaryVehicle() || v->owner != _local_company) continue;
+		/* Altern wie bei Marcel: nur alte Fahrzeuge werden fabrikneu
+		 * getauscht. Das entspricht dem Modernisieren-Klick im Spiel. */
+		for (Vehicle *u = Vehicle::Get(v->index); u != nullptr; u = u->Next()) {
+			u->age = u->max_age + 400;
+		}
 		Backup<CompanyID> cur_company(_current_company, v->owner);
 		CommandCost rule = Command<Commands::SetAutoreplace>::Do(DoCommandFlag::Execute, ALL_GROUP, v->engine_type, v->engine_type, false);
 		EngineID check = EngineReplacementForCompany(Company::Get(v->owner), v->engine_type, ALL_GROUP);
 		Debug(misc, 0, "SwapTest Regel: {} (hinterlegt: {})", rule.Succeeded() ? "ok" : "abgelehnt", check.base());
-		CommandCost sent = Command<Commands::SendVehicleToDepot>::Do(DoCommandFlag::Execute, v->index, DepotCommandFlags{}, {});
 		cur_company.Restore();
-		_fleet_pending_replaces.push_back({v->index, v->engine_type, v->engine_type, v->owner, 365});
-		return fmt::format("Swap-Test: Fahrzeug {} (Typ {}) -> Depot: {}", v->index.base(),
-				(int)v->type, sent.Succeeded() ? "unterwegs" : "abgelehnt");
+		FleetQueueReplace(v->index, v->engine_type);
+		bool queued = std::any_of(_fleet_pending_replaces.begin(), _fleet_pending_replaces.end(),
+				[&](const FleetPendingReplace &p) { return p.vehicle == v->index; });
+		return fmt::format("Swap-Test: Fahrzeug {} (Typ {}) vorgemerkt: {}", v->index.base(),
+				(int)v->type, queued ? "ja" : "nein");
 	}
 	return "Kein eigenes Fahrzeug gefunden.";
 }

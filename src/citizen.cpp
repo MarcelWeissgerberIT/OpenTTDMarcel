@@ -163,13 +163,23 @@ static YearIntention GetYearIntention(const Citizen &c)
 
 /* ---------- Strassennetz ---------- */
 
+/** Fork-Diagnose: ungueltige Kachel abfangen, bevor sie das Spiel abschiesst. */
+static bool CitizenTileBroken(TileIndex tile, const char *where)
+{
+	if (tile < Map::Size()) return false;
+	Debug(misc, 0, "Citizen-Diagnose: ungueltige Kachel {} bei {}", tile.base(), where);
+	return true;
+}
+
 static bool IsWalkableRoad(TileIndex tile)
 {
+	if (CitizenTileBroken(tile, "IsWalkableRoad")) return false;
 	return IsNormalRoadTile(tile) && GetTileSlope(tile) == SLOPE_FLAT && !IsBridgeAbove(tile);
 }
 
 static bool RoadConnected(TileIndex from, DiagDirection d, TileIndex &neighbour)
 {
+	if (CitizenTileBroken(from, "RoadConnected") || !IsNormalRoadTile(from)) return false;
 	if (!(GetRoadBits(from, RoadTramType::Road) & DiagDirToRoadBits(d)).Any()) return false;
 	TileIndex n = AddTileIndexDiffCWrap(from, TileIndexDiffCByDiagDir(d));
 	if (n == INVALID_TILE || !IsWalkableRoad(n)) return false;
@@ -406,6 +416,17 @@ bool IsParkedCarAway(TileIndex tile)
 
 static void CitizenStep(Citizen &c)
 {
+	if (c.pos >= c.path.size() || CitizenTileBroken(c.path[c.pos], "CitizenStep")) {
+		/* Kaputter Pfad: Buerger sicher nach Hause versetzen. */
+		Debug(misc, 0, "Citizen-Diagnose: Pfad kaputt (pos {} von {})", c.pos, c.path.size());
+		c.path.clear();
+		c.path.push_back(c.home);
+		c.pos = 0;
+		c.sub = 0;
+		c.state = CitizenState::Dwelling;
+		c.dwell_until = TimerGameTick::counter + 500;
+		return;
+	}
 	MarkTileDirtyByTile(c.path[c.pos]);
 	if (c.sub < 15) {
 		c.sub++;
@@ -485,11 +506,16 @@ static void SpawnBoardingAnims()
 			if (!pax) continue;
 			if (CitizenRandom() % 3 != 0) continue;
 
+			/* Nur brauchbare Kacheln einsammeln: Flugzeug-Schatten und
+			 * -Rotor tragen INVALID_TILE - ein Zugriff damit auf die
+			 * Karte hat das Spiel zum Absturz gebracht. */
 			std::vector<TileIndex> part_tiles;
 			parts = 0;
-			for (const Vehicle *u = front; u != nullptr && parts < 8; u = u->Next(), parts++) part_tiles.push_back(u->tile);
+			for (const Vehicle *u = front; u != nullptr && parts < 8; u = u->Next(), parts++) {
+				if (u->tile < Map::Size() && IsTileType(u->tile, TileType::Station)) part_tiles.push_back(u->tile);
+			}
+			if (part_tiles.empty()) continue;
 			TileIndex tile = part_tiles[CitizenRandom() % part_tiles.size()];
-			if (!IsTileType(tile, TileType::Station)) continue;
 
 			BoardingAnim a;
 			a.tile = tile;
@@ -597,6 +623,12 @@ void RunCitizensTick()
 		Citizen &c = *it;
 		if (c.state == CitizenState::Walking &&
 				(c.pos >= c.path.size() || (c.pos == c.path.size() - 1 && c.sub >= 8))) {
+			if (c.path.empty()) {
+				/* Sollte nie passieren - aber ein leerer Pfad darf das
+				 * Spiel nicht mitreissen. */
+				Debug(misc, 0, "Citizen-Diagnose: leerer Pfad im Ankunfts-Zweig");
+				c.path.push_back(c.home);
+			}
 			MarkTileDirtyByTile(c.path[std::min<size_t>(c.pos, c.path.size() - 1)]);
 			c.pos = static_cast<uint16_t>(c.path.size() - 1);
 			c.state = CitizenState::Dwelling;
@@ -672,6 +704,7 @@ void RunCitizensTick()
 	for (uint32_t i = 0; i < _citizens.size(); i++) {
 		const Citizen &c = _citizens[i];
 		if (c.state != CitizenState::Walking) continue;
+		if (c.pos >= c.path.size() || CitizenTileBroken(c.path[c.pos], "Zeichenindex")) continue;
 		_citizens_by_tile.emplace(c.path[c.pos].base(), i);
 		if (c.kind == CitizenKind::Car) _cars_away.insert(c.home);
 	}
@@ -918,6 +951,7 @@ bool CheckClickOnCitizen(int world_x, int world_y)
 	uint best_d = 11; /* Fangradius in Weltkoordinaten. */
 	for (const Citizen &c : _citizens) {
 		if (c.state != CitizenState::Walking) continue; /* Unsichtbare nicht anklickbar. */
+		if (c.pos >= c.path.size()) continue;
 		TileIndex tile = c.path[c.pos];
 		int px, py;
 		DiagDirection dir;
