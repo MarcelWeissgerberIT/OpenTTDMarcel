@@ -2435,6 +2435,43 @@ STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Alle Fah
 STR_FLEET_SPREAD_NOW                                            :{BLACK}Fahrzeuge gleichmäßig verteilt
 STR_FLEET_SPREAD_LATER                                          :{BLACK}Der Fahrplan wird gemessen - nach einer Runde verteilt das Spiel die Fahrzeuge von selbst
 STR_FLEET_ERR_NO_LINE                                           :{RED}Dafür braucht es mindestens zwei Fahrzeuge mit denselben Aufträgen
+STR_FLEET_MODEL_PICK                                            :{BLACK}Neues Modell wählen...
+STR_FLEET_MODEL_ITEM                                            :{ENGINE} ({NUM} Plätze, {NUM} km/h)
+STR_FLEET_MODEL_TOOLTIP                                         :{BLACK}Das Modell, auf das alle baugleichen Fahrzeuge getauscht werden
+STR_FLEET_REPLACE                                               :{BLACK}Alle {NUM} baugleichen ersetzen
+STR_FLEET_REPLACE_TOOLTIP                                       :{BLACK}Alle Fahrzeuge mit demselben Modell ins Depot rufen, verkaufen und durch das gewählte Modell ersetzen - Aufträge und Fahrplan bleiben erhalten
+STR_FLEET_REPLACE_DONE                                          :{BLACK}{NUM} sofort getauscht, {NUM} unterwegs ins Depot - dort wird beim Halt getauscht, der Fahrplan bleibt erhalten
+STR_FLEET_ERR_PICK_MODEL                                        :{RED}Erst oben ein neues Modell wählen
+STR_FLEET_ERR_NO_MODEL                                          :{RED}Kein passendes Ersatzmodell verfügbar
+STR_NEWSOPT_CAPTION                                             :{WHITE}Meldungen einstellen
+STR_NEWSOPT_MENU_ENTRY                                          :Meldungen einstellen...
+STR_NEWSOPT_ALL_OFF                                             :{BLACK}Alle aus
+STR_NEWSOPT_ALL_OFF_TOOLTIP                                     :{BLACK}Keine Meldungen mehr anzeigen
+STR_NEWSOPT_ALL_SUM                                             :{BLACK}Nur Laufband
+STR_NEWSOPT_ALL_SUM_TOOLTIP                                     :{BLACK}Alle Meldungen nur als Kurzmeldung in der Statusleiste
+STR_NEWSOPT_ALL_FULL                                            :{BLACK}Alle an
+STR_NEWSOPT_ALL_FULL_TOOLTIP                                    :{BLACK}Alle Meldungen wieder als Zeitung anzeigen
+STR_NEWSOPT_ROW_TOOLTIP                                         :{BLACK}Klick auf eine Zeile schaltet um: aus - Laufband - Zeitung
+STR_NEWSOPT_FOOTNOTE                                            :{BLACK}Grau = aus, Grün = Laufband, Orange = Zeitung
+STR_NEWSOPT_LEVEL_OFF                                           :aus
+STR_NEWSOPT_LEVEL_SUMMARY                                       :Laufband
+STR_NEWSOPT_LEVEL_FULL                                          :Zeitung
+STR_NEWSOPT_ARRIVAL_PLAYER                                      :Erste Ankunft (eigene Fahrzeuge)
+STR_NEWSOPT_ARRIVAL_OTHER                                       :Erste Ankunft (andere Firmen)
+STR_NEWSOPT_ACCIDENT                                            :Unfälle und Katastrophen
+STR_NEWSOPT_ACCIDENT_OTHER                                      :Unfälle anderer Firmen
+STR_NEWSOPT_COMPANY_INFO                                        :Firmen-Nachrichten
+STR_NEWSOPT_OPEN                                                :Neue Industrien
+STR_NEWSOPT_CLOSE                                               :Industrie-Schließungen
+STR_NEWSOPT_ECONOMY                                             :Wirtschaft und Rezession
+STR_NEWSOPT_PRODUCTION_PLAYER                                   :Produktion (eigene Kunden)
+STR_NEWSOPT_PRODUCTION_OTHER                                    :Produktion (Konkurrenz)
+STR_NEWSOPT_PRODUCTION_NOBODY                                   :Produktion (unbeteiligt)
+STR_NEWSOPT_ADVICE                                              :Hinweise zu eigenen Fahrzeugen
+STR_NEWSOPT_NEW_VEHICLES                                        :Neue Fahrzeugmodelle
+STR_NEWSOPT_ACCEPTANCE                                          :Frachtannahme von Stationen
+STR_NEWSOPT_SUBSIDIES                                           :Subventionen
+STR_NEWSOPT_GENERAL                                             :Allgemeines (Stadtbau u. a.)
 STR_RIDEALONG_TOOLTIP                                           :{BLACK}Mitfahren: die Kamera bleibt dicht an diesem Fahrzeug
 STR_RIDEALONG_SPEED                                             :{WHITE}{VEHICLE}{BLACK} - {ORANGE}{VELOCITY}
 STR_RIDEALONG_NEXT_STOP                                         :{BLACK} - nächster Halt: {ORANGE}{STATION}

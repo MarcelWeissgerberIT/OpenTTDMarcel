@@ -2466,6 +2466,43 @@ STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Spread a
 STR_FLEET_SPREAD_NOW                                            :{BLACK}Vehicles spread evenly
 STR_FLEET_SPREAD_LATER                                          :{BLACK}Measuring the timetable - after one round the game spreads the vehicles by itself
 STR_FLEET_ERR_NO_LINE                                           :{RED}This needs at least two vehicles sharing the same orders
+STR_FLEET_MODEL_PICK                                            :{BLACK}Pick a new model...
+STR_FLEET_MODEL_ITEM                                            :{ENGINE} ({NUM} seats, {NUM} km/h)
+STR_FLEET_MODEL_TOOLTIP                                         :{BLACK}The model every identical vehicle gets swapped to
+STR_FLEET_REPLACE                                               :{BLACK}Replace all {NUM} identical
+STR_FLEET_REPLACE_TOOLTIP                                       :{BLACK}Call every vehicle of the same model into a depot, sell it and replace it with the chosen model - orders and timetable are kept
+STR_FLEET_REPLACE_DONE                                          :{BLACK}{NUM} swapped right away, {NUM} heading to a depot - they are swapped on arrival, the timetable is kept
+STR_FLEET_ERR_PICK_MODEL                                        :{RED}Pick a new model above first
+STR_FLEET_ERR_NO_MODEL                                          :{RED}No suitable replacement model available
+STR_NEWSOPT_CAPTION                                             :{WHITE}Message settings
+STR_NEWSOPT_MENU_ENTRY                                          :Message settings...
+STR_NEWSOPT_ALL_OFF                                             :{BLACK}All off
+STR_NEWSOPT_ALL_OFF_TOOLTIP                                     :{BLACK}Show no messages at all
+STR_NEWSOPT_ALL_SUM                                             :{BLACK}Ticker only
+STR_NEWSOPT_ALL_SUM_TOOLTIP                                     :{BLACK}Show all messages only as a short line in the status bar
+STR_NEWSOPT_ALL_FULL                                            :{BLACK}All on
+STR_NEWSOPT_ALL_FULL_TOOLTIP                                    :{BLACK}Show all messages as full newspapers again
+STR_NEWSOPT_ROW_TOOLTIP                                         :{BLACK}Click a row to cycle: off - ticker - newspaper
+STR_NEWSOPT_FOOTNOTE                                            :{BLACK}Grey = off, green = ticker, orange = newspaper
+STR_NEWSOPT_LEVEL_OFF                                           :off
+STR_NEWSOPT_LEVEL_SUMMARY                                       :ticker
+STR_NEWSOPT_LEVEL_FULL                                          :newspaper
+STR_NEWSOPT_ARRIVAL_PLAYER                                      :First arrival (own vehicles)
+STR_NEWSOPT_ARRIVAL_OTHER                                       :First arrival (other companies)
+STR_NEWSOPT_ACCIDENT                                            :Accidents and disasters
+STR_NEWSOPT_ACCIDENT_OTHER                                      :Accidents of other companies
+STR_NEWSOPT_COMPANY_INFO                                        :Company news
+STR_NEWSOPT_OPEN                                                :New industries
+STR_NEWSOPT_CLOSE                                               :Industry closures
+STR_NEWSOPT_ECONOMY                                             :Economy and recession
+STR_NEWSOPT_PRODUCTION_PLAYER                                   :Production (your customers)
+STR_NEWSOPT_PRODUCTION_OTHER                                    :Production (competitors)
+STR_NEWSOPT_PRODUCTION_NOBODY                                   :Production (unrelated)
+STR_NEWSOPT_ADVICE                                              :Advice on own vehicles
+STR_NEWSOPT_NEW_VEHICLES                                        :New vehicle models
+STR_NEWSOPT_ACCEPTANCE                                          :Station cargo acceptance
+STR_NEWSOPT_SUBSIDIES                                           :Subsidies
+STR_NEWSOPT_GENERAL                                             :General (town building etc.)
 STR_RIDEALONG_TOOLTIP                                           :{BLACK}Ride along: the camera follows this vehicle up close
 STR_RIDEALONG_SPEED                                             :{WHITE}{VEHICLE}{BLACK} - {ORANGE}{VELOCITY}
 STR_RIDEALONG_NEXT_STOP                                         :{BLACK} - next stop: {ORANGE}{STATION}

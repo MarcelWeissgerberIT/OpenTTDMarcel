@@ -22,6 +22,8 @@ enum FleetWidgets : WidgetID {
 	WID_FL_COST,        ///< Geschaetzte Kosten.
 	WID_FL_BUILD,       ///< Kopien bauen.
 	WID_FL_SPREAD,      ///< Linie jetzt gleichmaessig takten.
+	WID_FL_MODEL,       ///< Dropdown: neues Modell fuer den Tausch.
+	WID_FL_REPLACE,     ///< Alle baugleichen Fahrzeuge ersetzen.
 	WID_FL_STATUS,      ///< Statuszeile.
 };
 

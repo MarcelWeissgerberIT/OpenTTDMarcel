@@ -28,6 +28,14 @@
 #include "vehicle_base.h"
 #include "vehicle_func.h"
 #include "vehicle_cmd.h"
+#include "engine_base.h"
+#include "engine_func.h"
+#include "autoreplace_func.h"
+#include "autoreplace_cmd.h"
+#include "group.h"
+#include "misc_cmd.h"
+#include "dropdown_func.h"
+#include "dropdown_type.h"
 #include "timetable_cmd.h"
 #include "order_base.h"
 #include "depot_base.h"
@@ -60,6 +68,57 @@ struct FleetPendingSpread {
 };
 static std::vector<FleetPendingSpread> _fleet_pending_spreads;
 
+/**
+ * Ein Fahrzeug, das auf seinen Modell-Tausch wartet. Der Tausch passiert
+ * nicht ueber den Service-Besuch: dort verlangt OpenTTD eine Geldreserve
+ * (Einstellung engine_renew_money, Standard 100.000), an der der Tausch
+ * nach einem teuren Streckenbau leise scheitert. Stattdessen halten die
+ * Fahrzeuge im Depot, der Tages-Timer tauscht sie dort direkt und
+ * schickt die Nachfolger sofort wieder los.
+ */
+struct FleetPendingReplace {
+	VehicleID vehicle; ///< Das alte Fahrzeug.
+	EngineID from;     ///< Sein Modell (Tausch-Erkennung).
+	EngineID to;       ///< Das Wunschmodell (fuer den Start des Nachfolgers).
+	CompanyID owner;
+	int days_left;     ///< Frist, danach wird aufgegeben.
+};
+static std::vector<FleetPendingReplace> _fleet_pending_replaces;
+
+/** Genug Geld fuer den Tausch beschaffen - notfalls per Kredit. */
+static bool FleetEnsureFunds(CompanyID owner, Money needed)
+{
+	const Company *c = Company::Get(owner);
+	if (c->money >= needed) return true;
+	Money avail = c->money + (c->GetMaxLoan() - c->current_loan);
+	if (avail < needed) return false;
+	Command<Commands::IncreaseLoan>::Do(DoCommandFlag::Execute, LoanCommand::Amount, needed - c->money);
+	return Company::Get(owner)->money >= needed;
+}
+
+/**
+ * Ein im Depot stehendes Fahrzeug jetzt tauschen und den Nachfolger
+ * losschicken. Laeuft unter der Firma des Besitzers.
+ * @return true bei Erfolg.
+ */
+static bool FleetSwapInDepot(const Vehicle *v, EngineID to)
+{
+	if (v == nullptr || !v->IsChainInDepot()) return false;
+	FleetEnsureFunds(v->owner, Engine::Get(to)->GetCost() + Engine::Get(to)->GetCost() / 5);
+	TileIndex depot_tile = v->tile;
+	CompanyID owner = v->owner;
+	if (Command<Commands::AutoreplaceVehicle>::Do(DoCommandFlag::Execute, v->index).Failed()) return false;
+	/* Das neue Fahrzeug hat eine neue Nummer - auf dem Depotfeld suchen
+	 * und starten, damit es nicht vergessen im Depot steht. */
+	for (const Vehicle *w : Vehicle::Iterate()) {
+		if (w->tile != depot_tile || w->owner != owner) continue;
+		if (!w->IsPrimaryVehicle() || w->engine_type != to) continue;
+		if (!w->IsChainInDepot() || !w->vehstatus.Test(VehState::Stopped)) continue;
+		Command<Commands::StartStopVehicle>::Do(DoCommandFlag::Execute, w->index, false);
+	}
+	return true;
+}
+
 /** Taeglich: fertig gemessene Fahrplaene gleichmaessig verteilen. */
 static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar::Trigger::Day, TimerGameCalendar::Priority::None}, [](auto) {
 	for (auto it = _fleet_pending_spreads.begin(); it != _fleet_pending_spreads.end();) {
@@ -85,6 +144,35 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 			continue;
 		}
 		it = _fleet_pending_spreads.erase(it);
+	}
+
+	for (auto it = _fleet_pending_replaces.begin(); it != _fleet_pending_replaces.end();) {
+		const Vehicle *v = Vehicle::GetIfValid(it->vehicle);
+		/* Weg oder anderes Modell: der Tausch ist durch. Frist um: aufgeben. */
+		if (v == nullptr || v->engine_type != it->from || v->owner != it->owner || --it->days_left <= 0) {
+			it = _fleet_pending_replaces.erase(it);
+			continue;
+		}
+		if (!v->IsChainInDepot()) {
+			/* Noch unterwegs. Hat das Fahrzeug seine Depot-Order verloren
+			 * (z. B. durch einen Spieler-Klick), erneut schicken. */
+			if (!v->current_order.IsType(OT_GOTO_DEPOT)) {
+				Backup<CompanyID> cur_company(_current_company, it->owner);
+				Command<Commands::SendVehicleToDepot>::Do(DoCommandFlag::Execute, it->vehicle, DepotCommandFlags{}, {});
+				cur_company.Restore();
+			}
+			++it;
+			continue;
+		}
+		Backup<CompanyID> cur_company(_current_company, it->owner);
+		bool done = FleetSwapInDepot(v, it->to);
+		cur_company.Restore();
+		Debug(misc, 0, "Flotte: Tausch von Fahrzeug {} {}", it->vehicle.base(), done ? "erledigt" : "fehlgeschlagen, neuer Versuch morgen");
+		if (done) {
+			it = _fleet_pending_replaces.erase(it);
+		} else {
+			++it;
+		}
 	}
 }};
 
@@ -164,9 +252,22 @@ static TileIndex FleetFindDepot(const Vehicle *v)
 static bool _fleet_share = true;     ///< Kopien fahren dieselben Auftraege.
 static bool _fleet_timetable = true; ///< Kopien gleichmaessig ueber die Runde verteilen.
 
+/** Alle Firmen-Fahrzeuge mit diesem Modell (nur Zugmaschinen). */
+static std::vector<VehicleID> FleetSameEngine(const Vehicle *v)
+{
+	std::vector<VehicleID> out;
+	for (const Vehicle *w : Vehicle::Iterate()) {
+		if (!w->IsPrimaryVehicle() || w->owner != v->owner) continue;
+		if (w->engine_type != v->engine_type) continue;
+		out.push_back(w->index);
+	}
+	return out;
+}
+
 struct FleetWindow : Window {
 	VehicleID veh;
 	uint count = 3;
+	EngineID new_engine = EngineID::Invalid(); ///< Gewaehltes Ersatzmodell.
 	std::string status;
 
 	FleetWindow(WindowDesc &desc, WindowNumber number) : Window(desc), veh(static_cast<VehicleID>(number))
@@ -204,6 +305,13 @@ struct FleetWindow : Window {
 			case WID_FL_COST: {
 				Money cost = this->EstimateCost();
 				return cost == 0 ? GetString(STR_FLEET_COST_UNKNOWN) : GetString(STR_FLEET_COST, cost);
+			}
+			case WID_FL_MODEL:
+				if (this->new_engine == EngineID::Invalid()) return GetString(STR_FLEET_MODEL_PICK);
+				return GetString(STR_ENGINE_NAME, this->new_engine);
+			case WID_FL_REPLACE: {
+				const Vehicle *v = this->Veh();
+				return GetString(STR_FLEET_REPLACE, v == nullptr ? 0 : (uint)FleetSameEngine(v).size());
 			}
 			case WID_FL_STATUS:
 				return this->status;
@@ -253,6 +361,41 @@ struct FleetWindow : Window {
 				this->BuildCopies();
 				break;
 
+			case WID_FL_MODEL: {
+				const Vehicle *v = this->Veh();
+				if (v == nullptr) break;
+				/* Alle baubaren Modelle desselben Typs, auf die das
+				 * Autoreplace tauschen darf - beste zuerst. */
+				std::vector<const Engine *> engines;
+				for (const Engine *e : Engine::IterateType(v->type)) {
+					if (e->index == v->engine_type) continue;
+					if (!e->company_avail.Test(v->owner)) continue;
+					if (!CheckAutoreplaceValidity(v->engine_type, e->index, v->owner)) continue;
+					engines.push_back(e);
+				}
+				std::sort(engines.begin(), engines.end(), [](const Engine *a, const Engine *b) {
+					return a->GetDisplayMaxSpeed() + a->GetDisplayDefaultCapacity() * 3
+							> b->GetDisplayMaxSpeed() + b->GetDisplayDefaultCapacity() * 3;
+				});
+				DropDownList list;
+				for (const Engine *e : engines) {
+					list.push_back(MakeDropDownListStringItem(GetString(STR_FLEET_MODEL_ITEM, e->index,
+							e->GetDisplayDefaultCapacity(), e->GetDisplayMaxSpeed()), e->index.base()));
+				}
+				if (list.empty()) {
+					this->status = GetString(STR_FLEET_ERR_NO_MODEL);
+					this->SetDirty();
+					break;
+				}
+				ShowDropDownList(this, std::move(list),
+						this->new_engine == EngineID::Invalid() ? -1 : (int)this->new_engine.base(), WID_FL_MODEL);
+				break;
+			}
+
+			case WID_FL_REPLACE:
+				this->ReplaceAll();
+				break;
+
 			case WID_FL_SPREAD: {
 				/* Auch ohne neue Kopien: Linie jetzt gleichmaessig takten. */
 				const Vehicle *v = this->Veh();
@@ -265,6 +408,82 @@ struct FleetWindow : Window {
 				break;
 			}
 		}
+	}
+
+	void OnDropdownSelect(WidgetID widget, int index, [[maybe_unused]] int click_result) override
+	{
+		if (widget != WID_FL_MODEL) return;
+		this->new_engine = static_cast<EngineID>(index);
+		this->SetDirty();
+	}
+
+	/**
+	 * Alle baugleichen Fahrzeuge auf das gewaehlte Modell umruesten.
+	 *
+	 * Der Tausch selbst laeuft ueber das eingebaute Autoreplace: die
+	 * Fahrzeuge werden zum Service ins Depot gerufen, dort verkauft und
+	 * durch das neue Modell ersetzt - Auftraege, geteilte Fahrplaene und
+	 * Taktung bleiben dabei vollstaendig erhalten.
+	 */
+	void ReplaceAll()
+	{
+		const Vehicle *v = this->Veh();
+		if (v == nullptr) {
+			this->status = GetString(STR_FLEET_VEHICLE_GONE);
+			this->SetDirty();
+			return;
+		}
+		if (_networking) {
+			ShowErrorMessage(GetEncodedString(STR_FLEET_ERR_SINGLEPLAYER), {}, WarningLevel::Info);
+			return;
+		}
+		if (this->new_engine == EngineID::Invalid()) {
+			this->status = GetString(STR_FLEET_ERR_PICK_MODEL);
+			this->SetDirty();
+			return;
+		}
+		if (!CheckAutoreplaceValidity(v->engine_type, this->new_engine, v->owner)) {
+			this->status = GetString(STR_FLEET_ERR_NO_MODEL);
+			this->SetDirty();
+			return;
+		}
+
+		std::vector<VehicleID> same = FleetSameEngine(v);
+		EngineID from = v->engine_type;
+		Backup<CompanyID> cur_company(_current_company, v->owner);
+		CommandCost rule = Command<Commands::SetAutoreplace>::Do(DoCommandFlag::Execute,
+				ALL_GROUP, from, this->new_engine, false);
+		uint sent = 0, swapped = 0;
+		if (rule.Succeeded()) {
+			/* Geld fuer die erste Runde Kaeufe sichern - der Rest folgt
+			 * gestaffelt, wenn die Verkaufserloese wieder reinkommen. */
+			FleetEnsureFunds(v->owner, Engine::Get(this->new_engine)->GetCost() * (int)std::min<size_t>(same.size(), 4));
+			for (VehicleID id : same) {
+				const Vehicle *w = Vehicle::GetIfValid(id);
+				if (w == nullptr) continue;
+				if (w->IsChainInDepot()) {
+					/* Steht schon im Depot: sofort tauschen. */
+					if (FleetSwapInDepot(w, this->new_engine)) {
+						swapped++;
+						continue;
+					}
+				}
+				/* Zum Halt ins Depot rufen - der Tages-Timer tauscht dort. */
+				if (Command<Commands::SendVehicleToDepot>::Do(DoCommandFlag::Execute, id,
+						DepotCommandFlags{}, {}).Succeeded()) {
+					sent++;
+					_fleet_pending_replaces.push_back({id, from, this->new_engine, w->owner, 365});
+				}
+			}
+		}
+		cur_company.Restore();
+
+		if (rule.Failed()) {
+			this->status = GetString(STR_FLEET_ERR_NO_MODEL);
+		} else {
+			this->status = GetString(STR_FLEET_REPLACE_DONE, swapped, sent);
+		}
+		this->SetDirty();
 	}
 
 	/** Die eigentliche Arbeit: klonen, staffeln, takten. */
@@ -344,6 +563,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_fleet_widgets = {
 			NWidget(WWT_TEXT, Colours::Invalid, WID_FL_COST), SetFill(1, 0),
 			NWidget(WWT_PUSHTXTBTN, Colours::Green, WID_FL_BUILD), SetFill(1, 0), SetMinimalSize(240, 16), SetStringTip(STR_FLEET_BUILD, STR_FLEET_BUILD_TOOLTIP),
 			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_FL_SPREAD), SetFill(1, 0), SetMinimalSize(240, 14), SetStringTip(STR_FLEET_SPREAD, STR_FLEET_SPREAD_TOOLTIP),
+			NWidget(WWT_DROPDOWN, Colours::Yellow, WID_FL_MODEL), SetFill(1, 0), SetMinimalSize(240, 14), SetToolTip(STR_FLEET_MODEL_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Yellow, WID_FL_REPLACE), SetFill(1, 0), SetMinimalSize(240, 14), SetToolTip(STR_FLEET_REPLACE_TOOLTIP),
 			NWidget(WWT_EMPTY, Colours::Invalid, WID_FL_STATUS), SetFill(1, 0), SetMinimalSize(240, 34),
 		EndContainer(),
 	EndContainer(),
@@ -380,7 +601,8 @@ std::string FleetDebugOpen()
 /** Fork: Diagnose - wie weit ist die automatische Taktung? */
 std::string FleetDebugStatus()
 {
-	std::string out = fmt::format("Offene Taktungen: {}", _fleet_pending_spreads.size());
+	std::string out = fmt::format("Offene Taktungen: {} | offene Tausche: {}",
+			_fleet_pending_spreads.size(), _fleet_pending_replaces.size());
 	for (const FleetPendingSpread &p : _fleet_pending_spreads) {
 		const Vehicle *v = Vehicle::GetIfValid(p.vehicle);
 		if (v == nullptr || v->orders == nullptr) continue;
@@ -396,10 +618,11 @@ std::string FleetDebugStatus()
 				v->orders->GetTimetableDurationIncomplete());
 		const Vehicle *first = v->orders->GetFirstSharedVehicle();
 		for (const Vehicle *w = first; w != nullptr; w = w->NextShared()) {
-			out += fmt::format("\n  Fahrzeug {}: Auftrag {}, Start-Tick {}, gestartet {}, Verspaetung {}, Abstand zum ersten {} Kacheln",
-					w->index.base(), w->cur_real_order_index, w->timetable_start,
+			out += fmt::format("\n  Fahrzeug {}: Modell '{}', {} Auftraege, Auftrag {}, gestartet {}, Verspaetung {}",
+					w->index.base(), GetString(STR_ENGINE_NAME, w->engine_type),
+					w->GetNumOrders(), w->cur_real_order_index,
 					w->vehicle_flags.Test(VehicleFlag::TimetableStarted) ? "ja" : "nein",
-					w->lateness_counter, DistanceManhattan(w->tile, first->tile));
+					w->lateness_counter);
 		}
 		break;
 	}
