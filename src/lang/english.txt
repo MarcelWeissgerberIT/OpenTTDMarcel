@@ -2514,7 +2514,6 @@ STR_LINEMGR_ERR_SELL                                            :{RED}No vehicle
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Not available in multiplayer
 STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} diverts: {STATION} is congested, landing at {STATION}
 STR_AIRUPGRADE_BUTTON                                           :{BLACK}Upgrade
-STR_AIRUPGRADE_BIGGEST                                          :{BLACK}Largest type
 STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Rebuild this airport to the next larger type while it stays in service - orders and timetables are kept. The price is shown in the message after clicking
 STR_AIRUPGRADE_TOOLTIP_NEXT                                     :{BLACK}Upgrade to {STRING} for {CURRENCY_LONG}. The airport stays in service, orders and timetables are kept
 STR_AIRUPGRADE_TOOLTIP_MAX                                      :{BLACK}This airport is already the largest type - there is nothing bigger to upgrade to
