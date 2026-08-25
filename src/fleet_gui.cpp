@@ -240,6 +240,8 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 					case 2: {
 						extern std::string AirDivertRun(bool report, bool force);
 						extern std::string AirUpgradeDebug(bool apply);
+						extern std::string MegaAirportTest();
+						Debug(misc, 0, "Fulltest Mega: {}", MegaAirportTest());
 						/* Fuer den Ausbau-Test ins Jahr 2005 springen - vorher
 						 * gibt es nur den kleinen Flughafen. */
 						TimerGameCalendar::SetDate(TimerGameCalendar::ConvertYMDToDate(TimerGameCalendar::Year{2005}, 0, 1), 0);

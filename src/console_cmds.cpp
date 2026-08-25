@@ -572,6 +572,24 @@ static bool ConFleet(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Mega-Flughafen bauen und pruefen (Diagnose). */
+static bool ConMegaTest(std::span<std::string_view>)
+{
+	extern std::string MegaAirportTest();
+	IConsolePrint(CC_DEFAULT, "{}", MegaAirportTest());
+	return true;
+}
+
+/* Fork: Probebetrieb auf dem Mega-Flughafen (Diagnose). */
+static bool ConMegaFly(std::span<std::string_view>)
+{
+	extern std::string MegaFlyTestStart();
+	std::string res = MegaFlyTestStart();
+	Debug(misc, 0, "Mega-Flug: {}", res);
+	IConsolePrint(CC_DEFAULT, "{}", res);
+	return true;
+}
+
 /* Fork: Flughafen-Ausbau aus der Konsole. */
 static bool ConAirUpgrade(std::span<std::string_view> argv)
 {
@@ -3287,6 +3305,8 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("lines",                   ConLines);
 	IConsole::CmdRegister("airdivert",               ConAirDivert);
 	IConsole::CmdRegister("airupgrade",              ConAirUpgrade);
+	IConsole::CmdRegister("megatest",                ConMegaTest);
+	IConsole::CmdRegister("megafly",                 ConMegaFly);
 	IConsole::CmdRegister("futureengines",           ConFutureEngines);
 	IConsole::CmdRegister("buildveh",                ConBuildVeh);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);

@@ -2485,6 +2485,8 @@ STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE
 STR_AIRUPGRADE_BUTTON                                           :{BLACK}Ausbauen
 STR_AIRUPGRADE_BIGGEST                                          :{BLACK}Größter Typ
 STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Diesen Flughafen im Betrieb auf den nächstgrößeren Typ umbauen - Aufträge und Fahrpläne bleiben erhalten. Der Preis steht in der Meldung nach dem Klick
+STR_AIRUPGRADE_TOOLTIP_NEXT                                     :{BLACK}Ausbau auf {STRING} für {CURRENCY_LONG}. Der Flughafen bleibt in Betrieb, Aufträge und Fahrpläne bleiben erhalten
+STR_AIRUPGRADE_TOOLTIP_MAX                                      :{BLACK}Dieser Flughafen ist bereits der größte Typ - es gibt nichts Größeres zum Ausbauen
 STR_AIRUPGRADE_DONE                                             :{WHITE}Flughafen ausgebaut - Aufträge und Fahrpläne sind unverändert
 STR_AIRUPGRADE_QUEUED                                           :{WHITE}Umbau vorgemerkt - der Flughafen ist geschlossen und wird umgebaut, sobald das letzte Flugzeug gestartet ist
 STR_AIRUPGRADE_ERR_NO_AIRPORT                                   :{WHITE}Das ist kein eigener Flughafen
@@ -3476,6 +3478,7 @@ STR_AIRPORT_METRO                                               :Großraum
 STR_AIRPORT_INTERNATIONAL                                       :International
 STR_AIRPORT_COMMUTER                                            :Nahverkehr
 STR_AIRPORT_INTERCONTINENTAL                                    :Interkontinental
+STR_AIRPORT_MEGA                                                :Mega-Flughafen (16 Terminals)
 STR_AIRPORT_HELIPORT                                            :Heliport
 STR_AIRPORT_HELIDEPOT                                           :Heliport mit Hangar
 STR_AIRPORT_HELISTATION                                         :Flughafen mit Heliport

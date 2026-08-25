@@ -51,6 +51,8 @@ static constexpr int FUTURE_FIRST_YEAR = 2050;                     ///< Jahr der
 static constexpr int FUTURE_YEAR_STEP = 40;                        ///< Abstand zwischen den Stufen.
 static constexpr uint16_t FUTURE_MAX_AIRCRAFT_PAX = 1000;          ///< Grenze fuer Flugzeug-Sitze.
 static constexpr uint16_t FUTURE_MAX_AIRCRAFT_SPEED = 8000;        ///< Grenze fuers Tempo (intern rund km/h).
+static constexpr uint16_t FUTURE_MAX_HELI_PAX = 200;               ///< Grenze fuer Hubschrauber-Sitze.
+static constexpr uint16_t FUTURE_MAX_HELI_SPEED = 900;             ///< Grenze fuers Hubschrauber-Tempo.
 
 /** Eine Fahrzeug-Gattung, die weiterentwickelt wird. */
 struct FutureLine {
@@ -73,6 +75,8 @@ static const FutureLine _future_lines[] = {
 	{VehicleType::Road,     "Metrobus",    6}, ///< Bus.
 	{VehicleType::Road,     "Cargomax",    7}, ///< Lastwagen.
 	{VehicleType::Ship,     "Ozeanriese",  8}, ///< Schiff.
+	{VehicleType::Aircraft, "Rotorex",     9}, ///< Hubschrauber: sonst waeren ab
+	                                           ///< etwa 2050 gar keine mehr im Angebot.
 };
 
 /** Kennung eines Fork-Modells: Linie und Generation eindeutig verpackt. */
@@ -108,9 +112,12 @@ static const Engine *FindTemplate(const FutureLine &line)
 		switch (line.type) {
 			case VehicleType::Aircraft: {
 				const AircraftVehicleInfo &avi = e->VehInfo<AircraftVehicleInfo>();
-				/* Helikopter taugen nicht als Vorbild fuer Grossraumjets. */
-				if ((avi.subtype & AIR_CTOL) == 0) continue;
-				score = line.slot == 0 ? avi.passenger_capacity : avi.max_speed;
+				bool is_heli = (avi.subtype & AIR_CTOL) == 0;
+				/* Linie 9 sucht Hubschrauber, die anderen Flaechenflugzeuge -
+				 * ein Helikopter taugt nicht als Vorbild fuer einen Grossraumjet
+				 * und umgekehrt. */
+				if (is_heli != (line.slot == 9)) continue;
+				score = (line.slot == 0 || line.slot == 9) ? avi.passenger_capacity : avi.max_speed;
 				break;
 			}
 			case VehicleType::Train: {
@@ -187,7 +194,15 @@ static void FillFutureEngine(Engine *e, const Engine *base, const FutureLine &li
 	switch (line.type) {
 		case VehicleType::Aircraft: {
 			AircraftVehicleInfo avi = base->VehInfo<AircraftVehicleInfo>();
-			if (line.slot == 0) {
+			if (line.slot == 9) {
+				/* Hubschrauber bleiben Hubschrauber: sie landen weiter auf
+				 * Plattformen, werden aber groesser und schneller. Die Grenzen
+				 * sind bewusst niedriger als bei den Jets. */
+				avi.passenger_capacity = static_cast<uint16_t>(Interpolate(avi.passenger_capacity, FUTURE_MAX_HELI_PAX, gen, FUTURE_MAX_HELI_PAX));
+				avi.mail_capacity = static_cast<uint8_t>(Interpolate(avi.mail_capacity, avi.mail_capacity * 4ULL, gen, 255));
+				avi.max_speed = static_cast<uint16_t>(Interpolate(avi.max_speed, avi.max_speed * 2ULL, gen, FUTURE_MAX_HELI_SPEED));
+				value = avi.passenger_capacity;
+			} else if (line.slot == 0) {
 				avi.passenger_capacity = static_cast<uint16_t>(Interpolate(avi.passenger_capacity, FUTURE_MAX_AIRCRAFT_PAX, gen, FUTURE_MAX_AIRCRAFT_PAX));
 				avi.mail_capacity = static_cast<uint8_t>(Interpolate(avi.mail_capacity, avi.mail_capacity * 4ULL, gen, 255));
 				avi.max_speed = static_cast<uint16_t>(Interpolate(avi.max_speed, avi.max_speed * 3ULL / 2, gen, FUTURE_MAX_AIRCRAFT_SPEED));

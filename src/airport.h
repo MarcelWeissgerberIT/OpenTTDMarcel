@@ -17,6 +17,15 @@
 static const uint MAX_TERMINALS =  16;                       ///< maximum number of terminals per airport (Fork: von 8 angehoben fuer den Mega-Flughafen)
 static const uint MAX_HELIPADS  =   3;                       ///< maximum number of helipads per airport
 static const uint MAX_ELEMENTS  = 255;                       ///< maximum number of aircraft positions at airport
+/**
+ * Fork: Obergrenze fuer die Zeilen einer Flugsteuerungs-Tabelle.
+ *
+ * Nicht zu verwechseln mit MAX_ELEMENTS: das begrenzt die Anzahl der
+ * Positionen, dies hier die Anzahl der Tabellenzeilen. Ein Flughafen mit
+ * vielen Terminals braucht pro Position mehrere Zeilen (eine je Ziel),
+ * beim Mega-Flughafen sind das zusammen ueber tausend.
+ */
+static const uint MAX_FTA_ENTRIES = 8192;
 
 static const uint NUM_AIRPORTTILES_PER_GRF = 255;            ///< Number of airport tiles per NewGRF; limited to 255 to allow extending Action3 with an extended byte later on.
 
@@ -36,7 +45,8 @@ enum AirportTypes : uint8_t {
 	AT_INTERCON        =   7, ///< Intercontinental airport.
 	AT_HELISTATION     =   8, ///< Heli station airport.
 	AT_OILRIG          =   9, ///< Oilrig airport.
-	NEW_AIRPORT_OFFSET =  10, ///< Number of the first newgrf airport.
+	AT_MEGA            =  10, ///< Fork: Mega-Flughafen mit 16 Terminals.
+	NEW_AIRPORT_OFFSET =  11, ///< Number of the first newgrf airport.
 	NUM_AIRPORTS_PER_GRF = 128, ///< Maximal number of airports per NewGRF.
 	NUM_AIRPORTS       = 128, ///< Maximal number of airports in total.
 	AT_INVALID         = 254, ///< Invalid airport.

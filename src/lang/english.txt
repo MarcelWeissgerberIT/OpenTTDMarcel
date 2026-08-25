@@ -2516,6 +2516,8 @@ STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE
 STR_AIRUPGRADE_BUTTON                                           :{BLACK}Upgrade
 STR_AIRUPGRADE_BIGGEST                                          :{BLACK}Largest type
 STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Rebuild this airport to the next larger type while it stays in service - orders and timetables are kept. The price is shown in the message after clicking
+STR_AIRUPGRADE_TOOLTIP_NEXT                                     :{BLACK}Upgrade to {STRING} for {CURRENCY_LONG}. The airport stays in service, orders and timetables are kept
+STR_AIRUPGRADE_TOOLTIP_MAX                                      :{BLACK}This airport is already the largest type - there is nothing bigger to upgrade to
 STR_AIRUPGRADE_DONE                                             :{WHITE}Airport upgraded - orders and timetables are unchanged
 STR_AIRUPGRADE_QUEUED                                           :{WHITE}Rebuild queued - the airport is closed and will be rebuilt once the last aircraft has taken off
 STR_AIRUPGRADE_ERR_NO_AIRPORT                                   :{WHITE}That is not an airport of yours
@@ -3527,6 +3529,7 @@ STR_AIRPORT_METRO                                               :Metropolitan
 STR_AIRPORT_INTERNATIONAL                                       :International
 STR_AIRPORT_COMMUTER                                            :Commuter
 STR_AIRPORT_INTERCONTINENTAL                                    :Intercontinental
+STR_AIRPORT_MEGA                                                :Mega airport (16 terminals)
 STR_AIRPORT_HELIPORT                                            :Heliport
 STR_AIRPORT_HELIDEPOT                                           :Helidepot
 STR_AIRPORT_HELISTATION                                         :Helistation

@@ -1485,11 +1485,14 @@ struct StationViewWindow : public Window {
 			if (st->facilities.Test(StationFacility::Airport)) cost = AirUpgradeCost(st, next);
 			this->upgrade_cost = cost;
 			this->upgrade_next = next;
-			/* Ganz ausblenden statt nur sperren: die Knopfleiste ist ein
-			 * EqualSize-Container, jeder zusaetzliche Knopf macht alle
-			 * anderen mit breit - und damit das ganze Fenster. */
-			bool show = next != AT_INVALID && st->owner == _local_company && st->owner != OWNER_NONE;
-			this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane(show ? 0 : SZSP_NONE);
+			/* Bei Flughaefen immer zeigen, sonst ausblenden. Frueher war der
+			 * Knopf auch dann weg, wenn es nur gerade nichts Groesseres gab -
+			 * dann sucht man ihn vergeblich und haelt ihn fuer kaputt.
+			 * Gesperrt mit erklaerendem Hinweis ist ehrlicher.
+			 * Der Knopftext bleibt kurz: die Leiste ist ein EqualSize-
+			 * Container, ein langer Text macht alle Knoepfe mit breit. */
+			bool is_air = st->facilities.Test(StationFacility::Airport) && st->owner == _local_company && st->owner != OWNER_NONE;
+			this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane(is_air ? 0 : SZSP_NONE);
 		}
 
 		extern const Station *_viewport_highlight_station;
@@ -1533,6 +1536,26 @@ struct StationViewWindow : public Window {
 			this->DrawEntries(cargo, waiting_rect, pos, maxrows, 0);
 			scroll_to_row = INT_MAX;
 		}
+	}
+
+	/**
+	 * Fork: Sprechender Hinweis am Ausbau-Knopf.
+	 *
+	 * Der Knopftext muss kurz bleiben (EqualSize-Leiste), also stehen
+	 * Zieltyp und Preis hier - beziehungsweise die Begruendung, warum
+	 * gerade nichts geht.
+	 */
+	bool OnTooltip([[maybe_unused]] Point pt, WidgetID widget, TooltipCloseCondition close_cond) override
+	{
+		if (widget != WID_SV_UPGRADE_AIRPORT) return false;
+
+		if (this->upgrade_next == AT_INVALID) {
+			GuiShowTooltips(this, GetEncodedString(STR_AIRUPGRADE_TOOLTIP_MAX), close_cond);
+		} else {
+			const AirportSpec *as = AirportSpec::Get(this->upgrade_next);
+			GuiShowTooltips(this, GetEncodedString(STR_AIRUPGRADE_TOOLTIP_NEXT, as->name, this->upgrade_cost), close_cond);
+		}
+		return true;
 	}
 
 	std::string GetWidgetString(WidgetID widget, StringID stringid) const override

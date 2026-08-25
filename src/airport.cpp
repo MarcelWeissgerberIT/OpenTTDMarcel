@@ -57,6 +57,7 @@ HELIPORT(helidepot, 1, 0)
 AIRPORT(intercontinental, 2, false)
 HELIPORT(helistation, 3, 0)
 HELIPORT(oilrig, 1, 54)
+AIRPORT(mega, 2, false) ///< Fork: Mega-Flughafen mit 16 Terminals.
 AIRPORT_GENERIC(dummy, nullptr, 0, AirportFTAClass::Flags({AirportFTAClass::Flag::Airplanes, AirportFTAClass::Flag::Helicopters}), 0)
 
 #undef HELIPORT
@@ -142,7 +143,7 @@ static uint16_t AirportGetNofElements(const AirportFTAbuildup *apFA)
 	uint16_t nofelements = 0;
 	int temp = apFA[0].position;
 
-	for (uint i = 0; i < MAX_ELEMENTS; i++) {
+	for (uint i = 0; i < MAX_FTA_ENTRIES; i++) {
 		if (temp != apFA[i].position) {
 			nofelements++;
 			temp = apFA[i].position;
