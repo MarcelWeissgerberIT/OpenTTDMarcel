@@ -17,6 +17,7 @@
 #include "vehicle_gui.h"
 #include "cargotype.h"
 #include "station_gui.h"
+#include "error.h"
 #include "strings_func.h"
 #include "string_func.h"
 #include "window_func.h"
@@ -865,6 +866,10 @@ static constexpr std::initializer_list<NWidgetPart> _nested_station_view_widgets
 			NWidget(WWT_TEXTBTN, Colours::Grey, WID_SV_CLOSE_AIRPORT), SetMinimalSize(45, 12), SetResize(1, 0), SetFill(1, 1),
 					SetStringTip(STR_STATION_VIEW_CLOSE_AIRPORT, STR_STATION_VIEW_CLOSE_AIRPORT_TOOLTIP),
 		EndContainer(),
+		NWidget(NWID_SELECTION, Colours::Invalid, WID_SV_UPGRADE_AIRPORT_SEL),
+			NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SV_UPGRADE_AIRPORT), SetMinimalSize(45, 12), SetResize(1, 0), SetFill(1, 1),
+					SetToolTip(STR_AIRUPGRADE_TOOLTIP),
+		EndContainer(),
 		NWidget(WWT_TEXTBTN, Colours::Grey, WID_SV_CATCHMENT), SetMinimalSize(45, 12), SetResize(1, 0), SetFill(1, 1), SetStringTip(STR_BUTTON_CATCHMENT, STR_TOOLTIP_CATCHMENT),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SV_TRAINS), SetAspect(WidgetDimensions::ASPECT_VEHICLE_ICON), SetFill(0, 1), SetStringTip(STR_TRAIN, STR_STATION_VIEW_SCHEDULED_TRAINS_TOOLTIP),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SV_ROADVEHS), SetAspect(WidgetDimensions::ASPECT_VEHICLE_ICON), SetFill(0, 1), SetStringTip(STR_LORRY, STR_STATION_VIEW_SCHEDULED_ROAD_VEHICLES_TOOLTIP),
@@ -1252,6 +1257,11 @@ bool CargoSorter::SortStation(StationID st1, StationID st2) const
  * The StationView window
  */
 struct StationViewWindow : public Window {
+	/* Fork: Zahlen fuer den Flughafen-Ausbau, in OnPaint gefuellt. */
+	Money upgrade_cost = 0;      ///< Was der Ausbau kostet.
+	uint8_t upgrade_next = 0xFF; ///< Zieltyp (AT_INVALID = keiner).
+
+
 	/**
 	 * A row being displayed in the cargo view (as opposed to being "hidden" behind a plus sign).
 	 */
@@ -1358,6 +1368,7 @@ struct StationViewWindow : public Window {
 	{
 		this->CreateNestedTree();
 		this->GetWidget<NWidgetStacked>(WID_SV_CLOSE_AIRPORT_SEL)->SetDisplayedPlane(Station::Get(window_number)->facilities.Test(StationFacility::Airport) ? 0 : SZSP_NONE);
+		this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane(Station::Get(window_number)->facilities.Test(StationFacility::Airport) ? 0 : SZSP_NONE);
 		this->vscroll = this->GetScrollbar(WID_SV_SCROLLBAR);
 		/* Nested widget tree creation is done in two steps to ensure that this->GetWidget<NWidgetCore>(WID_SV_ACCEPTS_RATINGS) exists in UpdateWidgetSize(). */
 		this->FinishInitNested(window_number);
@@ -1465,6 +1476,17 @@ struct StationViewWindow : public Window {
 		this->SetWidgetDisabledState(WID_SV_PLANES,   !st->facilities.Test(StationFacility::Airport));
 		this->SetWidgetDisabledState(WID_SV_CLOSE_AIRPORT, !st->facilities.Test(StationFacility::Airport) || st->owner != _local_company || st->owner == OWNER_NONE); // Also consider SE, where _local_company == OWNER_NONE
 		this->SetWidgetLoweredState(WID_SV_CLOSE_AIRPORT, st->facilities.Test(StationFacility::Airport) && st->airport.blocks.Test(AirportBlock::AirportClosed));
+		/* Fork: Ausbau-Knopf nur, wenn es wirklich etwas Groesseres gibt. */
+		{
+			extern Money AirUpgradeCost(const Station *st, uint8_t &next);
+			uint8_t next = AT_INVALID;
+			Money cost = 0;
+			if (st->facilities.Test(StationFacility::Airport)) cost = AirUpgradeCost(st, next);
+			this->upgrade_cost = cost;
+			this->upgrade_next = next;
+			this->SetWidgetDisabledState(WID_SV_UPGRADE_AIRPORT,
+					next == AT_INVALID || st->owner != _local_company || st->owner == OWNER_NONE);
+		}
 
 		extern const Station *_viewport_highlight_station;
 		this->SetWidgetDisabledState(WID_SV_CATCHMENT, st->facilities.None());
@@ -1514,6 +1536,11 @@ struct StationViewWindow : public Window {
 		if (widget == WID_SV_CAPTION) {
 			const Station *st = Station::Get(this->window_number);
 			return GetString(STR_STATION_VIEW_CAPTION, st->index, st->facilities);
+		}
+		/* Fork: Ausbau-Knopf zeigt Zieltyp und Preis. */
+		if (widget == WID_SV_UPGRADE_AIRPORT) {
+			if (this->upgrade_next == AT_INVALID) return GetString(STR_AIRUPGRADE_BIGGEST);
+			return GetString(STR_AIRUPGRADE_BUTTON, AirportSpec::Get(this->upgrade_next)->name, this->upgrade_cost);
 		}
 
 		return this->Window::GetWidgetString(widget, stringid);
@@ -2030,6 +2057,15 @@ struct StationViewWindow : public Window {
 				ShowQueryString(GetString(STR_STATION_NAME, this->window_number), STR_STATION_VIEW_EDIT_STATION_SIGN, MAX_LENGTH_STATION_NAME_CHARS,
 						this, CS_ALPHANUMERAL, {QueryStringFlag::EnableDefault, QueryStringFlag::LengthIsInChars, QueryStringFlag::EnableMove});
 				break;
+
+			case WID_SV_UPGRADE_AIRPORT: {
+				extern StringID AirUpgradeStart(Station *st);
+				Station *st = Station::Get(this->window_number);
+				StringID res = AirUpgradeStart(st);
+				ShowErrorMessage(GetEncodedString(res), {}, WarningLevel::Info);
+				this->ReInit();
+				break;
+			}
 
 			case WID_SV_CLOSE_AIRPORT:
 				Command<Commands::OpenCloseAirport>::Post(this->window_number);

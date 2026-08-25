@@ -25,6 +25,8 @@ enum StationViewWidgets : WidgetID {
 	WID_SV_RENAME,             ///< 'Rename' button.
 	WID_SV_CLOSE_AIRPORT,      ///< 'Close airport' button.
 	WID_SV_CLOSE_AIRPORT_SEL,  ///< Container for 'close airport' button, which can be hidden.
+	WID_SV_UPGRADE_AIRPORT,    ///< Fork: Flughafen im Betrieb ausbauen.
+	WID_SV_UPGRADE_AIRPORT_SEL,///< Behaelter dafuer - nur bei Flughaefen sichtbar.
 	WID_SV_TRAINS,             ///< List of scheduled trains button.
 	WID_SV_ROADVEHS,           ///< List of scheduled road vehs button.
 	WID_SV_SHIPS,              ///< List of scheduled ships button.

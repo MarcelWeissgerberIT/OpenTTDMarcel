@@ -572,6 +572,15 @@ static bool ConFleet(std::span<std::string_view> argv)
 	return true;
 }
 
+/* Fork: Flughafen-Ausbau aus der Konsole. */
+static bool ConAirUpgrade(std::span<std::string_view> argv)
+{
+	extern std::string AirUpgradeDebug(bool apply);
+	bool apply = argv.size() >= 2 && argv[1] == "do";
+	IConsolePrint(CC_DEFAULT, "{}", AirUpgradeDebug(apply));
+	return true;
+}
+
 /* Fork: Diagnose der Flugzeug-Ausweichlogik. */
 static bool ConAirDivert(std::span<std::string_view> argv)
 {
@@ -3277,6 +3286,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("fleet",                   ConFleet);
 	IConsole::CmdRegister("lines",                   ConLines);
 	IConsole::CmdRegister("airdivert",               ConAirDivert);
+	IConsole::CmdRegister("airupgrade",              ConAirUpgrade);
 	IConsole::CmdRegister("futureengines",           ConFutureEngines);
 	IConsole::CmdRegister("buildveh",                ConBuildVeh);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);

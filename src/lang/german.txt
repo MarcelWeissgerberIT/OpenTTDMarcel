@@ -2482,6 +2482,17 @@ STR_LINEMGR_ERR_BUILD                                           :{RED}Kein Fahrz
 STR_LINEMGR_ERR_SELL                                            :{RED}Kein Fahrzeug zum Verkauf gefunden
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Im Mehrspieler nicht verfügbar
 STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} weicht aus: {STATION} ist überlastet, Landung in {STATION}
+STR_AIRUPGRADE_BUTTON                                           :{BLACK}Ausbauen: {STRING} ({CURRENCY_SHORT})
+STR_AIRUPGRADE_BIGGEST                                          :{BLACK}Größter Typ
+STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Diesen Flughafen im Betrieb auf den nächstgrößeren Typ umbauen - Aufträge und Fahrpläne bleiben erhalten
+STR_AIRUPGRADE_DONE                                             :{WHITE}Flughafen ausgebaut - Aufträge und Fahrpläne sind unverändert
+STR_AIRUPGRADE_QUEUED                                           :{WHITE}Umbau vorgemerkt - der Flughafen ist geschlossen und wird umgebaut, sobald das letzte Flugzeug gestartet ist
+STR_AIRUPGRADE_ERR_NO_AIRPORT                                   :{WHITE}Das ist kein eigener Flughafen
+STR_AIRUPGRADE_ERR_BIGGEST                                      :{WHITE}Dieser Flughafen ist bereits der größte verfügbare Typ
+STR_AIRUPGRADE_ERR_BUSY                                         :{WHITE}Erst müssen alle Flugzeuge starten - am Boden stehende blockieren den Umbau
+STR_AIRUPGRADE_ERR_NO_ROOM                                      :{WHITE}Kein Platz für den größeren Flughafen an dieser Stelle
+STR_AIRUPGRADE_ERR_BUILD                                        :{WHITE}Umbau fehlgeschlagen - der alte Flughafen steht wieder
+STR_AIRUPGRADE_ERR_SINGLEPLAYER                                 :{WHITE}Im Mehrspieler nicht verfügbar
 STR_CONFIG_SETTING_FORK_AIRDIVERT                               :Flugzeuge weichen überfüllten Flughäfen aus: {STRING}
 STR_CONFIG_SETTING_FORK_AIRDIVERT_HELPTEXT                      :Kreist ein Flugzeug zu lange über einem überlasteten Flughafen, landet es auf einem freieren eigenen Flughafen in der Nähe. Der Fahrplan bleibt unberührt
 STR_FLEET_TOOLTIP                                               :{BLACK}Flotte aufstocken: mehrere Kopien bauen und gleichmäßig takten

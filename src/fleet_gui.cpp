@@ -213,7 +213,7 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 						SubtractMoneyFromCompany(c->index, CommandCost(ExpensesType::Other, -Money(500000000)));
 						/* Stau-Szenario: viele Flugzeuge auf eine Strecke, damit
 						 * die Ausweichlogik etwas zu tun bekommt. */
-						Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("air", 0, 1, 8, true));
+						Debug(misc, 0, "Fulltest Bau: {}", AutoConnectDebugBuild("air", 0, 1, 3, true));
 						Debug(misc, 0, "Fulltest Bau2: {}", AutoConnectDebugBuild("air", 0, 2, 1, false));
 						{
 							/* Immobilien-Massenkauf gleich mitpruefen. */
@@ -239,7 +239,12 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 						break;
 					case 2: {
 						extern std::string AirDivertRun(bool report, bool force);
+						extern std::string AirUpgradeDebug(bool apply);
+						/* Fuer den Ausbau-Test ins Jahr 2005 springen - vorher
+						 * gibt es nur den kleinen Flughafen. */
+						TimerGameCalendar::SetDate(TimerGameCalendar::ConvertYMDToDate(TimerGameCalendar::Year{2005}, 0, 1), 0);
 						Debug(misc, 0, "Fulltest Ausweichen: {}", AirDivertRun(true, true));
+						Debug(misc, 0, "Fulltest Ausbau: {}", AirUpgradeDebug(true));
 						Debug(misc, 0, "Fulltest Linien: {}", LineManagerDebug(false));
 						_fleet_fulltest_wait = 200;
 						_fleet_fulltest_stage = 3;
@@ -247,7 +252,9 @@ static const IntervalTimer<TimerGameCalendar> _fleet_timer = {{TimerGameCalendar
 					}
 					default: {
 						extern std::string AirDivertRun(bool report, bool force);
+						extern std::string AirUpgradeDebug(bool apply);
 						Debug(misc, 0, "Fulltest Ausweichen 2: {}", AirDivertRun(true, false));
+						Debug(misc, 0, "Fulltest Ausbau 2: {}", AirUpgradeDebug(false));
 						Debug(misc, 0, "Fulltest Kontrolle: {}", LineManagerDebug(false));
 						_fleet_fulltest_stage = 0;
 						break;
