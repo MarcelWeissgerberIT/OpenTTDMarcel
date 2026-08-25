@@ -125,7 +125,7 @@ struct AutoConnectResult {
 /* ============ Fork: Einstellungen, Staffelstart, Bau-Rollback ============ */
 
 static bool _ac_allow_terraform = true; ///< Flaechen fuer Stationen/Flughaefen planieren.
-static bool _ac_big_airports = true;    ///< Groessten verfuegbaren Flughafen bevorzugen.
+bool _ac_big_airports = true;           ///< Groessten verfuegbaren Flughafen bevorzugen.
 
 /** Gestaffelter Start: Fahrzeug i faehrt i*4 Tage nach dem ersten los. */
 struct AcDelayedStart {

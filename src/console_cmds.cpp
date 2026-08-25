@@ -590,6 +590,18 @@ static bool ConMegaFly(std::span<std::string_view>)
 	return true;
 }
 
+/* Fork: Wachstums-Diagnose (ueberlastete Flughaefen). */
+static bool ConAirGrow(std::span<std::string_view> argv)
+{
+	extern std::string AirGrowRun(bool report, bool force);
+	extern std::string AirGrowStressTest();
+	std::string res = (argv.size() >= 2 && argv[1] == "stress") ? AirGrowStressTest()
+			: AirGrowRun(true, argv.size() >= 2 && argv[1] == "do");
+	Debug(misc, 0, "Wachstum: {}", res);
+	IConsolePrint(CC_DEFAULT, "{}", res);
+	return true;
+}
+
 /* Fork: Bahnhof-Ausbau aus der Konsole. */
 static bool ConRailUpgrade(std::span<std::string_view> argv)
 {
@@ -3333,6 +3345,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("megatest",                ConMegaTest);
 	IConsole::CmdRegister("megafly",                 ConMegaFly);
 	IConsole::CmdRegister("railupgrade",             ConRailUpgrade);
+	IConsole::CmdRegister("airgrow",                 ConAirGrow);
 	IConsole::CmdRegister("futureengines",           ConFutureEngines);
 	IConsole::CmdRegister("buildveh",                ConBuildVeh);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);

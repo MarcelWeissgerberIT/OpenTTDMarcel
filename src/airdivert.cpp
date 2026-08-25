@@ -35,14 +35,22 @@
 #include "timer/timer.h"
 #include "timer/timer_game_tick.h"
 #include "debug.h"
+#include "economy_func.h"
+#include "core/backup_type.hpp"
 #include "table/strings.h"
 
 #include "safeguards.h"
 
 /** Wie oft ein Flugzeug beim Kreisen ertappt werden muss, bevor es ausweicht. */
 static const uint8_t DIVERT_PATIENCE = 6;
-/** Wie weit der Ausweichflughafen hoechstens entfernt sein darf (Kacheln). */
-static const uint DIVERT_RANGE = 30;
+/**
+ * Wie weit der Ausweichflughafen hoechstens entfernt sein darf (Kacheln).
+ *
+ * 30 war zu knapp: in einem gewachsenen Netz liegen die Flughaefen
+ * weiter auseinander, und ein Flugzeug, das ohnehin seit Minuten kreist,
+ * fliegt lieber noch dreissig Kacheln weiter als gar nicht zu landen.
+ */
+static const uint DIVERT_RANGE = 60;
 /** So nah muss ein Flugzeug am Ziel sein, damit es als "kreisend" gilt. */
 static const uint DIVERT_CIRCLE_RANGE = 14;
 
@@ -102,8 +110,12 @@ static const Station *FindDivertTarget(const Aircraft *v, uint busy)
 		if (DistanceManhattan(st->airport.tile, target->airport.tile) > DIVERT_RANGE) continue;
 
 		uint pressure = AirportPressure(st);
-		/* Nur ausweichen, wenn es dort spuerbar ruhiger ist. */
-		if (pressure + 60 > busy) continue;
+		/* Nur ausweichen, wenn es dort spuerbar ruhiger ist. Frueher
+		 * mussten es 60 Prozentpunkte Unterschied sein - in einem Netz,
+		 * in dem alle Flughaefen voll sind, kam das nie zustande, und die
+		 * Flugzeuge kreisten weiter. 25 Punkte reichen: Hauptsache, das
+		 * Ausweichziel ist wirklich freier. */
+		if (pressure + 25 > busy) continue;
 		if (best == nullptr || pressure < best_pressure) {
 			best = st;
 			best_pressure = pressure;
@@ -192,3 +204,139 @@ static const IntervalTimer<TimerGameTick> _airdivert_timer = {{TimerGameTick::Pr
 	if (!_settings_client.gui.fork_airdivert) return;
 	AirDivertRun(false, false);
 }};
+
+/* ============ Ueberlastete Flughaefen wachsen von selbst ============ */
+
+/**
+ * Fork: Wie lange ein Flughafen schon ueberlastet ist.
+ *
+ * Ein einzelner Andrangs-Spitzenwert sagt nichts - Flugzeuge kommen in
+ * Wellen. Erst wenn der Andrang ueber viele Kontrollen hinweg zu hoch
+ * bleibt, lohnt der Umbau.
+ */
+static std::map<StationID, uint16_t> _airgrow_streak;
+
+/** Ab diesem Andrang (Anfluege je Terminal, in Prozent) gilt ein Flughafen als ueberlastet. */
+static const uint AIRGROW_PRESSURE = 150;
+/** So viele Kontrollen in Folge muss es so bleiben. */
+static const uint16_t AIRGROW_STREAK = 8;
+
+/**
+ * Fork: Ueberlastete Flughaefen selbst ausbauen lassen.
+ *
+ * Das Ausweichen hilft nur, solange irgendwo Platz ist. Wenn alle
+ * Flughaefen voll sind - genau der Zustand, in dem sich die kreisenden
+ * Flugzeuge zu einer Kette auftuermen - bleibt nur: den Flughafen
+ * groesser machen. Das passiert hier von selbst, sobald der Andrang
+ * dauerhaft zu hoch ist und das Geld reicht.
+ *
+ * @param report Diagnosetext statt stiller Arbeit.
+ * @return Beschreibung fuer die Konsole.
+ */
+std::string AirGrowRun(bool report, bool force)
+{
+	extern uint8_t AirUpgradeNextType(uint8_t cur);
+	extern Money AirUpgradeCost(const Station *st, uint8_t &next);
+	extern StringID AirUpgradeStart(Station *st);
+
+	std::string out;
+	uint checked = 0, started = 0;
+
+	for (Station *st : Station::Iterate()) {
+		if (!st->facilities.Test(StationFacility::Airport)) continue;
+		if (!Company::IsValidID(st->owner)) continue;
+
+		uint pressure = AirportPressure(st);
+		uint16_t &streak = _airgrow_streak[st->index];
+		if (pressure < AIRGROW_PRESSURE) {
+			streak = 0;
+			continue;
+		}
+		checked++;
+		if (streak < 0xFFFF) streak++;
+
+		uint8_t next = AT_INVALID;
+		Money cost = AirUpgradeCost(st, next);
+		if (report) {
+			out += fmt::format("\n  Flughafen {}: Andrang {}%, seit {} Kontrollen{}",
+					st->index, pressure, streak,
+					next == AT_INVALID ? " - schon der groesste" : fmt::format(" -> Ausbau fuer {}", (int64_t)cost));
+		}
+		if (!force && streak < AIRGROW_STREAK) continue;
+		if (next == AT_INVALID) continue;
+
+		/* Nur ausbauen, wenn es die Firma nicht ruiniert. */
+		const Company *c = Company::GetIfValid(st->owner);
+		if (c == nullptr || c->money < cost * 2) continue;
+
+		StringID res = AirUpgradeStart(st);
+		if (res == STR_AIRUPGRADE_DONE || res == STR_AIRUPGRADE_QUEUED) {
+			streak = 0;
+			started++;
+			Debug(misc, 0, "Flughafen waechst mit: Station {} bei Andrang {}% ({})",
+					st->index, pressure, res == STR_AIRUPGRADE_DONE ? "sofort" : "vorgemerkt");
+			if (st->owner == _local_company) {
+				AddNewsItem(GetEncodedString(STR_AIRGROW_NEWS, st->index),
+						NewsType::General, NewsStyle::Thin, {});
+			}
+		}
+	}
+
+	if (report) {
+		std::string text = fmt::format("Ueberlastete Flughaefen: {}, Ausbau angestossen: {}{}", checked, started, out);
+		Debug(misc, 0, "Wachstums-Diagnose: {}", text);
+		return text;
+	}
+	return {};
+}
+
+/** Seltener als das Ausweichen - ein Umbau ist eine grosse Sache. */
+static const IntervalTimer<TimerGameTick> _airgrow_timer = {{TimerGameTick::Priority::None, 1024}, [](auto) {
+	if (!_settings_client.gui.fork_airgrow) return;
+	AirGrowRun(false, false);
+}};
+
+/**
+ * Fork: Stau erzeugen und zusehen, ob der Flughafen mitwaechst.
+ *
+ * Der Normalfall braucht viele Kontrollen Geduld - fuer den Test wird
+ * eine Strecke mit viel zu vielen Flugzeugen gebaut und danach sofort
+ * geprueft.
+ */
+std::string AirGrowStressTest()
+{
+	extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
+	extern uint8_t AirUpgradeNextType(uint8_t cur);
+
+	const Company *co = nullptr;
+	for (const Company *i : Company::Iterate()) { co = i; break; }
+	if (co == nullptr) {
+		extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
+		co = DoStartupNewCompany(false, CompanyID::Invalid());
+	}
+	if (co == nullptr) return "Keine Firma vorhanden.";
+	CompanyID cid = co->index;
+	Backup<CompanyID> cur_company(_current_company, cid);
+	Backup<CompanyID> local_company(_local_company, cid);
+	SubtractMoneyFromCompany(cid, CommandCost(ExpensesType::Other, -Money(2000000000)));
+
+	std::string built = AutoConnectDebugBuild("air", 0, 1, 60, true);
+
+	Station *st = nullptr;
+	for (Station *i : Station::Iterate()) {
+		if (i->owner == cid && i->facilities.Test(StationFacility::Airport)) { st = i; break; }
+	}
+	if (st == nullptr) { local_company.Restore(); cur_company.Restore(); return fmt::format("Kein Flughafen ({})", built); }
+
+	uint8_t before = st->airport.type;
+	uint pressure = AirportPressure(st);
+	std::string res = AirGrowRun(true, true);
+	std::string out = fmt::format("Stresstest: Flughafen {} Typ {}, Andrang {}% -> jetzt Typ {}{}",
+			st->index, before, pressure, st->airport.type,
+			st->airport.type != before ? " (ausgebaut)" : " (unveraendert)");
+	out += "\n" + res;
+
+	local_company.Restore();
+	cur_company.Restore();
+	return out;
+}

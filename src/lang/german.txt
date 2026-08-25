@@ -2482,6 +2482,7 @@ STR_LINEMGR_ERR_BUILD                                           :{RED}Kein Fahrz
 STR_LINEMGR_ERR_SELL                                            :{RED}Kein Fahrzeug zum Verkauf gefunden
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Im Mehrspieler nicht verfügbar
 STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} weicht aus: {STATION} ist überlastet, Landung in {STATION}
+STR_AIRGROW_NEWS                                                :{WHITE}{STATION} wird ausgebaut - dauerhaft mehr Flugzeuge im Anflug als Standplätze vorhanden
 STR_AIRUPGRADE_BUTTON                                           :{BLACK}Ausbauen
 STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Diesen Flughafen im Betrieb auf den nächstgrößeren Typ umbauen - Aufträge und Fahrpläne bleiben erhalten. Der Preis steht in der Meldung nach dem Klick
 STR_AIRUPGRADE_TOOLTIP_NEXT                                     :{BLACK}Ausbau auf {STRING} für {CURRENCY_LONG}. Der Flughafen bleibt in Betrieb, Aufträge und Fahrpläne bleiben erhalten
@@ -2505,6 +2506,8 @@ STR_RAILUPGRADE_ERR_BUILD                                       :{WHITE}Vergrö�
 STR_RAILUPGRADE_ERR_SINGLEPLAYER                                :{WHITE}Im Mehrspieler nicht verfügbar
 STR_CONFIG_SETTING_FORK_AIRDIVERT                               :Flugzeuge weichen überfüllten Flughäfen aus: {STRING}
 STR_CONFIG_SETTING_FORK_AIRDIVERT_HELPTEXT                      :Kreist ein Flugzeug zu lange über einem überlasteten Flughafen, landet es auf einem freieren eigenen Flughafen in der Nähe. Der Fahrplan bleibt unberührt
+STR_CONFIG_SETTING_FORK_AIRGROW                                 :Überlastete Flughäfen selbst ausbauen: {STRING}
+STR_CONFIG_SETTING_FORK_AIRGROW_HELPTEXT                        :Kreisen dauerhaft mehr Flugzeuge über einem Flughafen, als er Standplätze hat, baut er sich von selbst auf den nächstgrößeren Typ um - sobald das Geld reicht. Aufträge und Fahrpläne bleiben erhalten
 STR_FLEET_TOOLTIP                                               :{BLACK}Flotte aufstocken: mehrere Kopien bauen und gleichmäßig takten
 STR_FLEET_SPREAD                                                :{BLACK}Linie jetzt takten
 STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Alle Fahrzeuge dieser Linie gleichmäßig über eine Runde verteilen - auch ohne neue Kopien

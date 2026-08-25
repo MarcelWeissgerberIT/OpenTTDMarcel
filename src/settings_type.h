@@ -222,7 +222,8 @@ struct GUISettings {
 	bool fork_autoconnect; ///< Auto-Verbindung und Auto-Modernisierung.
 	bool fork_assistant;   ///< Persoenlicher Assistent (Automatik-Aufgaben).
 	bool fork_future_engines; ///< Zukunfts-Modelle bis 2500 (groessere Flugzeuge, staerkere Loks).
-	bool fork_airdivert;      ///< Flugzeuge weichen ueberfuellten Flughaefen aus.
+	bool fork_airdivert;                     ///< Flugzeuge weichen ueberfuellten Flughaefen aus.
+	bool fork_airgrow;                       ///< Fork: ueberlastete Flughaefen bauen sich selbst aus.
 	bool sg_full_load_any; ///< new full load calculation, any cargo must be full read from pre v93 savegames
 	bool lost_vehicle_warn; ///< if a vehicle can't find its destination, show a warning
 	OrderReviewSystem order_review_system; ///< perform order reviews on vehicles

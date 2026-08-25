@@ -2513,6 +2513,7 @@ STR_LINEMGR_ERR_BUILD                                           :{RED}No vehicle
 STR_LINEMGR_ERR_SELL                                            :{RED}No vehicle found to sell
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Not available in multiplayer
 STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} diverts: {STATION} is congested, landing at {STATION}
+STR_AIRGROW_NEWS                                                :{WHITE}{STATION} is being enlarged - more aircraft keep arriving than there are stands
 STR_AIRUPGRADE_BUTTON                                           :{BLACK}Upgrade
 STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Rebuild this airport to the next larger type while it stays in service - orders and timetables are kept. The price is shown in the message after clicking
 STR_AIRUPGRADE_TOOLTIP_NEXT                                     :{BLACK}Upgrade to {STRING} for {CURRENCY_LONG}. The airport stays in service, orders and timetables are kept
@@ -2536,6 +2537,8 @@ STR_RAILUPGRADE_ERR_BUILD                                       :{WHITE}Enlargin
 STR_RAILUPGRADE_ERR_SINGLEPLAYER                                :{WHITE}Not available in multiplayer
 STR_CONFIG_SETTING_FORK_AIRDIVERT                               :Aircraft divert away from congested airports: {STRING}
 STR_CONFIG_SETTING_FORK_AIRDIVERT_HELPTEXT                      :When an aircraft circles a congested airport for too long, it lands at a quieter airport of yours nearby. Its orders are left untouched
+STR_CONFIG_SETTING_FORK_AIRGROW                                 :Overloaded airports enlarge themselves: {STRING}
+STR_CONFIG_SETTING_FORK_AIRGROW_HELPTEXT                        :When more aircraft keep circling an airport than it has stands, it rebuilds itself to the next larger type as soon as the money is there. Orders and timetables are kept
 STR_FLEET_TOOLTIP                                               :{BLACK}Grow fleet: build several copies and spread them evenly
 STR_FLEET_SPREAD                                                :{BLACK}Spread line now
 STR_FLEET_SPREAD_TOOLTIP                                        :{BLACK}Spread all vehicles of this line evenly over one round - even without new copies
