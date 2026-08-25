@@ -184,15 +184,19 @@ static bool AirportOccupied(const Station *st)
  * Flieger gestartet ist.
  * @return Meldung fuer den Spieler.
  */
-StringID AirUpgradeStart(Station *st)
+StringID AirUpgradeStart(Station *st, bool always_queue)
 {
 	if (st == nullptr || !st->facilities.Test(StationFacility::Airport)) return STR_AIRUPGRADE_ERR_NO_AIRPORT;
 	if (st->owner != _local_company) return STR_AIRUPGRADE_ERR_NO_AIRPORT;
 	if (_networking) return STR_AIRUPGRADE_ERR_SINGLEPLAYER;
 	if (AirUpgradeNextType(st->airport.type) == AT_INVALID) return STR_AIRUPGRADE_ERR_BIGGEST;
 
+	/* always_queue: der Aufrufer steckt mitten in einer Liste, die der
+	 * Umbau durcheinanderbringen wuerde (der Abriss nimmt die Station
+	 * kurzzeitig aus dem Spiel). Dann nur vormerken - der Tages-Timer
+	 * baut spaeter in Ruhe um. */
 	extern StringID AirUpgradeDo(Station *st);
-	if (!AirportOccupied(st)) return AirUpgradeDo(st);
+	if (!always_queue && !AirportOccupied(st)) return AirUpgradeDo(st);
 
 	/* Schon vorgemerkt? Dann nicht doppelt schliessen. */
 	for (const PendingUpgrade &p : _pending_upgrades) {
@@ -359,7 +363,7 @@ StringID AirUpgradeDo(Station *st)
  */
 StringID AirUpgradeToMax(Station *st, uint &steps)
 {
-	extern StringID AirUpgradeStart(Station *st);
+	extern StringID AirUpgradeStart(Station *st, bool always_queue = false);
 	StringID last = STR_AIRUPGRADE_ERR_BIGGEST;
 	steps = 0;
 	for (uint i = 0; i < NUM_AIRPORTS; i++) {

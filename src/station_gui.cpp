@@ -2105,7 +2105,7 @@ struct StationViewWindow : public Window {
 				break;
 
 			case WID_SV_UPGRADE_AIRPORT: {
-				extern StringID AirUpgradeStart(Station *st);
+				extern StringID AirUpgradeStart(Station *st, bool always_queue = false);
 				extern StringID RailUpgradeDo(Station *st);
 				Station *st = Station::Get(this->window_number);
 				/* Flughaefen haben Vorrang: dort ist der Engpass groesser,

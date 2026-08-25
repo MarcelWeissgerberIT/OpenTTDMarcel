@@ -237,12 +237,19 @@ std::string AirGrowRun(bool report, bool force)
 {
 	extern uint8_t AirUpgradeNextType(uint8_t cur);
 	extern Money AirUpgradeCost(const Station *st, uint8_t &next);
-	extern StringID AirUpgradeStart(Station *st);
+	extern StringID AirUpgradeStart(Station *st, bool always_queue);
 
 	std::string out;
 	uint checked = 0, started = 0;
 
-	for (Station *st : Station::Iterate()) {
+	/* Erst schauen, dann handeln.
+	 *
+	 * Der Umbau reisst den alten Flughafen ab, und dabei kann die Station
+	 * kurzzeitig aus der Liste verschwinden. Wer waehrend dieser Liste
+	 * umbaut, laeuft danach auf einen toten Zeiger - deshalb wird hier
+	 * nur gesammelt und erst nach der Schleife gebaut. */
+	std::vector<StationID> candidates;
+	for (const Station *st : Station::Iterate()) {
 		if (!st->facilities.Test(StationFacility::Airport)) continue;
 		if (!Company::IsValidID(st->owner)) continue;
 
@@ -269,17 +276,31 @@ std::string AirGrowRun(bool report, bool force)
 		const Company *c = Company::GetIfValid(st->owner);
 		if (c == nullptr || c->money < cost * 2) continue;
 
-		StringID res = AirUpgradeStart(st);
-		if (res == STR_AIRUPGRADE_DONE || res == STR_AIRUPGRADE_QUEUED) {
-			streak = 0;
-			started++;
-			Debug(misc, 0, "Flughafen waechst mit: Station {} bei Andrang {}% ({})",
-					st->index, pressure, res == STR_AIRUPGRADE_DONE ? "sofort" : "vorgemerkt");
-			if (st->owner == _local_company) {
-				AddNewsItem(GetEncodedString(STR_AIRGROW_NEWS, st->index),
-						NewsType::General, NewsStyle::Thin, {});
-			}
+		candidates.push_back(st->index);
+	}
+
+	/* Hoechstens ein Umbau je Durchgang: er kostet Geld, schliesst den
+	 * Flughafen und soll nicht gleich das halbe Netz lahmlegen. */
+	for (StationID id : candidates) {
+		Station *st = Station::GetIfValid(id);
+		if (st == nullptr || !st->facilities.Test(StationFacility::Airport)) continue;
+
+		uint pressure = AirportPressure(st);
+		CompanyID owner = st->owner;
+		/* Immer vormerken: der Umbau laeuft dann aus dem Tages-Timer,
+		 * dem erprobten Weg - nicht mitten aus dieser Pruefung heraus. */
+		StringID res = AirUpgradeStart(st, true);
+		if (res != STR_AIRUPGRADE_DONE && res != STR_AIRUPGRADE_QUEUED) continue;
+
+		/* Nach dem Umbau kann der alte Zeiger tot sein - ueber die ID neu holen. */
+		_airgrow_streak[id] = 0;
+		started++;
+		Debug(misc, 0, "Flughafen waechst mit: Station {} bei Andrang {}% ({})",
+				id, pressure, res == STR_AIRUPGRADE_DONE ? "sofort" : "vorgemerkt");
+		if (owner == _local_company && Station::IsValidID(id)) {
+			AddNewsItem(GetEncodedString(STR_AIRGROW_NEWS, id), NewsType::General, NewsStyle::Thin, {});
 		}
+		break;
 	}
 
 	if (report) {
@@ -320,7 +341,17 @@ std::string AirGrowStressTest()
 	Backup<CompanyID> local_company(_local_company, cid);
 	SubtractMoneyFromCompany(cid, CommandCost(ExpensesType::Other, -Money(2000000000)));
 
+	/* Bewusst klein anfangen, damit ueberhaupt etwas zum Ausbauen bleibt.
+	 * Der Auto-Modus wuerde sonst gleich den groessten Typ hinstellen. */
+	extern bool _ac_big_airports;
+	bool saved_big = _ac_big_airports;
+	_ac_big_airports = false;
 	std::string built = AutoConnectDebugBuild("air", 0, 1, 60, true);
+	if (built.find("OK") == std::string::npos) {
+		_ac_big_airports = saved_big;
+		built = AutoConnectDebugBuild("air", 0, 1, 60, true);
+	}
+	_ac_big_airports = saved_big;
 
 	Station *st = nullptr;
 	for (Station *i : Station::Iterate()) {
