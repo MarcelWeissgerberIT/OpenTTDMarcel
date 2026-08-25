@@ -202,7 +202,12 @@ static std::vector<uint8_t> AcAirportCandidates()
 {
 	std::vector<uint8_t> out;
 	if (_ac_big_airports) {
-		for (uint8_t at : {(uint8_t)AT_INTERNATIONAL, (uint8_t)AT_METROPOLITAN, (uint8_t)AT_LARGE, (uint8_t)AT_COMMUTER}) {
+		/* Absteigend nach Groesse. Mega und Intercontinental stehen vorn:
+		 * wer "grosse Flughaefen" anhakt, will keinen Mittelklasse-Bau,
+		 * wenn der grosse hinpasst. Reicht der Platz oder das Geld nicht,
+		 * arbeitet sich die Liste nach unten durch. */
+		for (uint8_t at : {(uint8_t)AT_MEGA, (uint8_t)AT_INTERCON, (uint8_t)AT_INTERNATIONAL,
+				(uint8_t)AT_METROPOLITAN, (uint8_t)AT_LARGE, (uint8_t)AT_COMMUTER}) {
 			if (AirportSpec::Get(at)->IsAvailable()) out.push_back(at);
 		}
 	}
@@ -1346,6 +1351,10 @@ static AutoConnectResult BuildRailConnection(TileIndex center_a, TileIndex cente
 	AcSignalFlush signal_flush;
 	bool loop = train_count > 1;
 	uint8_t numtracks = loop ? 2 : 1;
+	/* "Grosse Bauwerke" gilt auch fuer Bahnhoefe: ein zusaetzliches
+	 * Gleis von Anfang an spart den spaeteren Umbau, sobald mehr als ein
+	 * Zug auf der Strecke faehrt. */
+	if (_ac_big_airports && loop) numtracks = std::min<uint8_t>(3, static_cast<uint8_t>(_settings_game.station.station_spread));
 
 	/* Geld-Vorabpruefung: gar nicht erst bauen, wenn Strecke UND Zuege
 	 * zusammen nicht bezahlbar sind - sonst stuende eine teure Strecke

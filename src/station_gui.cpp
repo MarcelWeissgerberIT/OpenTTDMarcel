@@ -1260,6 +1260,8 @@ struct StationViewWindow : public Window {
 	/* Fork: Zahlen fuer den Flughafen-Ausbau, in OnPaint gefuellt. */
 	Money upgrade_cost = 0;      ///< Was der Ausbau kostet.
 	uint8_t upgrade_next = 0xFF; ///< Zieltyp (AT_INVALID = keiner).
+	uint upgrade_rail_len = 0;   ///< Bahnhof: zusaetzliche Bahnsteigfelder.
+	uint upgrade_rail_tracks = 0;///< Bahnhof: zusaetzliche Gleise.
 
 
 	/**
@@ -1491,8 +1493,19 @@ struct StationViewWindow : public Window {
 			 * Gesperrt mit erklaerendem Hinweis ist ehrlicher.
 			 * Der Knopftext bleibt kurz: die Leiste ist ein EqualSize-
 			 * Container, ein langer Text macht alle Knoepfe mit breit. */
-			bool is_air = st->facilities.Test(StationFacility::Airport) && st->owner == _local_company && st->owner != OWNER_NONE;
-			this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane(is_air ? 0 : SZSP_NONE);
+			/* Derselbe Knopf baut auch Bahnhoefe aus - laengere Bahnsteige
+			 * und mehr Gleise, ohne die Station zu verlieren. */
+			extern bool RailUpgradeNextStep(const BaseStation *st, uint &add_len, uint &add_tracks);
+			this->upgrade_rail_len = 0;
+			this->upgrade_rail_tracks = 0;
+			bool is_air = st->facilities.Test(StationFacility::Airport);
+			bool is_rail = st->facilities.Test(StationFacility::Train);
+			if (!is_air && is_rail) {
+				extern Money RailUpgradeCost(const BaseStation *st, uint &add_len, uint &add_tracks);
+				this->upgrade_cost = RailUpgradeCost(st, this->upgrade_rail_len, this->upgrade_rail_tracks);
+			}
+			bool mine = st->owner == _local_company && st->owner != OWNER_NONE;
+			this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane((is_air || is_rail) && mine ? 0 : SZSP_NONE);
 		}
 
 		extern const Station *_viewport_highlight_station;
@@ -1549,6 +1562,17 @@ struct StationViewWindow : public Window {
 	{
 		if (widget != WID_SV_UPGRADE_AIRPORT) return false;
 
+		const Station *stt = Station::Get(this->window_number);
+		if (!stt->facilities.Test(StationFacility::Airport)) {
+			/* Bahnhof: hier zaehlen Bahnsteigfelder und Gleise. */
+			if (this->upgrade_rail_len == 0 && this->upgrade_rail_tracks == 0) {
+				GuiShowTooltips(this, GetEncodedString(STR_RAILUPGRADE_TOOLTIP_MAX), close_cond);
+			} else {
+				GuiShowTooltips(this, GetEncodedString(STR_RAILUPGRADE_TOOLTIP_NEXT,
+						this->upgrade_rail_len, this->upgrade_rail_tracks, this->upgrade_cost), close_cond);
+			}
+			return true;
+		}
 		if (this->upgrade_next == AT_INVALID) {
 			GuiShowTooltips(this, GetEncodedString(STR_AIRUPGRADE_TOOLTIP_MAX), close_cond);
 		} else {
@@ -2082,8 +2106,12 @@ struct StationViewWindow : public Window {
 
 			case WID_SV_UPGRADE_AIRPORT: {
 				extern StringID AirUpgradeStart(Station *st);
+				extern StringID RailUpgradeDo(Station *st);
 				Station *st = Station::Get(this->window_number);
-				StringID res = AirUpgradeStart(st);
+				/* Flughaefen haben Vorrang: dort ist der Engpass groesser,
+				 * und eine Station kann beides sein. */
+				StringID res = st->facilities.Test(StationFacility::Airport)
+						? AirUpgradeStart(st) : RailUpgradeDo(st);
 				ShowErrorMessage(GetEncodedString(res), {}, WarningLevel::Info);
 				this->ReInit();
 				break;

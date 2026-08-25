@@ -199,6 +199,7 @@ add_files(
     houseown_gui.cpp
     airdivert.cpp
     airupgrade.cpp
+    railupgrade.cpp
     fleet_gui.cpp
     linemgr_gui.cpp
     futureengines.cpp

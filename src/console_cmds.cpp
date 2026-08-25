@@ -590,6 +590,24 @@ static bool ConMegaFly(std::span<std::string_view>)
 	return true;
 }
 
+/* Fork: Bahnhof-Ausbau aus der Konsole. */
+static bool ConRailUpgrade(std::span<std::string_view> argv)
+{
+	if (argv.size() >= 2 && argv[1] == "maxtest") {
+		extern std::string RailUpgradeMaxTest();
+		std::string r = RailUpgradeMaxTest();
+		Debug(misc, 0, "Bahnhof-Test: {}", r);
+		IConsolePrint(CC_DEFAULT, "{}", r);
+		return true;
+	}
+	extern std::string RailUpgradeDebug(bool apply);
+	bool apply = argv.size() >= 2 && argv[1] == "do";
+	std::string res = RailUpgradeDebug(apply);
+	Debug(misc, 0, "Bahnhof-Ausbau: {}", res);
+	IConsolePrint(CC_DEFAULT, "{}", res);
+	return true;
+}
+
 /* Fork: Flughafen-Ausbau aus der Konsole. */
 static bool ConAirUpgrade(std::span<std::string_view> argv)
 {
@@ -3314,6 +3332,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("airupgrade",              ConAirUpgrade);
 	IConsole::CmdRegister("megatest",                ConMegaTest);
 	IConsole::CmdRegister("megafly",                 ConMegaFly);
+	IConsole::CmdRegister("railupgrade",             ConRailUpgrade);
 	IConsole::CmdRegister("futureengines",           ConFutureEngines);
 	IConsole::CmdRegister("buildveh",                ConBuildVeh);
 	IConsole::CmdRegister("ridealong",               ConRideAlong);

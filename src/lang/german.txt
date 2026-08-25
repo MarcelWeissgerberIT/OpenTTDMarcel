@@ -2290,8 +2290,8 @@ STR_MODERNIZE_INFO_RENEW                                        :{WHITE}Wird bei
 STR_MODERNIZE_NOT_POSSIBLE                                      :{WHITE}Kein neueres Modell verfügbar und dieses Modell wird nicht mehr gebaut
 STR_AUTOCONNECT_TERRAFORM                                       :{BLACK}Planieren
 STR_AUTOCONNECT_TERRAFORM_TOOLTIP                                :{BLACK}Gelände für Bahnhöfe und Flughäfen einebnen, wenn kein ebener Platz gefunden wird (kostet Geld, aber der Bau wird fertig)
-STR_AUTOCONNECT_BIGAIR                                          :{BLACK}Große Flughäfen
-STR_AUTOCONNECT_BIGAIR_TOOLTIP                                  :{BLACK}Größten verfügbaren Flughafentyp bevorzugen; bei Platz- oder Geldmangel wird auf kleinere ausgewichen
+STR_AUTOCONNECT_BIGAIR                                          :{BLACK}Große Bauwerke
+STR_AUTOCONNECT_BIGAIR_TOOLTIP                                  :{BLACK}Größten verfügbaren Flughafentyp bevorzugen - bis hin zum Mega-Flughafen - und Bahnhöfe mit einem Gleis mehr anlegen. Bei Platz- oder Geldmangel wird auf kleinere ausgewichen
 STR_COMPANY_VIEW_ASSISTANT_BUTTON                               :{BLACK}Assistent...
 STR_COMPANY_VIEW_ASSISTANT_TOOLTIP                              :{BLACK}Dein persönlicher Assistent: automatisiert Fahrzeug-Erneuerung, Stadtpflege und Werbung
 STR_ASSISTANT_CAPTION                                           :{WHITE}Persönlicher Assistent
@@ -2494,6 +2494,15 @@ STR_AIRUPGRADE_ERR_BUSY                                         :{WHITE}Erst mü
 STR_AIRUPGRADE_ERR_NO_ROOM                                      :{WHITE}Kein Platz für den größeren Flughafen an dieser Stelle
 STR_AIRUPGRADE_ERR_BUILD                                        :{WHITE}Umbau fehlgeschlagen - der alte Flughafen steht wieder
 STR_AIRUPGRADE_ERR_SINGLEPLAYER                                 :{WHITE}Im Mehrspieler nicht verfügbar
+STR_RAILUPGRADE_BUTTON                                          :{BLACK}Ausbauen
+STR_RAILUPGRADE_TOOLTIP                                         :{BLACK}Diesen Bahnhof im Betrieb vergrößern - Aufträge und Fahrpläne bleiben erhalten
+STR_RAILUPGRADE_TOOLTIP_NEXT                                    :{BLACK}Nächster Schritt: +{NUM} Bahnsteigfelder, +{NUM} Gleise für {CURRENCY_LONG}. Der Bahnhof bleibt in Betrieb
+STR_RAILUPGRADE_TOOLTIP_MAX                                     :{BLACK}Dieser Bahnhof hat die größtmögliche Ausdehnung erreicht
+STR_RAILUPGRADE_DONE                                            :{WHITE}Bahnhof vergrößert - Aufträge und Fahrpläne sind unverändert
+STR_RAILUPGRADE_ERR_NO_STATION                                  :{WHITE}Das ist kein eigener Bahnhof
+STR_RAILUPGRADE_ERR_BIGGEST                                     :{WHITE}Dieser Bahnhof ist bereits so groß, wie die Einstellung "Stationsausdehnung" erlaubt
+STR_RAILUPGRADE_ERR_BUILD                                       :{WHITE}Vergrößerung fehlgeschlagen - kein Platz an dieser Stelle
+STR_RAILUPGRADE_ERR_SINGLEPLAYER                                :{WHITE}Im Mehrspieler nicht verfügbar
 STR_CONFIG_SETTING_FORK_AIRDIVERT                               :Flugzeuge weichen überfüllten Flughäfen aus: {STRING}
 STR_CONFIG_SETTING_FORK_AIRDIVERT_HELPTEXT                      :Kreist ein Flugzeug zu lange über einem überlasteten Flughafen, landet es auf einem freieren eigenen Flughafen in der Nähe. Der Fahrplan bleibt unberührt
 STR_FLEET_TOOLTIP                                               :{BLACK}Flotte aufstocken: mehrere Kopien bauen und gleichmäßig takten
