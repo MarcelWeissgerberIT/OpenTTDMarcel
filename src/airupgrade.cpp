@@ -395,6 +395,20 @@ std::string MegaAirportTest()
 	out += gaps == 0 ? fmt::format("\n  Automat vollstaendig - alle {} Bodenpositionen kennen jedes Ziel", checked)
 			: fmt::format("\n  {} Luecken im Automaten ({} Bodenpositionen geprueft):{}", gaps, checked, missing);
 
+	/* Die Ausbaukette durchgehen: fuehrt sie am Ende zum Mega-Flughafen?
+	 * Genau daran haengt, ob der Ausbau-Knopf ihn ueberhaupt anbietet. */
+	out += "\n  Ausbaukette:";
+	uint8_t cur = AT_SMALL;
+	for (uint step = 0; step < NUM_AIRPORTS; step++) {
+		const AirportSpec *cs = AirportSpec::Get(cur);
+		out += fmt::format(" {}({})", GetString(cs->name), SpecTerminals(cs));
+		uint8_t next = AirUpgradeNextType(cur);
+		if (next == AT_INVALID) break;
+		out += " ->";
+		cur = next;
+	}
+	out += cur == AT_MEGA ? " - endet beim Mega-Flughafen" : " - endet NICHT beim Mega-Flughafen";
+
 	Debug(misc, 0, "Mega-Test: {}", out);
 	return out;
 }
