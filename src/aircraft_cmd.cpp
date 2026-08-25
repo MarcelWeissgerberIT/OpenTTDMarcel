@@ -1799,6 +1799,16 @@ static AircraftStateHandler * const _aircraft_state_handlers[] = {
 	AircraftEventHandler_AtTerminal,     // TERM7          = 19
 	AircraftEventHandler_AtTerminal,     // TERM8          = 20
 	AircraftEventHandler_AtTerminal,     // HELIPAD3       = 21
+	/* Fork: die acht zusaetzlichen Terminals des Mega-Flughafens
+	 * verhalten sich wie jedes andere Terminal auch. */
+	AircraftEventHandler_AtTerminal,     // TERM9          = 22
+	AircraftEventHandler_AtTerminal,     // TERM10         = 23
+	AircraftEventHandler_AtTerminal,     // TERM11         = 24
+	AircraftEventHandler_AtTerminal,     // TERM12         = 25
+	AircraftEventHandler_AtTerminal,     // TERM13         = 26
+	AircraftEventHandler_AtTerminal,     // TERM14         = 27
+	AircraftEventHandler_AtTerminal,     // TERM15         = 28
+	AircraftEventHandler_AtTerminal,     // TERM16         = 29
 };
 
 static void AirportClearBlock(const Aircraft *v, const AirportFTAClass *apc)
@@ -1970,6 +1980,16 @@ static const MovementTerminalMapping _airport_terminal_mapping[] = {
 	{TERM6, AirportBlock::Term6},
 	{TERM7, AirportBlock::Term7},
 	{TERM8, AirportBlock::Term8},
+	/* Fork: Terminal 9 bis 16 des Mega-Flughafens. Die Helipads muessen
+	 * dahinter bleiben - AirportFindFreeHelipad rechnet ab MAX_TERMINALS. */
+	{TERM9, AirportBlock::Term9},
+	{TERM10, AirportBlock::Term10},
+	{TERM11, AirportBlock::Term11},
+	{TERM12, AirportBlock::Term12},
+	{TERM13, AirportBlock::Term13},
+	{TERM14, AirportBlock::Term14},
+	{TERM15, AirportBlock::Term15},
+	{TERM16, AirportBlock::Term16},
 	{HELIPAD1, AirportBlock::Helipad1},
 	{HELIPAD2, AirportBlock::Helipad2},
 	{HELIPAD3, AirportBlock::Helipad3},

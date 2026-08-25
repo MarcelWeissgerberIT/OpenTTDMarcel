@@ -14,7 +14,7 @@
 #include "tile_type.h"
 
 /** Some airport-related constants */
-static const uint MAX_TERMINALS =   8;                       ///< maximum number of terminals per airport
+static const uint MAX_TERMINALS =  16;                       ///< maximum number of terminals per airport (Fork: von 8 angehoben fuer den Mega-Flughafen)
 static const uint MAX_HELIPADS  =   3;                       ///< maximum number of helipads per airport
 static const uint MAX_ELEMENTS  = 255;                       ///< maximum number of aircraft positions at airport
 
@@ -83,7 +83,16 @@ enum AirportMovementStates : uint8_t {
 	TERM7          =  19, ///< Heading for terminal 7.
 	TERM8          =  20, ///< Heading for terminal 8.
 	HELIPAD3       =  21, ///< Heading for helipad 3.
-	MAX_HEADINGS   =  21, ///< Last valid target to head for.
+	/* Fork: acht weitere Terminals fuer den Mega-Flughafen. */
+	TERM9          =  22, ///< Heading for terminal 9.
+	TERM10         =  23, ///< Heading for terminal 10.
+	TERM11         =  24, ///< Heading for terminal 11.
+	TERM12         =  25, ///< Heading for terminal 12.
+	TERM13         =  26, ///< Heading for terminal 13.
+	TERM14         =  27, ///< Heading for terminal 14.
+	TERM15         =  28, ///< Heading for terminal 15.
+	TERM16         =  29, ///< Heading for terminal 16.
+	MAX_HEADINGS   =  29, ///< Last valid target to head for.
 	TERMGROUP      = 255, ///< Aircraft is looking for a free terminal in a terminalgroup.
 };
 
@@ -124,6 +133,26 @@ enum class AirportBlock : uint8_t {
 	RunwayIn2        = 29, ///< Second runway for landing.
 	RunwayOut2       = 10, ///< Second runway for take off. @note re-uses #AirportBlock::TaxiwayBusy
 	OutWay3          = 31, ///< Third holding point just before take off.
+
+	/* Fork: Bloecke des Mega-Flughafens. Bits 32 aufwaerts sind frei -
+	 * AirportBlocks ist ein 64-Bit-Satz, belegt waren bisher nur 0..31. */
+	Term9            = 32, ///< Block belonging to terminal 9.
+	Term10           = 33, ///< Block belonging to terminal 10.
+	Term11           = 34, ///< Block belonging to terminal 11.
+	Term12           = 35, ///< Block belonging to terminal 12.
+	Term13           = 36, ///< Block belonging to terminal 13.
+	Term14           = 37, ///< Block belonging to terminal 14.
+	Term15           = 38, ///< Block belonging to terminal 15.
+	Term16           = 39, ///< Block belonging to terminal 16.
+	TermGroup3       = 40, ///< Third set of terminals.
+	TermGroup4       = 41, ///< Fourth set of terminals.
+	RunwayIn3        = 42, ///< Third runway for landing.
+	RunwayOut3       = 43, ///< Third runway for take off.
+	RunwayIn4        = 44, ///< Fourth runway for landing.
+	RunwayOut4       = 45, ///< Fourth runway for take off.
+	OutWay4          = 46, ///< Fourth holding point just before take off.
+	InWay3           = 47, ///< Third holding point just after take off.
+	InWay4           = 48, ///< Fourth holding point just after take off.
 	/* end of new blocks */
 
 	Nothing          = 30, ///< Nothing is blocked, for example being in the hanger.

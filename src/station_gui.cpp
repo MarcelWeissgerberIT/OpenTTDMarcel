@@ -868,7 +868,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_station_view_widgets
 		EndContainer(),
 		NWidget(NWID_SELECTION, Colours::Invalid, WID_SV_UPGRADE_AIRPORT_SEL),
 			NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SV_UPGRADE_AIRPORT), SetMinimalSize(45, 12), SetResize(1, 0), SetFill(1, 1),
-					SetToolTip(STR_AIRUPGRADE_TOOLTIP),
+					SetStringTip(STR_AIRUPGRADE_BUTTON, STR_AIRUPGRADE_TOOLTIP),
 		EndContainer(),
 		NWidget(WWT_TEXTBTN, Colours::Grey, WID_SV_CATCHMENT), SetMinimalSize(45, 12), SetResize(1, 0), SetFill(1, 1), SetStringTip(STR_BUTTON_CATCHMENT, STR_TOOLTIP_CATCHMENT),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SV_TRAINS), SetAspect(WidgetDimensions::ASPECT_VEHICLE_ICON), SetFill(0, 1), SetStringTip(STR_TRAIN, STR_STATION_VIEW_SCHEDULED_TRAINS_TOOLTIP),
@@ -1368,7 +1368,8 @@ struct StationViewWindow : public Window {
 	{
 		this->CreateNestedTree();
 		this->GetWidget<NWidgetStacked>(WID_SV_CLOSE_AIRPORT_SEL)->SetDisplayedPlane(Station::Get(window_number)->facilities.Test(StationFacility::Airport) ? 0 : SZSP_NONE);
-		this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane(Station::Get(window_number)->facilities.Test(StationFacility::Airport) ? 0 : SZSP_NONE);
+		/* Erst in OnPaint entscheiden - dort stehen die Ausbau-Zahlen. */
+		this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane(SZSP_NONE);
 		this->vscroll = this->GetScrollbar(WID_SV_SCROLLBAR);
 		/* Nested widget tree creation is done in two steps to ensure that this->GetWidget<NWidgetCore>(WID_SV_ACCEPTS_RATINGS) exists in UpdateWidgetSize(). */
 		this->FinishInitNested(window_number);
@@ -1484,8 +1485,11 @@ struct StationViewWindow : public Window {
 			if (st->facilities.Test(StationFacility::Airport)) cost = AirUpgradeCost(st, next);
 			this->upgrade_cost = cost;
 			this->upgrade_next = next;
-			this->SetWidgetDisabledState(WID_SV_UPGRADE_AIRPORT,
-					next == AT_INVALID || st->owner != _local_company || st->owner == OWNER_NONE);
+			/* Ganz ausblenden statt nur sperren: die Knopfleiste ist ein
+			 * EqualSize-Container, jeder zusaetzliche Knopf macht alle
+			 * anderen mit breit - und damit das ganze Fenster. */
+			bool show = next != AT_INVALID && st->owner == _local_company && st->owner != OWNER_NONE;
+			this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane(show ? 0 : SZSP_NONE);
 		}
 
 		extern const Station *_viewport_highlight_station;
@@ -1536,11 +1540,6 @@ struct StationViewWindow : public Window {
 		if (widget == WID_SV_CAPTION) {
 			const Station *st = Station::Get(this->window_number);
 			return GetString(STR_STATION_VIEW_CAPTION, st->index, st->facilities);
-		}
-		/* Fork: Ausbau-Knopf zeigt Zieltyp und Preis. */
-		if (widget == WID_SV_UPGRADE_AIRPORT) {
-			if (this->upgrade_next == AT_INVALID) return GetString(STR_AIRUPGRADE_BIGGEST);
-			return GetString(STR_AIRUPGRADE_BUTTON, AirportSpec::Get(this->upgrade_next)->name, this->upgrade_cost);
 		}
 
 		return this->Window::GetWidgetString(widget, stringid);
