@@ -38,6 +38,7 @@
 #include "settings_type.h"
 #include "openttd.h"
 #include "gfx_func.h"
+#include "town.h"
 #include "engine_base.h"
 #include "engine_func.h"
 #include "order_base.h"
@@ -276,8 +277,38 @@ StringID AirUpgradeDo(Station *st)
 		return STR_AIRUPGRADE_ERR_BUSY;
 	}
 
-	/* Platz schaffen: der groessere Flughafen braucht ebenes Gelaende.
-	 * Erst planieren, dann bauen - und zwar auf der Hoehe, auf der der
+	/* Platz schaffen. Der groessere Typ greift ueber den alten Grundriss
+	 * hinaus - in einer dicht bebauten Stadt stehen dort Haeuser, und
+	 * genau daran ist der Ausbau bisher gescheitert. Also erst alles
+	 * raeumen, was im neuen Rechteck liegt.
+	 *
+	 * Die Stadtrats-Pruefung wird dabei uebersprungen: der Flughafen
+	 * steht hier laengst, sein Ausbau am Ansehen scheitern zu lassen
+	 * waere Schikane. Was sich nicht raeumen laesst (geschuetzte Bauten,
+	 * eigene Haeuser mit Abriss-Schutz), bleibt stehen - dann meldet der
+	 * Neubau weiter unten sauber, dass es nicht geht. */
+	uint cleared = 0, blocked = 0;
+	Money clear_cost = 0;
+	for (uint dy = 0; dy < as->size_y; dy++) {
+		for (uint dx = 0; dx < as->size_x; dx++) {
+			TileIndex t = TileAddXY(origin, dx, dy);
+			if (IsTileType(t, TileType::Clear)) continue;
+			CommandCost cc = Command<Commands::LandscapeClear>::Do(
+					DoCommandFlags{DoCommandFlag::Execute, DoCommandFlag::NoTestTownRating}, t);
+			if (cc.Succeeded()) {
+				cleared++;
+				clear_cost += cc.GetCost();
+			} else {
+				blocked++;
+			}
+		}
+	}
+	if (cleared > 0 || blocked > 0) {
+		Debug(misc, 0, "Flughafen-Ausbau: Platz geschaffen - {} Felder geraeumt ({}), {} blockiert",
+				cleared, (int64_t)clear_cost, blocked);
+	}
+
+	/* Erst planieren, dann bauen - und zwar auf der Hoehe, auf der der
 	 * alte Flughafen stand, damit nichts absackt. */
 	TileIndex far = TileAddXY(origin, as->size_x - 1, as->size_y - 1);
 	auto [level, level_cost, level_tile] = Command<Commands::LevelLand>::Do(DoCommandFlag::Execute, origin, far, false, LevelMode::Level);
@@ -304,7 +335,9 @@ StringID AirUpgradeDo(Station *st)
 		cur_company.Restore();
 		Debug(misc, 0, "Flughafen-Ausbau: Neubau abgelehnt ({}), alter Zustand wiederhergestellt",
 				build.GetErrorMessage().base());
-		return STR_AIRUPGRADE_ERR_BUILD;
+		/* Den echten Grund durchreichen - "Umbau fehlgeschlagen" allein
+		 * hilft niemandem weiter, "da steht ein Gebaeude im Weg" schon. */
+		return build.GetErrorMessage() != INVALID_STRING_ID ? build.GetErrorMessage() : STR_AIRUPGRADE_ERR_BUILD;
 	}
 	cur_company.Restore();
 
@@ -314,6 +347,33 @@ StringID AirUpgradeDo(Station *st)
 }
 
 /** Fork: Diagnose - Ausbau des ersten eigenen Flughafens. */
+/**
+ * Fork: Einen Flughafen so weit ausbauen, wie es geht.
+ *
+ * Jede Stufe ist ein eigener Umbau - vom kleinen Flugfeld bis zum
+ * Mega-Flughafen sind das mehrere. Wer den Weg einzeln klickt, wartet
+ * jedes Mal auf den naechsten Tag; hier laeuft die ganze Kette durch.
+ * @param st Der Flughafen.
+ * @param steps Zaehlt die tatsaechlich gebauten Stufen.
+ * @return Meldung der letzten Stufe.
+ */
+StringID AirUpgradeToMax(Station *st, uint &steps)
+{
+	extern StringID AirUpgradeStart(Station *st);
+	StringID last = STR_AIRUPGRADE_ERR_BIGGEST;
+	steps = 0;
+	for (uint i = 0; i < NUM_AIRPORTS; i++) {
+		if (AirUpgradeNextType(st->airport.type) == AT_INVALID) break;
+		uint8_t before = st->airport.type;
+		last = AirUpgradeStart(st);
+		/* Vorgemerkt heisst: es stehen noch Flugzeuge am Boden. Dann
+		 * uebernimmt der Tages-Timer, und wir sind hier fertig. */
+		if (st->airport.type == before) break;
+		steps++;
+	}
+	return last;
+}
+
 std::string AirUpgradeDebug(bool apply)
 {
 	for (Station *st : Station::Iterate()) {
@@ -329,9 +389,11 @@ std::string AirUpgradeDebug(bool apply)
 			out += fmt::format(" -> Typ {} ({} Terminals) fuer {}", next,
 					SpecTerminals(AirportSpec::Get(next)), (int64_t)cost);
 			if (apply) {
-				extern StringID AirUpgradeStart(Station *st);
-				StringID res = AirUpgradeStart(st);
-				out += fmt::format(" | Ergebnis: {}", res == STR_AIRUPGRADE_DONE ? "umgebaut" : (res == STR_AIRUPGRADE_QUEUED ? "vorgemerkt" : "abgelehnt"));
+				uint steps = 0;
+				StringID res = AirUpgradeToMax(st, steps);
+				out += fmt::format(" | {} Stufe(n) gebaut, jetzt Typ {} ({} Terminals), Ergebnis: {}",
+						steps, st->airport.type, SpecTerminals(AirportSpec::Get(st->airport.type)),
+						res == STR_AIRUPGRADE_DONE ? "fertig" : (res == STR_AIRUPGRADE_QUEUED ? "vorgemerkt" : GetString(res)));
 			}
 		}
 		Debug(misc, 0, "Ausbau-Diagnose: {}", out);
@@ -651,3 +713,62 @@ static const IntervalTimer<TimerGameTick> _megafly_timer = {{TimerGameTick::Prio
 	ChangeGameSpeed(false);
 	_megafly.running = false;
 }};
+
+/**
+ * Fork: Die ganze Ausbaukette an einer echten Stadt durchspielen.
+ *
+ * Der Ausbau scheitert in der Praxis nicht am Flughafen selbst, sondern
+ * an dem, was drumherum steht. Deshalb baut dieser Test bewusst mitten
+ * an einer Stadt und laesst die Kette bis zum groessten Typ laufen.
+ */
+std::string AirUpgradeMaxTest()
+{
+	if (_game_mode != GameMode::Normal || _settings_game.station.station_spread == 0) return "Spiel laeuft noch nicht.";
+
+	const Company *co = nullptr;
+	for (const Company *i : Company::Iterate()) { co = i; break; }
+	if (co == nullptr) {
+		extern Company *DoStartupNewCompany(bool is_ai, CompanyID company);
+		co = DoStartupNewCompany(false, CompanyID::Invalid());
+	}
+	if (co == nullptr) return "Keine Firma vorhanden.";
+	CompanyID cid = co->index;
+	Backup<CompanyID> cur_company(_current_company, cid);
+	/* Der Ausbau prueft, ob der Flughafen dem Spieler gehoert - headless
+	 * gibt es keinen, also fuer die Dauer des Tests einen setzen. */
+	Backup<CompanyID> local_company(_local_company, cid);
+	SubtractMoneyFromCompany(cid, CommandCost(ExpensesType::Other, -Money(2000000000)));
+
+	/* Den Flughafen nicht selbst hinstellen, sondern vom Auto-Modus
+	 * bauen lassen - der findet die Stelle zuverlaessig und setzt sie
+	 * dorthin, wo auch ein Spieler bauen wuerde: an eine Stadt. */
+	extern std::string AutoConnectDebugBuild(std::string_view mode, uint a_idx, uint b_idx, uint count, bool auto_pick);
+	std::string built;
+	{
+		/* Der Auto-Modus arbeitet aus Sicht des Spielers - headless gibt es
+		 * die aber nicht, also fuer den Bau die Testfirma einsetzen. */
+		built = AutoConnectDebugBuild("air", 0, 1, 2, true);
+	}
+
+	Station *found = nullptr;
+	for (Station *i : Station::Iterate()) {
+		if (i->owner == cid && i->facilities.Test(StationFacility::Airport)) { found = i; break; }
+	}
+	if (found == nullptr) { local_company.Restore(); cur_company.Restore(); return fmt::format("Kein Flughafen zum Ausbauen ({})", built); }
+	Station *st = found;
+
+	std::string out = fmt::format("Ausbau-Test: Start Typ {} ({} Terminals)",
+			st->airport.type, SpecTerminals(AirportSpec::Get(st->airport.type)));
+
+	uint steps = 0;
+	extern StringID AirUpgradeToMax(Station *st, uint &steps);
+	StringID res = AirUpgradeToMax(st, steps);
+	out += fmt::format(" -> nach {} Stufe(n) Typ {} ({} Terminals), Ergebnis: {}",
+			steps, st->airport.type, SpecTerminals(AirportSpec::Get(st->airport.type)),
+			res == STR_AIRUPGRADE_DONE ? "fertig" : GetString(res));
+	local_company.Restore();
+	cur_company.Restore();
+
+	Debug(misc, 0, "{}", out);
+	return out;
+}

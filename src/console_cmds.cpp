@@ -594,6 +594,13 @@ static bool ConMegaFly(std::span<std::string_view>)
 static bool ConAirUpgrade(std::span<std::string_view> argv)
 {
 	extern std::string AirUpgradeDebug(bool apply);
+	if (argv.size() >= 2 && argv[1] == "maxtest") {
+		extern std::string AirUpgradeMaxTest();
+		std::string res = AirUpgradeMaxTest();
+		Debug(misc, 0, "Ausbau-Test: {}", res);
+		IConsolePrint(CC_DEFAULT, "{}", res);
+		return true;
+	}
 	bool apply = argv.size() >= 2 && argv[1] == "do";
 	IConsolePrint(CC_DEFAULT, "{}", AirUpgradeDebug(apply));
 	return true;
