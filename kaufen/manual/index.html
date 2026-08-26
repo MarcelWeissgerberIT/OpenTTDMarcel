@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenTTD Marcel Edition – Handbuch</title>
+<meta name="description" content="Das Handbuch der OpenTTD Marcel Edition: alle Erweiterungen erklärt – Auto-Verbindung, Pixel Studio, Immobilien, Assistent und mehr.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* OpenTTD-Fensterfarben (an die Original-UI angelehnt) */
+    --win: #a8a8a8;
+    --win-light: #dcdcdc;
+    --win-dark: #545454;
+    --titlebar: #6c6c6c;
+    --tan: #c4b08c;          /* Buerger-Fenster-Braun */
+    --tan-dark: #8c7854;
+    --toolbar: #581414;      /* Werkzeugleisten-Rot */
+    --grass: #10301c;
+    --btn-orange: #e8a020;
+    --btn-orange-dark: #a06808;
+    --btn-green: #58a038;
+    --btn-green-dark: #306018;
+    --gold: #ffd24a;
+    --tooltip: #ffff9c;      /* Spiel-Tooltip-Gelb */
+    --ink: #101010;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--grass);
+    /* Karo-Muster wie Spielwiese */
+    background-image:
+      linear-gradient(45deg, rgba(255,255,255,0.025) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.025) 75%),
+      linear-gradient(45deg, rgba(255,255,255,0.025) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.025) 75%);
+    background-size: 48px 48px;
+    background-position: 0 0, 24px 24px;
+    color: var(--ink);
+    font-family: "VT323", "Courier New", monospace;
+    font-size: 21px;
+    line-height: 1.35;
+  }
+  body[data-lang="de"] .en { display: none !important; }
+  body[data-lang="en"] .de { display: none !important; }
+
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
+  img { max-width: 100%; display: block; image-rendering: pixelated; }
+
+  .px { font-family: "Press Start 2P", "VT323", monospace; }
+
+  /* --- Spiel-Fenster --- */
+  .win {
+    background: var(--win);
+    border: 2px solid;
+    border-color: var(--win-light) var(--win-dark) var(--win-dark) var(--win-light);
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.45);
+    margin-bottom: 34px;
+  }
+  .win > .titlebar {
+    background: var(--titlebar);
+    color: #fff;
+    text-align: center;
+    padding: 7px 30px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--win-dark);
+    position: relative;
+  }
+  .win > .titlebar::before {
+    content: "x";
+    position: absolute; left: 6px; top: 4px;
+    background: var(--win); color: var(--ink);
+    border: 1px solid; border-color: var(--win-light) var(--win-dark) var(--win-dark) var(--win-light);
+    width: 18px; height: 18px; line-height: 16px; font-size: 11px;
+  }
+  .win.tan { background: var(--tan); border-color: #e0d0ac var(--tan-dark) var(--tan-dark) #e0d0ac; }
+  .win.tan > .titlebar { background: #7c6840; border-bottom-color: var(--tan-dark); }
+  .win .body { padding: 18px 20px 22px; }
+
+  /* Eingelassener Rahmen fuer Screenshots (wie Spiel-Viewport) */
+  .inset {
+    border: 2px solid;
+    border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    background: #202020;
+  }
+
+  /* --- Spiel-Knoepfe --- */
+  .btn {
+    display: inline-block;
+    font-family: "Press Start 2P", monospace;
+    font-size: 12px;
+    color: var(--ink);
+    text-decoration: none;
+    cursor: pointer;
+    padding: 12px 20px 10px;
+    border: 3px solid;
+    text-align: center;
+  }
+  .btn:active { transform: translate(1px, 1px); }
+  .btn-green {
+    background: var(--btn-green);
+    border-color: #88d068 var(--btn-green-dark) var(--btn-green-dark) #88d068;
+    color: #fff; text-shadow: 1px 1px 0 var(--btn-green-dark);
+  }
+  .btn-orange {
+    background: var(--btn-orange);
+    border-color: #ffd070 var(--btn-orange-dark) var(--btn-orange-dark) #ffd070;
+    color: var(--ink);
+  }
+  .btn-grey {
+    background: var(--win);
+    border-color: var(--win-light) var(--win-dark) var(--win-dark) var(--win-light);
+    color: var(--ink);
+    font-size: 10px; padding: 8px 12px 6px;
+  }
+  .btn-grey.active { background: #8c8c8c; border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark); }
+
+  /* --- Kopfleiste wie Spiel-Toolbar --- */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--toolbar);
+    border-bottom: 3px solid #2c0808;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+  }
+  .nav { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+  .logo { color: var(--gold); font-size: 13px; text-shadow: 2px 2px 0 #2c0808; }
+  .logo .me { color: #ff8cc0; }
+  .nav .spacer { flex: 1; }
+
+  /* --- Hero --- */
+  .hero { padding-top: 40px; }
+  .hero h1 {
+    font-size: clamp(18px, 3.6vw, 32px);
+    line-height: 1.5;
+    text-align: center;
+    margin: 10px 0 16px;
+    text-shadow: 2px 2px 0 rgba(255,255,255,0.5);
+  }
+  .hero p.sub { text-align: center; font-size: 24px; max-width: 760px; margin: 0 auto 20px; }
+  .pricepill {
+    display: block; width: fit-content; margin: 0 auto 20px;
+    background: #383838; color: var(--gold);
+    border: 2px solid; border-color: var(--win-dark) var(--win-light) var(--win-light) var(--win-dark);
+    padding: 8px 18px 6px; font-size: 12px;
+  }
+  .ctarow { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+
+  /* Spiel-Tooltip (gelb) fuer den Shop-Hinweis */
+  .shopnote {
+    display: none;
+    width: fit-content; max-width: 560px;
+    margin: 0 auto 20px;
+    background: var(--tooltip);
+    border: 1px solid var(--ink);
+    padding: 8px 14px 6px;
+    font-size: 22px;
+  }
+  .shopnote.show { display: block; }
+
+  h2.section {
+    font-family: "Press Start 2P", monospace;
+    color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+    text-align: center; font-size: clamp(14px, 2.6vw, 22px);
+    margin: 44px 0 8px;
+  }
+  p.lead { text-align: center; color: #d8e8d8; font-size: 24px; margin-bottom: 26px; text-shadow: 1px 1px 0 rgba(0,0,0,0.6); }
+
+  /* --- Grosse Feature-Fenster mit Screenshot --- */
+  .feature .body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center; }
+  .feature.imgright .body .shot { order: 2; }
+  .feature h3 { font-family: "Press Start 2P", monospace; font-size: 14px; margin-bottom: 12px; }
+  .feature p { font-size: 22px; }
+  @media (max-width: 760px) {
+    .feature .body { grid-template-columns: 1fr; }
+    .feature.imgright .body .shot { order: 0; }
+  }
+
+  /* --- Kleine Feature-Fenster --- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 14px; }
+  .grid .win { margin-bottom: 0; }
+  .grid .ico { font-size: 30px; float: left; margin: 2px 12px 4px 0; }
+  .grid h3 { font-family: "Press Start 2P", monospace; font-size: 11px; padding-top: 6px; margin-bottom: 10px; }
+  .grid p { font-size: 21px; clear: none; }
+
+  /* --- Preisbox --- */
+  .pricebox { max-width: 480px; margin: 0 auto 34px; }
+  .pricebox .body { text-align: center; }
+  .pricebox .amount { font-family: "Press Start 2P", monospace; font-size: 42px; color: #7c2c00; margin: 8px 0 2px; }
+  .pricebox .once { font-size: 24px; margin-bottom: 14px; }
+  .pricebox ul { list-style: none; text-align: left; margin: 0 auto 18px; width: fit-content; }
+  .pricebox li { padding: 2px 0 2px 28px; position: relative; font-size: 22px; }
+  .pricebox li::before { content: "✔"; position: absolute; left: 2px; color: var(--btn-green-dark); }
+
+  footer {
+    background: #303030; color: #c0c0c0;
+    border-top: 3px solid #101010;
+    padding: 22px 0 30px; font-size: 20px;
+  }
+  footer a { color: var(--gold); }
+  footer p { margin-bottom: 8px; }
+
+  .toc { columns: 2; column-gap: 24px; }
+  .toc a { color: #2c2c8c; font-size: 22px; text-decoration: none; display: block; padding: 2px 0; }
+  .toc a:hover { text-decoration: underline; }
+  @media (max-width: 700px) { .toc { columns: 1; } }
+  .win .body h3 { font-family: "Press Start 2P", monospace; font-size: 12px; margin: 14px 0 8px; }
+  .win .body p, .win .body li { font-size: 22px; }
+  .win .body ul { margin: 6px 0 10px 26px; }
+  .kbd { background: #383838; color: #ffd24a; padding: 1px 8px; border: 1px solid #101010; font-size: 19px; white-space: nowrap; }
+  .backrow { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 8px 0 30px; }
+</style>
+</head>
+<body data-lang="de">
+
+<header>
+  <div class="wrap nav">
+    <div class="logo px">Open<span class="tt">TTD</span> <span class="me">Marcel&nbsp;Edition</span></div>
+    <div class="spacer"></div>
+    <nav aria-label="Sprache / Language" style="display:flex; gap:8px;">
+      <button class="btn btn-grey" id="btn-de" onclick="setLang('de')">Deutsch</button>
+      <button class="btn btn-grey" id="btn-en" onclick="setLang('en')">English</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="win">
+      <div class="titlebar px"><span class="de">Handbuch – Marcel Edition</span><span class="en">Manual – Marcel Edition</span></div>
+      <div class="body">
+        <h1 class="px" style="font-size:clamp(16px,3vw,26px); text-align:center; margin:6px 0 14px; text-shadow:2px 2px 0 rgba(255,255,255,0.5);">
+          <span class="de">So funktionieren deine Erweiterungen</span>
+          <span class="en">How your extensions work</span>
+        </h1>
+        <div class="toc"><a href="#start"><span class="de">Erste Schritte</span><span class="en">Getting started</span></a>
+<a href="#autoconnect"><span class="de">Auto-Verbindung</span><span class="en">Auto-connect</span></a>
+<a href="#assistant"><span class="de">Persönlicher Assistent</span><span class="en">Personal assistant</span></a>
+<a href="#pixelstudio"><span class="de">Pixel Studio</span><span class="en">Pixel Studio</span></a>
+<a href="#houses"><span class="de">Immobilien</span><span class="en">Real estate</span></a>
+<a href="#politics"><span class="de">Politik</span><span class="en">Politics</span></a>
+<a href="#vehicles"><span class="de">Fahrzeuge</span><span class="en">Vehicles</span></a>
+<a href="#fleet"><span class="de">Flotte aufstocken</span><span class="en">Grow fleet</span></a>
+<a href="#stationpad"><span class="de">Stationen-Pad</span><span class="en">Station pad</span></a>
+<a href="#fleet"><span class="de">Flotte</span><span class="en">Fleet</span></a>
+<a href="#newsopt"><span class="de">Meldungen</span><span class="en">Messages</span></a>
+<a href="#future"><span class="de">Zukunfts-Fahrzeuge</span><span class="en">Future vehicles</span></a>
+<a href="#linemgr"><span class="de">Linien-Manager</span><span class="en">Line manager</span></a>
+<a href="#housepad"><span class="de">Immobilien-Pad</span><span class="en">Property pad</span></a>
+<a href="#ridealong"><span class="de">Mitfahren</span><span class="en">Ride along</span></a>
+<a href="#speed"><span class="de">Zeitraffer &amp; Tempo</span><span class="en">Fast forward &amp; speed</span></a>
+<a href="#citizens"><span class="de">Bürger &amp; Stadtleben</span><span class="en">Citizens &amp; town life</span></a>
+<a href="#share"><span class="de">Welt teilen</span><span class="en">Share your world</span></a>
+<a href="#multiplayer"><span class="de">Mehrspieler</span><span class="en">Multiplayer</span></a>
+<a href="#toggles"><span class="de">Feature-Schalter</span><span class="en">Feature toggles</span></a></div>
+      </div>
+    </div>
+
+    <div class="backrow">
+      <a class="btn btn-green" href="../../"><span class="de">Jetzt spielen</span><span class="en">Play now</span></a>
+      <a class="btn btn-orange" href="../"><span class="de">Zur Kaufseite</span><span class="en">To the shop page</span></a>
+    </div>
+
+    <div class="win" id="start">
+  <div class="titlebar px"><span class="de">Erste Schritte</span><span class="en">Getting started</span></div>
+  <div class="body"><span class="de">
+<p>Die Marcel Edition läuft komplett im Browser - Link öffnen, „Neues Spiel" klicken, losspielen. Kein Download, keine Installation.</p>
+<h3>Geführter Einstieg</h3>
+<p>Beim allerersten Spiel öffnet sich unten links der Begleiter „Erste Schritte" und führt in fünf Schritten zur ersten funktionierenden Buslinie:</p>
+<ul>
+<li>Der passende Knopf in der Werkzeugleiste <b>blinkt</b> - so findest du ihn sofort.</li>
+<li>Der mittlere Knopf im Begleiter <b>erledigt den Schritt für dich</b> (Fenster öffnen, Zeitraffer anwerfen).</li>
+<li>Der Begleiter <b>merkt selbst</b>, wann ein Schritt geschafft ist, und rückt weiter. „Überspringen" geht immer.</li>
+<li>Er zeigt sich nur einmal. Wieder öffnen: Fragezeichen-Menü → „Erste Schritte (geführter Einstieg)".</li>
+</ul>
+<h3>Speichern &amp; Cloud</h3>
+<ul>
+<li>Spielstände speicherst du über das Disketten-Menü. Sie liegen im Browser-Speicher <b>und</b> in deiner Cloud - der Speichern-Dialog zeigt den Cloud-Status und hat einen Knopf zum Synchronisieren.</li>
+<li>Alle Spieleinstellungen (auch die Sprache!) bleiben dauerhaft erhalten.</li>
+</ul>
+<h3>Sprache</h3>
+<p>Zahnrad → Spieleinstellungen → Allgemein → Sprache. Deutsch ist vollständig übersetzt.</p></span><span class="en">
+<p>The Marcel Edition runs entirely in your browser - open the link, click "New Game", play. No download, no installation.</p>
+<h3>Guided start</h3>
+<p>The very first time you play, the "First steps" guide opens in the bottom left corner and walks you to your first working bus line in five steps:</p>
+<ul>
+<li>The button you need <b>blinks</b> in the toolbar, so you spot it right away.</li>
+<li>The middle button in the guide <b>does the step for you</b> (open the window, speed up time).</li>
+<li>The guide <b>notices by itself</b> when a step is done and moves on. "Skip" always works.</li>
+<li>It shows up only once. To bring it back: question mark menu → "First steps (guided start)".</li>
+</ul>
+<h3>Saving &amp; cloud</h3>
+<ul>
+<li>Save games via the disk menu. They live in your browser <b>and</b> in your cloud - the save dialogue shows the cloud status and has a sync button.</li>
+<li>All game settings (including the language!) are kept permanently.</li>
+</ul>
+<h3>Language</h3>
+<p>Cog → Game Options → General → Language. German is fully translated.</p></span></div>
+</div>
+<div class="win" id="autoconnect">
+  <div class="titlebar px"><span class="de">Auto-Verbindung</span><span class="en">Auto-connect</span></div>
+  <div class="body"><span class="de">
+<p>Der Verbindungs-Assistent baut komplette Strecken mit einem Klick: Stationen, Wege, Depot, Fahrzeuge, Fahrpläne.</p>
+<ul>
+<li><b>Öffnen:</b> das Auto-Verbindungs-Icon in der Werkzeugleiste (neben dem Flughafenbau).</li>
+<li><b>Ganz oben die Knopfreihe</b> „Flugzeug / Bus / Zug / Schiff" wählt aus, was gebaut wird. Darunter stehen nur die Optionen, die dazu passen - beim Schiff also keine Zuglänge, beim Flugzeug keine Haltestellen.</li>
+<li>Zwei Städte wählen, Fracht und Fahrzeugzahl einstellen, „Verbindung bauen!".</li>
+<li><b>Kosten schätzen</b> zeigt vorher den Gesamtpreis. Reicht das Geld für Strecke <i>und</i> Fahrzeuge nicht, wird gar nicht erst gebaut.</li>
+<li><b>Planieren:</b> Findet sich kein ebener Platz, wird das Gelände passend eingeebnet (kostet, aber der Bau wird fertig). Abschaltbar im Fenster.</li>
+<li><b>Große Flughäfen:</b> baut den größten verfügbaren Typ; bei Platz- oder Geldmangel automatisch kleiner.</li>
+<li>Schlägt der Bau unterwegs fehl, wird alles bereits Gebaute <b>automatisch zurückgebaut</b> - keine Ruinen.</li>
+<li><b>Netz prüfen</b> findet Fahrzeuge ohne Aufträge, verirrte Fahrzeuge und unbenutzte Stationen. <b>Fracht-Vorschlag</b> schlägt eine rentable Industrie-Verbindung vor und baut sie beim zweiten Klick.</li>
+<li>Mehrere neue Fahrzeuge starten gestaffelt (4 Tage Abstand) statt als Kolonne.</li>
+<li><b>Flughafen im Betrieb ausbauen:</b> Im Stationsfenster eines Flughafens steht unten in der Knopfleiste - neben „Bewertung" und „Flughafen schließen" - der Knopf <b>„Ausbauen"</b>. Halte die Maus darüber, dann siehst du Zieltyp und Preis; ist der Flughafen schon der größte Typ, sagt der Hinweis auch das. Ein Klick baut den Flughafen auf den nächstgrößeren Typ um - <b>ohne die Station zu verlieren</b>: Aufträge, Fahrpläne und der Name bleiben unverändert. Steht noch ein Flugzeug am Terminal, wird der Flughafen erst geschlossen; sobald der letzte gestartet ist, erfolgt der Umbau automatisch und der Flughafen öffnet wieder.</li>
+<li><b>Mega-Flughafen (ab 2020):</b> die neue größte Ausbaustufe - <b>12 × 11 Felder, 16 Terminals, zwei Hangars, zwei Hubschrauber-Plattformen</b> sowie getrennte Start- und Landebahn. Damit landen und starten Flugzeuge gleichzeitig, statt sich eine Bahn zu teilen. Er ist die nächste Stufe über dem Intercontinental-Flughafen: der Knopf <b>„Ausbauen"</b> bietet ihn an, sobald das Jahr passt. Bei sechzehn Standplätzen warten Flugzeuge deutlich seltener in der Warteschleife.</li>
+<li><b>Hubschrauber bleiben im Angebot:</b> mit der Baureihe <b>Rotorex</b> gibt es ab 2050 alle vierzig Jahre eine neue Hubschrauber-Generation (bis zu 200 Sitze). Vorher verschwanden Hubschrauber irgendwann ganz aus der Kaufliste.</li>
+<li><b>Bahnhof im Betrieb vergrößern:</b> derselbe Knopf <b>„Ausbauen"</b> steht auch im Stationsfenster eines Bahnhofs. Jeder Klick macht den Bahnhof eine Stufe größer - erst längere Bahnsteige (bis 7 Felder, dann passen längere Züge hinein), dann zusätzliche Gleise (bis 4), danach beides bis zur erlaubten Ausdehnung. Die neuen Gleise bekommen automatisch Weichen an beiden Enden, sonst käme kein Zug hin. Aus einem einfachen Haltepunkt wird so ein <b>Mega-Bahnhof mit 12 Gleisen × 12 Feldern</b>. Aufträge, Fahrpläne und Name bleiben unverändert. Steht ein Hang oder ein fremdes Gleis im Weg, wird die andere Seite probiert; geht auch das nicht, sagt die Meldung warum.</li>
+<li><b>„Große Bauwerke" im Auto-Modus</b> (früher „Große Flughäfen"): mit dieser Option baut der Auto-Modus gleich den <b>größten verfügbaren Flughafen</b> - bis hin zum Mega-Flughafen - und legt Bahnhöfe mit einem Gleis mehr an. Reicht Platz oder Geld nicht, weicht er automatisch auf kleinere Bauten aus.</li>
+<li><b>Überlastete Flughäfen wachsen von selbst:</b> Kreisen dauerhaft mehr Flugzeuge über einem Flughafen, als er Standplätze hat, baut er sich selbst auf den nächstgrößeren Typ um - sobald das Geld reicht. Eine Meldung sagt dir, welcher Flughafen ausgebaut wird. Genau das löst die langen Warteschleifen: Ausweichen hilft nur, solange irgendwo Platz ist; sind alle Flughäfen voll, hilft nur ein größerer. Abschaltbar in den Einstellungen unter „Marcel Edition". Mit dem Konsolenbefehl <code>airgrow</code> siehst du jederzeit, welcher Flughafen wie stark überlastet ist.</li>
+<li><b>Ausweichende Flugzeuge:</b> Kreist ein Flugzeug zu lange über einem überlasteten Flughafen, landet es selbständig auf einem freieren eigenen Flughafen in der Nähe (bis 60 Felder entfernt) - eine Meldung sagt dir, welches Flugzeug wohin ausgewichen ist. Der Fahrplan bleibt unberührt, nach dem Halt geht es planmäßig weiter. Abschaltbar in den Einstellungen unter „Marcel Edition".</li>
+<li><b>Zuglänge:</b> die Zeile „Zuglänge" schaltet die Bahnsteiglänge von 3 bis 7 Feldern durch - der Zug bekommt passend Lok plus Waggons.</li>
+<li><b>Taktungs-Empfehlung:</b> neben der Fahrzeugzahl steht eine Empfehlung aus der Streckenlänge - ein Klick auf die Zahl übernimmt sie.</li>
+<li><b>Städte-Linie:</b> „Städte-Linie: Städte wählen..." anklicken, dann bis zu 8 Städte auf der Karte - Klick auf eine gewählte Stadt beendet die Auswahl. „Verbindung bauen!" errichtet eine komplette Bus-Linie durch alle Städte mit gemeinsamem Fahrplan.</li>
+<li>Brücken mit ungleich hohen Köpfen werden jetzt automatisch angeglichen statt mit „Brückenköpfe nicht auf der selben Höhe" abzubrechen.</li>
+<li><b>Zug-Antrieb:</b> Dampf, Diesel, elektrisch, Einschienenbahn oder Magnetschwebebahn - die Gleise werden passend dazu verlegt. Was es im aktuellen Jahr noch nicht gibt, steht rot als „noch nicht erfunden" daneben.</li>
+<li><b>Fahrzeugwahl:</b> ausgewogen, viel Ladung oder schnell - danach sucht der Auto-Modus Busse, Loks, Flugzeuge und Schiffe aus.</li>
+</ul></span><span class="en">
+<p>The connection assistant builds complete routes with one click: stations, tracks, depot, vehicles, orders.</p>
+<ul>
+<li><b>Open:</b> the auto-connect icon in the toolbar (next to airport construction).</li>
+<li><b>The button row at the top</b> - "Air / Bus / Rail / Ship" - picks what gets built. Below it you only see the options that fit: no train length for ships, no bus stops for aircraft.</li>
+<li>Pick two towns, set cargo and vehicle count, hit "Build connection!".</li>
+<li><b>Estimate cost</b> shows the total price first. If your money will not cover tracks <i>and</i> vehicles, nothing is built at all.</li>
+<li><b>Landscaping:</b> if no flat site is found, the ground is levelled (costs money, but the build completes). Can be turned off in the window.</li>
+<li><b>Big airports:</b> builds the largest available type; falls back to smaller ones when space or money is short.</li>
+<li>If a build fails midway, everything already built is <b>demolished automatically</b> - no ruins.</li>
+<li><b>Check network</b> finds vehicles without orders, lost vehicles and unused stations. <b>Cargo suggestion</b> proposes a profitable industry link and builds it on the second click.</li>
+<li>Multiple new vehicles start staggered (4 days apart) instead of in a convoy.</li>
+<li><b>Upgrade an airport in service:</b> the station window of an airport has an <b>"Upgrade"</b> button showing the target type and price. One click rebuilds the airport to the next larger type - <b>without losing the station</b>: orders, timetables and the name stay untouched. If an aircraft is still parked, the airport closes first; once the last one has taken off the rebuild happens automatically and the airport reopens.</li>
+<li><b>Diverting aircraft:</b> when an aircraft circles a congested airport for too long, it lands at a quieter airport of yours nearby - a message tells you which aircraft went where. Its orders stay untouched and it continues as planned after the stop. Can be switched off in the settings under "Marcel Edition".</li>
+<li><b>Train length:</b> the "Train length" row cycles the platform length from 3 to 7 tiles - the train gets a matching engine plus wagons.</li>
+<li><b>Frequency suggestion:</b> next to the vehicle count you see a suggestion based on route distance - click the number to apply it.</li>
+<li><b>Town line:</b> click "Town line: pick towns...", then up to 8 towns on the map - clicking a chosen town again finishes the selection. "Build connection!" creates a complete bus line through all towns with a shared schedule.</li>
+<li>Bridges with unequal head heights are now levelled automatically instead of failing with "bridgeheads not at the same height".</li>
+<li><b>Train power:</b> steam, diesel, electric, monorail or maglev - the track is laid to match. Anything not invented yet is marked in red.</li>
+<li><b>Vehicle choice:</b> balanced, high capacity or fast - this is what the auto mode looks for in buses, engines, aircraft and ships.</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="assistant">
+  <div class="titlebar px"><span class="de">Persönlicher Assistent</span><span class="en">Personal assistant</span></div>
+  <div class="body"><span class="de">
+<p>Dein Manager fürs Tagesgeschäft. Öffnen: Firmen-Icon → deine Firma → <b>„Assistent..."</b> (oder Konsole: <span class="kbd">assistant</span>).</p>
+<ul>
+<li><b>Fahrzeuge automatisch modernisieren:</b> legt monatlich Ersetzen-Regeln an, damit Busse, LKW, Schiffe und Flugzeuge beim Depotbesuch auf bessere Modelle wechseln.</li>
+<li><b>Automatisch erneuern:</b> tauscht alternde Fahrzeuge rechtzeitig gegen fabrikneue - der Slider bestimmt, wie viele Monate vor Lebensende.</li>
+<li><b>Stadtpflege-Budget:</b> kümmert sich um schlecht gelaunte Städte - Statuen, kleine Kampagnen, und einen richtig feindlichen Stadtrat schmiert er.</li>
+<li><b>Werbebudget:</b> bucht Kampagnen in Städten mit deinen Stationen - mehr Fahrgäste und Fracht.</li>
+<li>Das <b>Protokoll</b> unten zeigt jede Aktion. Verirrt sich ein Fahrzeug, steht es sofort hier.</li>
+<li><b>Werbespot ansehen</b> öffnet das Firmen-TV mit deinem eigenen Spot - inklusive deiner Fahne aus dem Pixel Studio.</li>
+</ul></span><span class="en">
+<p>Your manager for the daily grind. Open: company icon → your company → <b>"Assistant..."</b> (or console: <span class="kbd">assistant</span>).</p>
+<ul>
+<li><b>Modernise vehicles automatically:</b> sets monthly replacement rules so buses, lorries, ships and aircraft upgrade at their next depot visit.</li>
+<li><b>Auto-renew:</b> swaps ageing vehicles for brand-new ones in time - the slider sets how many months before end of life.</li>
+<li><b>Town care budget:</b> looks after grumpy towns - statues, small campaigns, and a truly hostile council gets bribed.</li>
+<li><b>Advertising budget:</b> runs campaigns in towns where you have stations - more passengers and cargo.</li>
+<li>The <b>log</b> at the bottom shows every action. If a vehicle gets lost, it appears here immediately.</li>
+<li><b>Watch TV advert</b> opens the company TV with your own commercial - featuring your Pixel Studio flag.</li>
+</ul></span></div>
+</div>
+<div class="win" id="pixelstudio">
+  <div class="titlebar px"><span class="de">Pixel Studio</span><span class="en">Pixel Studio</span></div>
+  <div class="body"><span class="de">
+<p>Der eingebaute Mal-Editor für Spielgrafiken. Öffnen: im Hauptmenü „Pixel Studio" oder im Firmenfenster „Firmen-Fahne...".</p>
+<ul>
+<li><b>Was du bemalen kannst:</b> Züge, Busse, LKW, Schiffe, Flugzeuge, Häuser und deine Firmen-Fahne - in allen Blickrichtungen. Filter-Knöpfe oben grenzen die Liste ein.</li>
+<li><b>Werkzeuge:</b> Stift, Füllen, Pipette, Radierer, <b>Auswahl</b> (Rechteck aufziehen; Füllen füllt dann den ganzen Bereich; einfacher Klick hebt auf) und <b>Verlauf</b> (Linie ziehen = Farbverlauf von Farbe A nach B, nur auf bemalten Pixeln).</li>
+<li><b>Zweitfarbe</b> für den Verlauf: Rechtsklick oder <span class="kbd">Strg</span>+Klick auf die Palette.</li>
+<li><b>Zoom:</b> Knöpfe [−]/[+] oder Mausrad (zoomt auf den Cursor); mit gehaltener <b>rechter Maustaste</b> verschiebst du den Ausschnitt.</li>
+<li><b>Zwischenablage:</b> „Kopieren" legt die Ansicht als Bild ab, „Einfügen" übernimmt ein Bild und rechnet die Farben automatisch auf die Spielpalette um.</li>
+<li><b>Speichern</b> übernimmt die Grafik sofort ins Spiel und dauerhaft in deine Cloud; „Original" stellt die Werksgrafik wieder her.</li>
+</ul></span><span class="en">
+<p>The built-in paint editor for game graphics. Open: "Pixel Studio" in the main menu, or "Company flag..." in the company window.</p>
+<ul>
+<li><b>What you can paint:</b> trains, buses, lorries, ships, aircraft, houses and your company flag - in every view direction. Filter buttons narrow the list.</li>
+<li><b>Tools:</b> pencil, fill, pick, erase, <b>Select</b> (drag a rectangle; Fill then fills the whole area; a single click clears it) and <b>Gradient</b> (drag a line = colour blend from colour A to B, painted pixels only).</li>
+<li><b>Second colour</b> for the gradient: right-click or <span class="kbd">Ctrl</span>+click the palette.</li>
+<li><b>Zoom:</b> the [−]/[+] buttons or the mouse wheel (zooms to the cursor); drag with the <b>right mouse button</b> to pan.</li>
+<li><b>Clipboard:</b> "Copy" exports the view as an image, "Paste" imports one and maps its colours to the game palette automatically.</li>
+<li><b>Save</b> applies the artwork to the game instantly and keeps it permanently in your cloud; "Original" restores the factory graphics.</li>
+</ul></span></div>
+</div>
+<div class="win" id="houses">
+  <div class="titlebar px"><span class="de">Immobilien</span><span class="en">Real estate</span></div>
+  <div class="body"><span class="de">
+<p>Jedes Wohnhaus ist ein Investment. Klicke ein Gebäude an:</p>
+<ul>
+<li>Der Dialog zeigt Stadt, Bewohner, Alter, ein Porträt des Hauses und den Kaufpreis.</li>
+<li><b>Kaufen:</b> ab dann kassierst du monatlich Miete (erscheint in den Finanzen unter „Sonstiges"). Dafür zahlst du 1-5 % Unterhalt pro Jahr.</li>
+<li>Deine Häuser tragen deine Firmen-Fahne. Die Stadt darf sie erst <b>ab 75 Jahren Hausalter</b> abreißen - und auch dann bekommst du zuerst eine <b>Warnung mit einem Jahr Frist</b> (Meldung im Spiel, rote Zeile im Haus-Dialog).</li>
+<li><b>Renovieren</b> (15 % vom Kaufpreis) macht das Haus 10 Jahre jünger und nimmt die Abriss-Warnung vom Tisch. Rechtzeitig renovieren = Haus gerettet.</li>
+<li><b>Ausbauen</b> ersetzt es gegen Geld durch ein größeres Gebäude - mehr Bewohner, mehr Miete.</li>
+</ul></span><span class="en">
+<p>Every residential building is an investment. Click a building:</p>
+<ul>
+<li>The dialogue shows town, residents, age, a portrait of the house and the price.</li>
+<li><b>Buy:</b> from then on you collect monthly rent (appears in finances under "Other"). In return you pay 1-5% upkeep per year.</li>
+<li>Your houses fly your company flag. The town may only demolish them <b>once they are 75 years old</b> - and even then you first get a <b>warning with a one-year grace period</b> (in-game message, red line in the house dialogue).</li>
+<li><b>Renovate</b> (15% of the price) makes the house 10 years younger and cancels the demolition warning. Renovate in time = house saved.</li>
+<li><b>Extend</b> replaces it with a bigger building for money - more residents, more rent.</li>
+</ul></span></div>
+</div>
+<div class="win" id="politics">
+  <div class="titlebar px"><span class="de">Politik</span><span class="en">Politics</span></div>
+  <div class="body"><span class="de">
+<ul>
+<li><b>Schmieren wirkt:</b> Ist dein Rating bei einer Stadt auf Schmier-Maximum (mehrmals erfolgreich bestechen), erlaubt die Verwaltung <b>alle</b> Bauten - auch laute Groß-Flughäfen.</li>
+<li><b>Bürgermeister einsetzen</b> (Knopf im Stadtfenster, 100.000 £ + 100 £ je Einwohner): Die Stadt ist dauerhaft auf deiner Seite - bestes Rating jeden Monat, alle Bauten erlaubt, nie wieder nachschmieren.</li>
+<li>Der Assistent hält deine Bürgermeister-Städte automatisch bei Laune.</li>
+<li><b>Stadt gründen:</b> Das Städte-Icon in der Werkzeugleiste öffnet ein Menü mit „Stadt gründen" - Namen wählen, Straßenlayout aussuchen, auf die Karte klicken, fertig ist deine eigene Stadt.</li>
+</ul></span><span class="en">
+<ul>
+<li><b>Bribes work:</b> once your rating with a town is at bribe maximum (bribe successfully a few times), the council permits <b>all</b> construction - noisy mega-airports included.</li>
+<li><b>Install a mayor</b> (button in the town window, £100,000 + £100 per citizen): the town is permanently on your side - top rating every month, everything permitted, no more bribing.</li>
+<li>The assistant keeps your mayor towns happy automatically.</li>
+<li><b>Found a town:</b> the towns icon in the toolbar opens a menu with "Found town" - pick a name and road layout, click the map, and your own town is born.</li>
+</ul></span></div>
+</div>
+<div class="win" id="vehicles">
+  <div class="titlebar px"><span class="de">Fahrzeuge</span><span class="en">Vehicles</span></div>
+  <div class="body"><span class="de">
+<ul>
+<li><b>Modernisieren-Knopf</b> im Fahrzeugfenster: tauscht das Fahrzeug beim nächsten Depotbesuch gegen das beste neuere Modell - oder gegen ein fabrikneues gleiches, wenn es keinen Nachfolger gibt. <b>Der Fahrplan bleibt erhalten.</b> Bei Zügen wird nur die Lok getauscht.</li>
+<li>Die <b>Auto-Modernisierung</b> (Assistent) erledigt das monatlich für die ganze Flotte.</li>
+<li>Ankunfts-Jubelmeldungen laufen dezent im Ticker statt als große Störung.</li>
+</ul></span><span class="en">
+<ul>
+<li><b>Modernise button</b> in the vehicle window: swaps the vehicle for the best newer model at its next depot visit - or a brand-new one of the same type if there is no successor. <b>Orders are kept.</b> For trains only the engine is swapped.</li>
+<li><b>Auto-modernisation</b> (assistant) does this monthly for the whole fleet.</li>
+<li>Arrival celebration messages run quietly in the ticker instead of as big popups.</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="fleet">
+  <div class="titlebar px"><span class="de">Flotte aufstocken</span><span class="en">Grow fleet</span></div>
+  <div class="body"><span class="de">
+<p>Eine Linie läuft gut, aber ein Fahrzeug reicht nicht mehr? Im Fahrzeugfenster den <b>Kopieren-Knopf</b> anklicken - statt sofort eine einzelne Kopie zu bauen, öffnet sich jetzt das Fenster „Flotte aufstocken".</p>
+<ul>
+<li><b>Kopien:</b> mit +/− einstellen, wie viele Fahrzeuge dazukommen (1-20). Die geschätzten Kosten stehen darunter.</li>
+<li><b>Aufträge teilen:</b> die Kopien fahren dieselbe Route wie das Vorbild - Änderungen am Fahrplan gelten dann automatisch für alle.</li>
+<li><b>Gleichmäßig takten:</b> das Spiel misst eine komplette Runde und verteilt danach alle Fahrzeuge der Linie gleichmäßig darauf - kein Pulk mehr, die Strecke ist optimal ausgelastet.</li>
+<li><b>Linie jetzt takten:</b> verteilt auch eine bestehende Linie neu, ganz ohne neue Kopien.</li>
+<li>Wer es eilig hat: <b>Strg+Klick</b> auf den Kopieren-Knopf klont wie früher sofort ein einzelnes Fahrzeug.</li>
+</ul></span><span class="en">
+<p>A line is doing well but one vehicle is not enough any more? Click the <b>clone button</b> in the vehicle window - instead of instantly building a single copy it now opens the "Grow fleet" window.</p>
+<ul>
+<li><b>Copies:</b> use +/− to pick how many vehicles to add (1-20). The estimated cost is shown below.</li>
+<li><b>Share orders:</b> the copies run the same route as the template - schedule changes then apply to all of them automatically.</li>
+<li><b>Spread evenly:</b> the game measures one full round and then spreads all vehicles of the line evenly over it - no more convoys, the route is used to capacity.</li>
+<li><b>Spread line now:</b> re-spaces an existing line too, without building any copies.</li>
+<li>In a hurry? <b>Ctrl+click</b> the clone button still clones a single vehicle instantly, as before.</li>
+</ul></span></div>
+</div>
+<div class="win" id="stationpad">
+  <div class="titlebar px"><span class="de">Stationen-Pad</span><span class="en">Station pad</span></div>
+  <div class="body"><span class="de">
+<p>Alle deine Stationen als Knopfraster - zum Springen und zum Fahrplan-Bauen. Öffnen: Stationen-Icon in der Werkzeugleiste &rarr; <b>„Stationen-Pad"</b> (oder Konsole: <span class="kbd">stationpad</span>).</p>
+<ul>
+<li><b>Filter oben:</b> Alle, Bahn, Straße, Flug, Häfen - zeigt nur Stationen dieser Art. Ist „Flug" gewählt, stehen in der Fahrzeugliste auch nur Flugzeuge.</li>
+<li><b>Suchfeld:</b> Namen tippen - die Liste zeigt nur noch passende Stationen, und auch die Fahrzeugliste oben zeigt nur noch passende Fahrzeuge.</li>
+<li><b>Ohne Fahrzeug:</b> Ein Klick auf einen Stationsknopf springt sofort dorthin auf der Karte.</li>
+<li><b>Mit Fahrzeug:</b> Oben ein Fahrzeug wählen - dann nimmt ein Klick die Station in dessen Fahrplan auf, ein zweiter Klick nimmt sie wieder heraus. So klickst du eine ganze Route zusammen, ohne das Auftragsfenster zu öffnen.</li>
+<li><b>Grün</b> = wird von diesem Fahrzeug schon angefahren, <b>Gelb</b> = noch nicht im Fahrplan, <b>Grau</b> = dort kann dieses Fahrzeug nicht halten (z. B. Bus am Flughafen).</li>
+<li><b>Rechtsklick</b> springt immer zur Station, auch wenn ein Fahrzeug gewählt ist.</li>
+</ul></span><span class="en">
+<p>All your stations as a button pad - for jumping around and for building schedules. Open: stations icon in the toolbar &rarr; <b>"Station pad"</b> (or console: <span class="kbd">stationpad</span>).</p>
+<ul>
+<li><b>Filters on top:</b> All, Rail, Road, Air, Docks - shows only stations of that kind. With "Air" selected, the vehicle list holds aircraft only.</li>
+<li><b>Search box:</b> type a name and the list narrows down to matching stations - the vehicle list at the top narrows down too.</li>
+<li><b>Without a vehicle:</b> clicking a station button jumps straight to it on the map.</li>
+<li><b>With a vehicle:</b> pick one at the top - then a click adds the station to its schedule and a second click removes it again. Build a whole route by clicking, without opening the orders window.</li>
+<li><b>Green</b> = already served by this vehicle, <b>yellow</b> = not in the schedule yet, <b>grey</b> = this vehicle cannot stop there (a bus at an airport, say).</li>
+<li><b>Right-click</b> always jumps to the station, even with a vehicle selected.</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="fleet">
+  <div class="titlebar px"><span class="de">Flotte aufstocken &amp; Modell tauschen</span><span class="en">Grow fleet &amp; swap model</span></div>
+  <div class="body"><span class="de">
+<p>Im Fahrzeugfenster den <b>Kopieren-Knopf</b> drücken (oder Konsole: <span class="kbd">fleet</span>) - es öffnet sich das Flotten-Fenster.</p>
+<ul>
+<li><b>Kopien bauen:</b> Anzahl wählen (1-20), Kosten stehen darunter. Die Kopien teilen sich die Aufträge und fahren sofort los.</li>
+<li><b>Gleichmäßig takten:</b> Das Spiel misst eine Runde und verteilt danach alle Fahrzeuge der Linie gleichmäßig - kein Pulk mehr. „Linie jetzt takten" macht das auch für bestehende Linien ohne Neukauf.</li>
+<li><b>Modell tauschen:</b> Unten ein neues Modell wählen und „Alle baugleichen ersetzen" - jedes Fahrzeug mit demselben Modell fährt ins Depot, wird dort verkauft und durch das neue Modell ersetzt. <b>Aufträge und Fahrplan bleiben erhalten</b>, das neue Fahrzeug fährt sofort weiter.</li>
+<li><b>Strg+Klick</b> auf den Kopieren-Knopf klont wie früher ein einzelnes Fahrzeug sofort.</li>
+</ul></span><span class="en">
+<p>Hit the <b>clone button</b> in the vehicle window (or console: <span class="kbd">fleet</span>) - the fleet window opens.</p>
+<ul>
+<li><b>Build copies:</b> pick a number (1-20), the cost shows below. The copies share the orders and leave right away.</li>
+<li><b>Spread evenly:</b> the game measures one round and then spreads all vehicles of the line evenly - no more convoys. "Spread line now" does the same for existing lines without buying anything.</li>
+<li><b>Swap model:</b> pick a new model at the bottom and hit "Replace all identical" - every vehicle of the same model drives into a depot, gets sold and replaced by the new model. <b>Orders and timetable are kept</b>, the new vehicle continues right away.</li>
+<li><b>Ctrl+click</b> on the clone button still clones a single vehicle instantly.</li>
+</ul></span></div>
+</div>
+<div class="win" id="newsopt">
+  <div class="titlebar px"><span class="de">Meldungen einstellen</span><span class="en">Message settings</span></div>
+  <div class="body"><span class="de">
+<p>Zu viele Zeitungen? Zeitungs-Icon in der Werkzeugleiste &rarr; <b>„Meldungen einstellen..."</b>.</p>
+<ul>
+<li><b>Alle aus / Nur Laufband / Alle an</b> - ein Klick für alles.</li>
+<li>Oder je Kategorie klicken: <b>aus</b> (grau) &rarr; <b>Laufband</b> (grün, nur Kurzmeldung unten) &rarr; <b>Zeitung</b> (orange).</li>
+</ul></span><span class="en">
+<p>Too many newspapers? Newspaper icon in the toolbar &rarr; <b>"Message settings..."</b>.</p>
+<ul>
+<li><b>All off / Ticker only / All on</b> - one click for everything.</li>
+<li>Or click each category: <b>off</b> (grey) &rarr; <b>ticker</b> (green, short line at the bottom) &rarr; <b>newspaper</b> (orange).</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="future">
+  <div class="titlebar px"><span class="de">Zukunfts-Fahrzeuge bis 2500</span><span class="en">Future vehicles up to 2500</span></div>
+  <div class="body"><span class="de">
+<p>Im Original ist nach dem letzten Modell Schluss - wer bis 2200 spielt, kauft dieselben Flugzeuge wie 2050. In der Marcel Edition geht die Entwicklung weiter.</p>
+<ul>
+<li><b>Alle 40 Jahre</b> erscheint eine neue Generation, von 2050 bis 2490 - insgesamt zwölf Stufen je Gattung.</li>
+<li><b>Flugzeuge:</b> Der <b>Aerobus</b> wächst gleichmäßig bis auf <b>1000 Sitze</b>, der <b>Stratos</b> wird immer schneller (über 4500 km/h).</li>
+<li><b>Loks:</b> <b>Titan</b> (Schiene), <b>Voltus</b> (elektrisch), <b>Monorail</b> und <b>Levitan</b> (Magnetschwebebahn) legen bei Leistung, Zugkraft und Tempo zu - bis zur achtfachen Leistung.</li>
+<li>Auch <b>Metrobus</b>, <b>Cargomax</b> (LKW) und der <b>Ozeanriese</b> (Schiff) werden größer und schneller.</li>
+<li>Die <b>Zahl im Namen</b> sagt, was das Modell kann: Sitze beim Aerobus, km/h beim Stratos, PS bei den Loks.</li>
+<li>Die Grafik bleibt die des jeweiligen Vorbilds - neue Werte, vertrautes Aussehen. Umsteigen geht bequem über <b>„Alle baugleichen ersetzen"</b> im Flotten-Fenster.</li>
+<li>Abschaltbar unter <b>Einstellungen &rarr; Marcel Edition &rarr; „Zukunfts-Fahrzeuge bis 2500"</b>.</li>
+</ul></span><span class="en">
+<p>In the original, development stops with the last model - play to 2200 and you still buy the 2050 aircraft. The Marcel Edition keeps going.</p>
+<ul>
+<li><b>Every 40 years</b> a new generation appears, from 2050 to 2490 - twelve steps per class.</li>
+<li><b>Aircraft:</b> the <b>Aerobus</b> grows steadily to <b>1000 seats</b>, the <b>Stratos</b> keeps getting faster (over 4500 km/h).</li>
+<li><b>Locomotives:</b> <b>Titan</b> (rail), <b>Voltus</b> (electric), <b>Monorail</b> and <b>Levitan</b> (maglev) gain power, tractive effort and speed - up to eight times the power.</li>
+<li><b>Metrobus</b>, <b>Cargomax</b> (truck) and the <b>Ozeanriese</b> (ship) grow too.</li>
+<li>The <b>number in the name</b> tells you what it does: seats for the Aerobus, km/h for the Stratos, horsepower for the locomotives.</li>
+<li>Graphics stay those of the template - new figures, familiar looks. Upgrading is easiest via <b>"Replace all identical"</b> in the fleet window.</li>
+<li>Can be switched off under <b>Settings &rarr; Marcel Edition &rarr; "Future vehicles up to 2500"</b>.</li>
+</ul></span></div>
+</div>
+<div class="win" id="linemgr">
+  <div class="titlebar px"><span class="de">Linien-Manager</span><span class="en">Line manager</span></div>
+  <div class="body"><span class="de">
+<p>Ab hundert Fahrzeugen verwaltet man keine Fahrzeuge mehr, sondern Linien. Öffnen: Firmen-Icon in der Werkzeugleiste &rarr; <b>„Linien-Manager"</b> (oder Konsole: <span class="kbd">lines</span>).</p>
+<ul>
+<li><b>Was ist eine Linie?</b> Alle Fahrzeuge, die dieselben Stationen anfahren - egal ob sie sich die Aufträge teilen oder ob du sie einzeln kopiert hast.</li>
+<li>Je Linie siehst du <b>Fahrzeuge, Auslastung, Gewinn im Jahr und wartende Fracht</b>. <b>Rot</b> heißt: die Fahrzeuge fahren halb leer und fressen Unterhalt. <b>Orange</b> heißt: es bleiben Fahrgäste stehen.</li>
+<li><b>Vorschlag:</b> Die letzte Spalte rechnet auf eine Zielauslastung von 70 %: „+3 bauen" oder „-4 verkaufen". <b>Ein Klick auf den Vorschlag setzt ihn um</b> - neue Fahrzeuge werden gebaut und eingetaktet, überzählige fahren ins Depot und werden dort verkauft.</li>
+<li><b>„Alle Vorschläge umsetzen"</b> macht das für die ganze Firma auf einmal.</li>
+<li>Klick auf eine Zeile springt zur Linie, <b>Rechtsklick</b> öffnet die Fahrzeugliste. Der Knopf <b>„Nur mit Handlungsbedarf"</b> blendet alles aus, was passt.</li>
+<li>Die Liste sortiert sich selbst: Linien mit Handlungsbedarf zuerst, danach die größten Verlustbringer.</li>
+</ul></span><span class="en">
+<p>Past a hundred vehicles you no longer manage vehicles, you manage lines. Open: company icon in the toolbar &rarr; <b>"Line manager"</b> (or console: <span class="kbd">lines</span>).</p>
+<ul>
+<li><b>What is a line?</b> Every vehicle serving the same stations - whether they share orders or you copied them one by one.</li>
+<li>Per line you see <b>vehicles, occupancy, profit this year and waiting cargo</b>. <b>Red</b> means the vehicles run half empty and burn running costs. <b>Orange</b> means passengers are being left behind.</li>
+<li><b>Suggestion:</b> the last column aims for 70 % occupancy: "+3 build" or "-4 sell". <b>Clicking the suggestion applies it</b> - new vehicles are built and spread evenly, surplus ones drive to a depot and are sold there.</li>
+<li><b>"Apply all suggestions"</b> does it for the whole company at once.</li>
+<li>Clicking a row jumps to the line, <b>right click</b> opens its vehicle list. The <b>"Needs attention only"</b> button hides everything that is fine.</li>
+<li>The list sorts itself: lines needing attention first, then the biggest money losers.</li>
+</ul></span></div>
+</div>
+<div class="win" id="housepad">
+  <div class="titlebar px"><span class="de">Immobilien-Pad</span><span class="en">Property pad</span></div>
+  <div class="body"><span class="de">
+<p>Alle gekauften Häuser auf einen Blick. Öffnen: Städte-Icon in der Werkzeugleiste &rarr; <b>„Immobilien-Pad"</b> (oder Konsole: <span class="kbd">housepad</span>).</p>
+<ul>
+<li>Jeder Knopf zeigt <b>Stadt und Monatsmiete</b>. Unten stehen Anzahl, Gesamtmiete und wie viele Häuser gerade Ärger machen.</li>
+<li><b>Grün</b> = alles in Ordnung, <b>Gelb</b> = das Haus ist alt genug, dass die Stadt es abreißen darf, <b>Rot</b> = der Abriss ist angekündigt. Rote Häuser stehen immer oben.</li>
+<li><b>Klick</b> springt zum Haus auf der Karte, <b>Rechtsklick</b> öffnet den Haus-Dialog - dort renovierst du und rettest das Haus.</li>
+<li><b>„Alle renovieren"</b> über der Liste renoviert alles auf einmal - das verjüngt jedes Haus um zehn Jahre und nimmt Abriss-Warnungen zurück. Anzahl und Preis stehen auf dem Knopf. Ist „Nur gefährdete" aktiv, betrifft es nur die Sorgenkinder.</li>
+<li><b>Suchfeld:</b> Stadtnamen tippen. Der Knopf <b>„Nur gefährdete"</b> blendet alles aus, was in Ordnung ist.</li>
+<li><b>Ganze Stadt kaufen:</b> Im Haus-Dialog gibt es unten zwei Knöpfe für den Großeinkauf. <b>„Ganze Stadt kaufen"</b> erwirbt alle noch freien Gebäude der Stadt auf einen Schlag - Anzahl und Preis stehen auf dem Knopf, notfalls wird ein Kredit aufgenommen. <b>„Alle ausbauen"</b> hebt jedes deiner Gebäude in dieser Stadt auf den nächstgrößeren Typ.</li>
+</ul></span><span class="en">
+<p>Every house you own at a glance. Open: towns icon in the toolbar &rarr; <b>"Property pad"</b> (or console: <span class="kbd">housepad</span>).</p>
+<ul>
+<li>Each button shows <b>town and monthly rent</b>. The footer holds the count, the total rent and how many houses are in trouble.</li>
+<li><b>Green</b> = fine, <b>yellow</b> = old enough for the town to demolish it, <b>red</b> = demolition announced. Red ones always sort to the top.</li>
+<li><b>Click</b> jumps to the house on the map, <b>right-click</b> opens the house window - that is where you renovate and save it.</li>
+<li><b>"Renovate all"</b> above the list renovates everything at once - each house becomes ten years younger and demolition warnings are cleared. Count and price are on the button. With "At risk only" active it covers just the problem cases.</li>
+<li><b>Search box:</b> type a town name. The <b>"At risk only"</b> button hides everything that is fine.</li>
+<li><b>Buy a whole town:</b> the house window has two bulk buttons at the bottom. <b>"Buy whole town"</b> purchases every building of that town still available - count and price are on the button, and a loan is taken if needed. <b>"Extend all"</b> upgrades every building you own there to the next larger type.</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="ridealong">
+  <div class="titlebar px"><span class="de">Mitfahren</span><span class="en">Ride along</span></div>
+  <div class="body"><span class="de">
+<p>Einmal selbst im Bus sitzen? Im Fahrzeugfenster ganz unten in der Knopfreihe die <b>Lupe</b> anklicken (oder Konsole: <span class="kbd">ridealong</span>).</p>
+<ul>
+<li>Die Kamera heftet sich an das Fahrzeug und zoomt so nah heran, wie es geht - Werkzeugleiste, Statusleiste und alle Fenster verschwinden für freie Sicht.</li>
+<li>Unten läuft eine Leiste mit Fahrzeugname, aktuellem <b>Tempo</b> und dem <b>nächsten Halt</b> mit.</li>
+<li><b>„Mitfahrt beenden"</b> bringt Ansicht, Zoom und Oberfläche zurück, genau wie vorher.</li>
+<li><b>Führerstand:</b> In der Mitfahr-Leiste auf „Führerstand" klicken (oder Konsole: <span class="kbd">cab</span>) - dann sitzt du vorn und schaust nach vorn: Gleis bzw. Straße läuft auf den Horizont zu, unten leuchtet der Tacho und zeigt das nächste Ziel. Kein echtes 3D, sondern gezeichnete Perspektive im Stil der alten Lokführer-Spiele.</li>
+<li><b>Für alle vier Fahrzeugarten:</b> Im <b>Zug</b> siehst du Schotterbett, Schienen und Schwellen; im <b>Bus oder LKW</b> die Fahrbahn mit Mittelstreifen; im <b>Schiff</b> die Fahrrinne mit entgegenlaufenden Wellen; im <b>Flugzeug</b> gibt es keinen Fahrweg, dafür einen hohen Horizont, vorbeiziehende Wolken und die Landschaft tief unter dir.</li>
+<li><b>Der echten Route folgen:</b> Der Blick geht nicht stur geradeaus - er folgt deinem Gleis bzw. deiner Straße. In einer Kurve wandert die Strecke sichtbar zur Seite, genau wie in den alten Rennspielen. Tunnelportale kommen als dunkle Öffnung auf dich zu, Brücken bekommen Geländer.</li>
+<li><b>Dichte Landschaft:</b> Es werden zwei Reihen Gelände links und rechts gezeichnet, der Boden bekommt je Seite seine eigene Farbe (Wiese, Feld, Fels, Wasser), Hügel und Senken heben und senken die Strecke sichtbar. Am Wegrand ziehen <b>Oberleitungsmasten</b> (Bahn) bzw. <b>Leitpfosten</b> (Straße) vorbei - daran merkst du erst richtig, wie schnell du bist.</li>
+<li><b>Echte Spielgrafik:</b> Häuser, Stadien und Wälder erscheinen als die <i>Original-Sprites</i> aus dem Spiel und werden mit der Entfernung kleiner - du erkennst deine Strecke wieder. Dazu kommen <b>Bahnhofsschilder</b> mit dem Stationsnamen, die beim Näherkommen wachsen, und <b>Signale</b> am Gleis, die grün oder rot leuchten.</li>
+<li>Tipp: Mit dem Zeitraffer wird die Fahrt zur Rundreise im Zeitraffer-Tempo - und mit dem Pixel Studio fährst du in einem selbst bemalten Bus mit.</li>
+</ul></span><span class="en">
+<p>Fancy riding the bus yourself? Click the <b>magnifier</b> at the bottom of the button column in the vehicle window (or console: <span class="kbd">ridealong</span>).</p>
+<ul>
+<li>The camera locks onto the vehicle and zooms in as far as it goes - toolbar, status bar and all windows disappear for a clear view.</li>
+<li>A bar at the bottom shows the vehicle name, current <b>speed</b> and the <b>next stop</b>.</li>
+<li><b>"End ride"</b> restores the view, the zoom and the interface exactly as before.</li>
+<li><b>Cab view:</b> click "Cab view" in the ride bar (or console: <span class="kbd">cab</span>) - now you sit up front and look ahead: the track or road runs towards the horizon and the dashboard shows your speed and next destination. Not real 3D, but drawn perspective in the style of the old train driver games.</li>
+<li><b>All four vehicle types:</b> in a <b>train</b> you see ballast, rails and sleepers; in a <b>bus or lorry</b> the road with its centre line; in a <b>ship</b> the channel with waves running towards you; in an <b>aircraft</b> there is no track at all - just a high horizon, drifting clouds and the landscape far below.</li>
+<li><b>Follows the real route:</b> the view does not run straight ahead - it follows your actual track or road. In a curve the route visibly swings to the side, just like in the old racing games. Tunnel mouths approach as a dark opening and bridges get railings.</li>
+<li><b>Denser scenery:</b> two rows of terrain are drawn on each side, the ground takes its own colour per side (grass, fields, rock, water), and hills and dips visibly raise and lower the route. Along the way <b>catenary masts</b> (rail) or <b>guide posts</b> (road) rush past - that is when you really feel the speed.</li>
+<li><b>Real game graphics:</b> houses, stadiums and forests appear as the <i>original sprites</i> from the game and shrink with distance - you recognise your own route. Plus <b>station signs</b> with the station name that grow as you approach, and <b>signals</b> beside the track glowing green or red.</li>
+<li>Tip: combine it with fast forward for a sightseeing tour - and with the Pixel Studio you ride in a bus you painted yourself.</li>
+</ul></span></div>
+</div>
+<div class="win" id="speed">
+  <div class="titlebar px"><span class="de">Zeitraffer &amp; Tempo</span><span class="en">Fast forward &amp; speed</span></div>
+  <div class="body"><span class="de">
+<ul>
+<li>Der <b>Doppelpfeil</b> in der Werkzeugleiste schaltet in Stufen: 2x → 4x → 8x → 16x → Maximum → aus.</li>
+<li>Die aktive Stufe steht direkt <b>auf dem Zeitraffer-Knopf</b> (schwarzes Feld mit „4x"/„MAX") und gelb neben dem Datum in der Statusleiste.</li>
+<li>Das Spiel läuft jetzt auch <b>weiter, wenn der Tab im Hintergrund</b> ist - Fabriken produzieren, Züge fahren, während du etwas anderes machst.</li>
+<li><span class="kbd">Tab</span> gedrückt halten = Maximum, solange gehalten.</li>
+<li>Es gibt <b>kein Spielende</b> mehr - 2030/2050 laufen einfach weiter.</li>
+</ul></span><span class="en">
+<ul>
+<li>The <b>double arrow</b> in the toolbar cycles through speeds: 2x → 4x → 8x → 16x → maximum → off.</li>
+<li>The active level shows right <b>on the fast-forward button</b> (black badge with "4x"/"MAX") and in yellow next to the date in the status bar.</li>
+<li>The game now <b>keeps running while the tab is in the background</b> - factories produce and trains roll while you do something else.</li>
+<li>Hold <span class="kbd">Tab</span> = maximum while held.</li>
+<li>There is <b>no game over</b> any more - 2030/2050 simply keep going.</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="citizens">
+  <div class="titlebar px"><span class="de">Bürger &amp; Stadtleben</span><span class="en">Citizens &amp; town life</span></div>
+  <div class="body"><span class="de">
+<ul>
+<li>In den Städten laufen Bürger mit eigenen Zielen; an Bahnhöfen stehen sichtbare Wartemengen, Ein- und Aussteigen ist animiert.</li>
+<li><b>Klicke einen Bürger an:</b> Name, Alter, Interessen, Wohnort und Porträt - Männer, Frauen und Kinder.</li>
+<li>Zu viel Trubel? Alles abschaltbar (siehe Feature-Schalter).</li>
+</ul></span><span class="en">
+<ul>
+<li>Citizens walk through towns with their own goals; visible crowds wait at stations, boarding is animated.</li>
+<li><b>Click a citizen:</b> name, age, interests, home town and portrait - men, women and children.</li>
+<li>Too busy for you? Everything can be switched off (see feature toggles).</li>
+</ul></span></div>
+</div>
+<div class="win tan" id="share">
+  <div class="titlebar px"><span class="de">Welt teilen</span><span class="en">Share your world</span></div>
+  <div class="body"><span class="de">
+<p>Deine Welt hinter einem kurzen Link - wer ihn öffnet, spielt sie sofort im Browser weiter. Ohne Konto, ohne Download.</p>
+<ul>
+<li><b>Teilen:</b> Disketten-Menü → „Welt teilen (Link)". Die Partie wird gesichert, hochgeladen, und du bekommst den Link mit einem Knopf zum Kopieren.</li>
+<li><b>Empfangen:</b> Der Link öffnet das Spiel direkt in deiner Welt. Was der Gast dort baut, bleibt bei ihm - deine eigene Partie bleibt unberührt.</li>
+<li>Ein Link ist <b>30 Tage</b> gültig. Danach verschwindet die Kopie von selbst.</li>
+<li>Ein Konto brauchst du dafür nicht. Bist du angemeldet, werden deine geteilten Welten deinem Konto zugeordnet.</li>
+</ul>
+<p>Gut geeignet für: eine besonders schöne Strecke herzeigen, gemeinsam an derselben Ausgangslage tüfteln oder jemandem das Spiel schmackhaft machen.</p></span><span class="en">
+<p>Your world behind a short link - whoever opens it plays it right away in the browser. No account, no download.</p>
+<ul>
+<li><b>Share:</b> disk menu → "Share world (link)". The game is saved, uploaded, and you get the link with a copy button.</li>
+<li><b>Receive:</b> the link opens the game straight into your world. Whatever the guest builds stays with them - your own game is untouched.</li>
+<li>A link is valid for <b>30 days</b>. After that the copy disappears by itself.</li>
+<li>No account needed. If you are logged in, your shared worlds are linked to your account.</li>
+</ul>
+<p>Great for: showing off a beautiful route, tinkering from the same starting point together, or getting someone hooked on the game.</p></span></div>
+</div>
+<div class="win" id="multiplayer">
+  <div class="titlebar px"><span class="de">Mehrspieler</span><span class="en">Multiplayer</span></div>
+  <div class="body"><span class="de">
+<p>Gemeinsam in einer Welt bauen - jeder mit eigener Firma, auf derselben Karte, in Echtzeit.</p>
+<ul>
+<li><b>Beitreten:</b> im Startmenü auf „Mehrspieler". Steht ein Server bereit, ist er schon eingetragen - anklicken und „Spiel beitreten".</li>
+<li><b>Spielername:</b> wird automatisch vergeben; oben rechts im Mehrspieler-Fenster kannst du ihn ändern.</li>
+<li><b>Eigene Firma:</b> nach dem Beitritt bist du zunächst Zuschauer. Klick in der Spielerliste auf <b>„(Neue Firma)"</b>, dann gehört dir eine eigene Firma und du kannst bauen.</li>
+<li>Die Welt läuft weiter, auch wenn du den Tab schließt - beim nächsten Beitritt geht es dort weiter, wo alle inzwischen sind.</li>
+</ul>
+<p>Steht im Mehrspieler-Fenster kein Server, läuft gerade keiner. Mit „Server hinzufügen" kannst du auch eine eigene Adresse eintragen.</p>
+<h3>Eigenen Server betreiben</h3>
+<p>Jeder kann einen eigenen Server aufsetzen - er erscheint dann automatisch bei allen Spielern im Menü. Kosten: etwa 3-5 € im Monat für einen kleinen Mietserver. Die <a href="../server/">Schritt-für-Schritt-Anleitung</a> führt in rund zehn Minuten zum laufenden Server und zeigt auch, wer gerade online ist.</p></span><span class="en">
+<p>Build together in one world - everyone with their own company, on the same map, in real time.</p>
+<ul>
+<li><b>Join:</b> click "Multiplayer" in the start menu. If a server is up, it is already listed - select it and hit "Join game".</li>
+<li><b>Player name:</b> assigned automatically; change it at the top right of the multiplayer window.</li>
+<li><b>Your own company:</b> after joining you are a spectator. Click <b>"(New company)"</b> in the player list to get your own company and start building.</li>
+<li>The world keeps running even when you close the tab - next time you join, you continue where everyone else is.</li>
+</ul>
+<p>If no server is listed, none is running right now. "Add server" lets you enter an address of your own.</p>
+<h3>Run your own server</h3>
+<p>Anyone can set up a server - it then shows up automatically in everyone's menu. Cost: about 3-5 € per month for a small rented machine. The <a href="../server/">step-by-step guide</a> gets you there in about ten minutes and also shows who is online right now.</p></span></div>
+</div>
+<div class="win" id="toggles">
+  <div class="titlebar px"><span class="de">Feature-Schalter</span><span class="en">Feature toggles</span></div>
+  <div class="body"><span class="de">
+<p>Zahnrad → Spieleinstellungen → Tab <b>„Erweitert"</b> → Kategorie <b>„Marcel Edition"</b> (ganz oben):</p>
+<ul>
+<li>Bürger anzeigen · Immobilien-Modus · Politik · Auto-Verbindung &amp; Auto-Modernisierung · Persönlicher Assistent</li>
+<li>Jedes Feature einzeln abschaltbar; bereits gekaufte Häuser bringen auch bei ausgeschaltetem Immobilien-Modus weiter Miete.</li>
+</ul></span><span class="en">
+<p>Cog → Game Options → <b>"Advanced"</b> tab → category <b>"Marcel Edition"</b> (at the top):</p>
+<ul>
+<li>Show citizens · Real-estate mode · Politics · Auto-connect &amp; auto-modernisation · Personal assistant</li>
+<li>Each feature toggles individually; houses you already own keep earning rent even with real estate switched off.</li>
+</ul></span></div>
+</div>
+
+    <div class="backrow">
+      <a class="btn btn-green" href="../../"><span class="de">Jetzt spielen</span><span class="en">Play now</span></a>
+      <a class="btn btn-orange" href="../"><span class="de">Zur Kaufseite</span><span class="en">To the shop page</span></a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <span class="de">Die OpenTTD Marcel Edition ist ein unabhängiger Fan-Fork von <a href="https://www.openttd.org/" rel="noopener">OpenTTD</a> (GNU GPL v2, Quellcode auf <a href="https://github.com/MarcelWeissgerberIT/OpenTTDMarcel" rel="noopener">GitHub</a>).</span>
+      <span class="en">The OpenTTD Marcel Edition is an independent fan fork of <a href="https://www.openttd.org/" rel="noopener">OpenTTD</a> (GNU GPL v2, source on <a href="https://github.com/MarcelWeissgerberIT/OpenTTDMarcel" rel="noopener">GitHub</a>).</span>
+    </p>
+  </div>
+</footer>
+
+<script>
+  function setLang(lang) {
+    document.body.dataset.lang = lang;
+    document.documentElement.lang = lang;
+    document.getElementById('btn-de').classList.toggle('active', lang === 'de');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.title = lang === 'de' ? 'OpenTTD Marcel Edition – Handbuch' : 'OpenTTD Marcel Edition – Manual';
+    try { localStorage.setItem('ottdm_lang', lang); } catch (e) {}
+    var url = new URL(window.location);
+    url.searchParams.set('lang', lang);
+    history.replaceState(null, '', url);
+  }
+  (function () {
+    var lang = new URLSearchParams(window.location.search).get('lang');
+    if (!lang) { try { lang = localStorage.getItem('ottdm_lang'); } catch (e) {} }
+    if (!lang) { lang = (navigator.language || 'de').toLowerCase().startsWith('de') ? 'de' : 'en'; }
+    setLang(lang === 'en' ? 'en' : 'de');
+  })();
+</script>
+
+</body>
+</html>
