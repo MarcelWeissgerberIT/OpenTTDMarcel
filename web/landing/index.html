@@ -468,13 +468,24 @@
     url.searchParams.set('lang', lang);
     history.replaceState(null, '', url);
   }
-  /* Stripe-Zahlung: Payment-Link aus dem Stripe-Dashboard hier eintragen
-   * (https://buy.stripe.com/...). Solange leer, zeigen die Kauf-Knoepfe
-   * den "Shop oeffnet bald"-Hinweis. */
-  var STRIPE_LINK = '';
+  /* Stripe-Zahlung: je Sprache ein eigener Payment-Link, damit die Kasse
+   * in derselben Sprache weitergeht wie die Seite davor.
+   *
+   * Die URLs sind oeffentlich - sie stehen auf jedem Kauf-Knopf und
+   * duerfen deshalb im Quelltext stehen. Der geheime Stripe-Schluessel
+   * gehoert dagegen ausschliesslich in die GitHub-Secrets, niemals
+   * hierher.
+   *
+   * Ist fuer eine Sprache kein Link hinterlegt, zeigen die Kauf-Knoepfe
+   * den "Shop oeffnet bald"-Hinweis statt zur Kasse zu fuehren. */
+  var STRIPE_LINKS = {
+    de: 'https://buy.stripe.com/8x2fZhdrHg4D9ejh2PenS00',
+    en: 'https://buy.stripe.com/eVq6oHdrHbOnduzaErenS01'
+  };
   function showShopNote(second) {
-    if (STRIPE_LINK) {
-      window.location.href = STRIPE_LINK;
+    var link = STRIPE_LINKS[document.body.dataset.lang] || STRIPE_LINKS.de;
+    if (link) {
+      window.location.href = link;
       return;
     }
     document.getElementById(second ? 'shopnote2' : 'shopnote').classList.add('show');
