@@ -474,6 +474,19 @@
          * Speicher-Aufrufe pruefen es dort ohnehin noch einmal. */
         var hasCloud = false;
 
+        /* Den Stand ins Spiel reichen. Ohne Antwort - etwa offline -
+         * gilt der zuletzt bekannte, damit ein Kaeufer nicht ploetzlich
+         * vor verschlossenen Tueren steht. */
+        function unlockedToGame() {
+          var val = hasCloud;
+          if (!val) { try { val = localStorage.getItem('ottd_unlocked') === '1'; } catch (e) {} }
+          try { Module.ccall('em_openttd_set_unlocked', null, ['number'], [val ? 1 : 0]); } catch (e) {}
+        }
+        /* Vom Spiel gerufen, wenn jemand eine gesperrte Funktion anklickt. */
+        window.openttd_open_buy = function() {
+          if (window.openttd_show_buy) window.openttd_show_buy();
+        };
+
         function updateBuyBadge() {
           /* Werbung nur fuer alle, die noch nicht gekauft haben. */
           document.getElementById('buy-badge').style.display = hasCloud ? 'none' : 'inline-block';
@@ -487,10 +500,12 @@
             .then(function(r) { return r.json(); })
             .then(function(d) {
               hasCloud = !!(d && d.entitlements && d.entitlements.indexOf('cloud') >= 0);
+              try { localStorage.setItem('ottd_unlocked', hasCloud ? '1' : '0'); } catch (e) {}
               updateBuyBadge();
+              unlockedToGame();
               render();
             })
-            .catch(function() { updateBuyBadge(); });
+            .catch(function() { updateBuyBadge(); unlockedToGame(); });
         }
 
         function render() {
@@ -504,12 +519,19 @@
           updateBuyBadge();
         }
 
-        /* Vom Spiel-Code aufgerufen, wenn der Server einen Kauf verlangt:
-         * Werbe-Fahne hervorheben und das Angebot aufschlagen. */
+        /* Vom Spiel-Code aufgerufen, wenn der Server einen Kauf verlangt.
+         *
+         * Bewusst zurueckhaltend: das Angebot springt NICHT auf. Es soll
+         * ein Angebot bleiben, kein Hindernis - wer beim Spielen staendig
+         * ein Fenster wegklicken muss, kauft deswegen nichts, er aergert
+         * sich. Die Fahne unten rechts blinkt einmal, das genuegt; wer
+         * mehr wissen will, klickt sie an. */
+        var buyHintShown = false;
         window.openttd_show_buy = function() {
           hasCloud = false;
           updateBuyBadge();
-          panel.style.display = 'block';
+          if (buyHintShown) return;   /* einmal je Sitzung, nicht bei jedem Speichern */
+          buyHintShown = true;
           var b = document.getElementById('buy-badge');
           b.style.transition = 'transform .2s';
           b.style.transform = 'scale(1.25)';

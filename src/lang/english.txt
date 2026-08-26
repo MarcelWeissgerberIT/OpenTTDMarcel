@@ -2514,6 +2514,8 @@ STR_LINEMGR_ERR_SELL                                            :{RED}No vehicle
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Not available in multiplayer
 STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} diverts: {STATION} is congested, landing at {STATION}
 STR_AIRGROW_NEWS                                                :{WHITE}{STATION} is being enlarged - more aircraft keep arriving than there are stands
+STR_FORKLOCK_HINT                                               :{WHITE}This feature comes with the Marcel Edition. One-time 39 €, no subscription - including cloud saves, Pixel Studio, real-estate mode and all future updates
+STR_FORKLOCK_TOOLTIP                                            :{BLACK}Comes with the Marcel Edition - the offer is at the bottom right
 STR_AIRUPGRADE_BUTTON                                           :{BLACK}Upgrade
 STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Rebuild this airport to the next larger type while it stays in service - orders and timetables are kept. The price is shown in the message after clicking
 STR_AIRUPGRADE_TOOLTIP_NEXT                                     :{BLACK}Upgrade to {STRING} for {CURRENCY_LONG}. The airport stays in service, orders and timetables are kept

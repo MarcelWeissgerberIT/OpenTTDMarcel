@@ -2483,6 +2483,8 @@ STR_LINEMGR_ERR_SELL                                            :{RED}Kein Fahrz
 STR_LINEMGR_ERR_SINGLEPLAYER                                    :{RED}Im Mehrspieler nicht verfügbar
 STR_AIRDIVERT_NEWS                                              :{WHITE}{VEHICLE} weicht aus: {STATION} ist überlastet, Landung in {STATION}
 STR_AIRGROW_NEWS                                                :{WHITE}{STATION} wird ausgebaut - dauerhaft mehr Flugzeuge im Anflug als Standplätze vorhanden
+STR_FORKLOCK_HINT                                               :{WHITE}Diese Funktion gehört zur Marcel Edition. Einmalig 39 €, kein Abo - inklusive Cloud-Speicherständen, Pixel-Studio, Immobilien-Modus und allen künftigen Updates
+STR_FORKLOCK_TOOLTIP                                            :{BLACK}Gehört zur Marcel Edition - unten rechts geht es zum Angebot
 STR_AIRUPGRADE_BUTTON                                           :{BLACK}Ausbauen
 STR_AIRUPGRADE_TOOLTIP                                          :{BLACK}Diesen Flughafen im Betrieb auf den nächstgrößeren Typ umbauen - Aufträge und Fahrpläne bleiben erhalten. Der Preis steht in der Meldung nach dem Klick
 STR_AIRUPGRADE_TOOLTIP_NEXT                                     :{BLACK}Ausbau auf {STRING} für {CURRENCY_LONG}. Der Flughafen bleibt in Betrieb, Aufträge und Fahrpläne bleiben erhalten

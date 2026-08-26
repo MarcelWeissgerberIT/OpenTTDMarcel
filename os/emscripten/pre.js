@@ -241,7 +241,7 @@ Module.preRun.push(function() {
                      * Kein Vorwurf, sondern ein Angebot - und den Rest der
                      * Warteschlange abbrechen, sonst kaeme der Hinweis
                      * fuer jeden Spielstand einzeln. */
-                    cloudStatus('Cloud-Spielstaende gibt es mit der Marcel Edition - siehe Knopf oben rechts');
+                    cloudStatus('Cloud-Spielstaende gibt es mit der Marcel Edition - siehe Knopf unten rechts');
                     if (window.openttd_show_buy) window.openttd_show_buy();
                     return;
                 }

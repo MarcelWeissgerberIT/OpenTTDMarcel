@@ -604,6 +604,13 @@ struct TooltipsWindow : public Window
 {
 	EncodedString text{}; ///< String to display as tooltip.
 	TooltipCloseCondition close_cond{}; ///< Condition for closing the window.
+	/* Fork: Wann der Hinweis erschienen ist.
+	 *
+	 * Auf einem Bildschirm zum Antippen gibt es kein "Maus wegbewegen" -
+	 * der Hinweis blieb deshalb stehen und legte sich ueber den Knopf,
+	 * den man eigentlich treffen wollte. Deshalb schliesst er sich hier
+	 * von selbst und beim naechsten Antippen. */
+	std::chrono::steady_clock::time_point shown_at{};
 
 	TooltipsWindow(Window *parent, EncodedString &&text, TooltipCloseCondition close_tooltip) : Window(_tool_tips_desc), text(std::move(text))
 	{
@@ -613,6 +620,7 @@ struct TooltipsWindow : public Window
 		this->InitNested();
 
 		this->flags.Reset(WindowFlag::WhiteBorder);
+		this->shown_at = std::chrono::steady_clock::now();
 	}
 
 	Point OnInitialPosition([[maybe_unused]] int16_t sm_width, [[maybe_unused]] int16_t sm_height, [[maybe_unused]] int window_number) override
@@ -663,6 +671,26 @@ struct TooltipsWindow : public Window
 		if (!_cursor.in_window) {
 			this->Close();
 			return;
+		}
+
+		/* Fork: Beim Antippen verschwinden - sonst verdeckt der Hinweis
+		 * genau den Menueeintrag, den man gerade treffen will. Bei den
+		 * Hinweisen, die absichtlich am Knopf haengen (rechte Maustaste,
+		 * Werkzeug ziehen), bleibt es beim alten Verhalten. */
+		if (_left_button_down && this->close_cond != TooltipCloseCondition::RightClick &&
+				this->close_cond != TooltipCloseCondition::None) {
+			this->Close();
+			return;
+		}
+
+		/* Fork: und nach ein paar Sekunden von selbst. Ohne Maus gibt es
+		 * kein "wegbewegen", das ihn sonst schliessen wuerde. */
+		if (this->close_cond != TooltipCloseCondition::None) {
+			auto age = std::chrono::steady_clock::now() - this->shown_at;
+			if (age > std::chrono::seconds(6)) {
+				this->Close();
+				return;
+			}
 		}
 
 		/* We can show tooltips while dragging tools. These are shown as long as

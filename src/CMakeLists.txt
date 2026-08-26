@@ -199,6 +199,8 @@ add_files(
     houseown_gui.cpp
     airdivert.cpp
     airupgrade.cpp
+    forkunlock.cpp
+    forkunlock.h
     railupgrade.cpp
     fleet_gui.cpp
     linemgr_gui.cpp

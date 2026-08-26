@@ -160,6 +160,20 @@ public:
 			pt.y = _cursor.pos.y + distance_to_cursor;
 		}
 
+		/* Fork: nie ueber der Werkzeugleiste landen.
+		 *
+		 * Wer oben auf ein Symbol tippt, bekam die Meldung genau dort hin,
+		 * wo er gerade weiterarbeiten will - ueber die Leiste und ueber
+		 * das gerade geoeffnete Menue. Deshalb darf sie nicht in das obere
+		 * Band hineinragen; passt sie dort nicht, rutscht sie darunter.
+		 * Am Rand wird sie ausserdem ins Bild zurueckgeholt, damit nichts
+		 * abgeschnitten stehenbleibt. */
+		int top_limit = GetMainViewTop() + WidgetDimensions::scaled.vsep_normal;
+		if (pt.y < top_limit) pt.y = top_limit;
+		int bottom_limit = GetMainViewBottom() - sm_height - WidgetDimensions::scaled.vsep_normal;
+		if (pt.y > bottom_limit) pt.y = std::max(top_limit, bottom_limit);
+		pt.x = Clamp(pt.x, 0, std::max(0, _screen.width - sm_width));
+
 		return pt;
 	}
 
