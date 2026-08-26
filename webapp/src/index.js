@@ -121,8 +121,11 @@ async function handleRegister(request, env, cors) {
 	const res = await env.DB.prepare('INSERT INTO users (email, pw_hash, created_at) VALUES (?, ?, ?)')
 		.bind(email, pwHash, Date.now()).run();
 	const userId = res.meta.last_row_id;
+	/* Wer zuerst gekauft und danach ein Konto angelegt hat, soll nicht
+	 * warten muessen - der Kauf haengt an der E-Mail. */
+	const unlocked = await grantFromPurchases(env, email, userId);
 	const token = await createSession(env, userId);
-	return json({ ok: true, email, token }, 201, cors, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
+	return json({ ok: true, email, token, cloud: unlocked }, 201, cors, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
 }
 
 async function handleLogin(request, env, cors) {
@@ -133,6 +136,9 @@ async function handleLogin(request, env, cors) {
 	if (!user || !(await verifyPassword(body.password, user.pw_hash))) {
 		return json({ error: 'bad_credentials', message: 'E-Mail oder Passwort falsch.' }, 401, cors);
 	}
+	/* Auch beim Anmelden nachschauen: der Kauf kann nach der
+	 * Registrierung eingegangen sein. */
+	await grantFromPurchases(env, user.email || body.email, user.id);
 	const token = await createSession(env, user.id);
 	return json({ ok: true, email: user.email, token }, 200, cors, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
 }
@@ -157,6 +163,62 @@ async function handleMe(request, env, cors) {
 
 /* ---------- Spielstaende (Phase 4: D1-Metadaten + R2-Blobs) ---------- */
 
+/* ---------- Freischaltung: was der Kauf oeffnet ---------- */
+
+/** Das Recht, Spielstaende in der Cloud abzulegen. */
+const FEATURE_CLOUD = 'cloud';
+
+/**
+ * Hat der Nutzer dieses Recht?
+ *
+ * Die Pruefung gehoert hierher und nicht ins Spiel: was im Browser
+ * laeuft, kann jeder aendern. Der Cloud-Speicher liegt auf unserem
+ * Server, also entscheidet der Server.
+ */
+async function hasFeature(env, userId, feature) {
+	const row = await env.DB.prepare('SELECT 1 AS ok FROM entitlements WHERE user_id = ? AND feature = ?')
+		.bind(userId, feature).first();
+	return !!row;
+}
+
+/**
+ * Ein Recht gewaehren (mehrfaches Aufrufen schadet nicht).
+ * @param source Woher es kommt - "stripe" beim Kauf, "manual" von Hand.
+ */
+async function grantFeature(env, userId, feature, source) {
+	await env.DB.prepare(
+		`INSERT INTO entitlements (user_id, feature, granted_at, source) VALUES (?, ?, ?, ?)
+		 ON CONFLICT(user_id, feature) DO NOTHING`)
+		.bind(userId, feature, Date.now(), source || 'manual').run();
+}
+
+/**
+ * Einen bezahlten Kauf mit einem Konto verknuepfen.
+ *
+ * Beide Reihenfolgen kommen vor: manche kaufen zuerst und legen danach
+ * ein Konto an, andere haben schon eines. Deshalb wird hier ueber die
+ * E-Mail gesucht - und bei der Registrierung noch einmal umgekehrt.
+ */
+async function grantFromPurchases(env, email, userId) {
+	if (!email) return false;
+	const paid = await env.DB.prepare(
+		"SELECT 1 AS ok FROM purchases WHERE lower(email) = ? AND status = 'paid' LIMIT 1")
+		.bind(email.trim().toLowerCase()).first();
+	if (!paid) return false;
+	await grantFeature(env, userId, FEATURE_CLOUD, 'stripe');
+	return true;
+}
+
+/** Antwort fuer "das gibt es nur mit Kauf" - mit Weg zur Kaufseite. */
+function needsPurchase(cors) {
+	return json({
+		error: 'needs_purchase',
+		feature: FEATURE_CLOUD,
+		message: 'Cloud-Speicherstaende gehoeren zur Marcel Edition. Einmalig 39 Euro, kein Abo.',
+		buy_url: 'https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/',
+	}, 402, cors);
+}
+
 const MAX_SAVE_BYTES = 8 * 1024 * 1024;
 const MAX_SLOTS = 3;
 const SAVE_NAME_RE = /^[\w\-. ()\[\]#+',!äöüÄÖÜß]{1,120}\.sav$/;
@@ -164,6 +226,7 @@ const SAVE_NAME_RE = /^[\w\-. ()\[\]#+',!äöüÄÖÜß]{1,120}\.sav$/;
 async function handleSaveList(request, env, cors) {
 	const user = await getSessionUser(env, request);
 	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	if (!(await hasFeature(env, user.id, FEATURE_CLOUD))) return needsPurchase(cors);
 	const rows = await env.DB.prepare(
 		'SELECT slot, name, size, updated_at FROM saves WHERE user_id = ? ORDER BY slot').bind(user.id).all();
 	return json({ ok: true, max_slots: MAX_SLOTS, saves: rows.results || [] }, 200, cors);
@@ -172,6 +235,7 @@ async function handleSaveList(request, env, cors) {
 async function handleSaveUpload(request, env, cors, url) {
 	const user = await getSessionUser(env, request);
 	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	if (!(await hasFeature(env, user.id, FEATURE_CLOUD))) return needsPurchase(cors);
 	const name = url.searchParams.get('name') || '';
 	if (!SAVE_NAME_RE.test(name)) return json({ error: 'bad_name', message: 'Ungueltiger Spielstand-Name.' }, 400, cors);
 	const body = await request.arrayBuffer();
@@ -203,6 +267,7 @@ async function handleSaveUpload(request, env, cors, url) {
 async function handleSaveDownload(request, env, cors, url) {
 	const user = await getSessionUser(env, request);
 	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	if (!(await hasFeature(env, user.id, FEATURE_CLOUD))) return needsPurchase(cors);
 	const slot = parseInt(url.searchParams.get('slot') || '', 10);
 	const row = await env.DB.prepare('SELECT name, r2_key FROM saves WHERE user_id = ? AND slot = ?')
 		.bind(user.id, slot).first();
@@ -218,6 +283,7 @@ async function handleSaveDownload(request, env, cors, url) {
 async function handleSaveDelete(request, env, cors, url) {
 	const user = await getSessionUser(env, request);
 	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	if (!(await hasFeature(env, user.id, FEATURE_CLOUD))) return needsPurchase(cors);
 	const slot = parseInt(url.searchParams.get('slot') || '', 10);
 	const row = await env.DB.prepare('SELECT r2_key FROM saves WHERE user_id = ? AND slot = ?')
 		.bind(user.id, slot).first();
@@ -287,6 +353,15 @@ async function upsertPurchase(env, session, status) {
 		   currency = excluded.currency, status = excluded.status, updated_at = excluded.updated_at`)
 		.bind(session.id, session.payment_intent || null, cd.email || null, cd.name || null,
 			session.amount_total ?? null, session.currency || null, status, Date.now(), Date.now()).run();
+
+	/* Bezahlt und es gibt schon ein Konto mit dieser E-Mail? Dann sofort
+	 * freischalten. Wer erst spaeter ein Konto anlegt, bekommt das Recht
+	 * bei der Registrierung (siehe handleRegister). */
+	if (status === 'paid' && cd.email) {
+		const u = await env.DB.prepare('SELECT id FROM users WHERE email = ?')
+			.bind(cd.email.trim().toLowerCase()).first();
+		if (u) await grantFeature(env, u.id, FEATURE_CLOUD, 'stripe');
+	}
 }
 
 async function handleStripeWebhook(request, env) {
@@ -313,8 +388,25 @@ async function handleStripeWebhook(request, env) {
 			break;
 		case 'charge.refunded':
 			if (obj.payment_intent) {
+				const row = await env.DB.prepare('SELECT email FROM purchases WHERE payment_intent = ?')
+					.bind(obj.payment_intent).first();
 				await env.DB.prepare('UPDATE purchases SET status = ?, updated_at = ? WHERE payment_intent = ?')
 					.bind('refunded', Date.now(), obj.payment_intent).run();
+				/* Geld zurueck heisst auch Zugang zurueck - aber nur, wenn
+				 * kein zweiter bezahlter Kauf auf derselben E-Mail liegt. */
+				if (row && row.email) {
+					const still = await env.DB.prepare(
+						"SELECT 1 AS ok FROM purchases WHERE lower(email) = ? AND status = 'paid' LIMIT 1")
+						.bind(row.email.trim().toLowerCase()).first();
+					if (!still) {
+						const u = await env.DB.prepare('SELECT id FROM users WHERE email = ?')
+							.bind(row.email.trim().toLowerCase()).first();
+						if (u) {
+							await env.DB.prepare("DELETE FROM entitlements WHERE user_id = ? AND feature = ? AND source = 'stripe'")
+								.bind(u.id, FEATURE_CLOUD).run();
+						}
+					}
+				}
 			}
 			break;
 		default:

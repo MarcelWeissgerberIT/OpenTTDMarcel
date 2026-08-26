@@ -235,7 +235,16 @@ Module.preRun.push(function() {
                 headers: { 'Authorization': 'Bearer ' + token },
                 body: data,
             }).then(function(r) {
-                if (r.ok) { pushed[f.n] = f.m; cloudPushedSave(pushed); }
+                if (r.ok) { pushed[f.n] = f.m; cloudPushedSave(pushed); next(); return; }
+                if (r.status === 402) {
+                    /* Der Server sagt: dafuer braucht es die Vollversion.
+                     * Kein Vorwurf, sondern ein Angebot - und den Rest der
+                     * Warteschlange abbrechen, sonst kaeme der Hinweis
+                     * fuer jeden Spielstand einzeln. */
+                    cloudStatus('Cloud-Spielstaende gibt es mit der Marcel Edition - siehe Knopf oben rechts');
+                    if (window.openttd_show_buy) window.openttd_show_buy();
+                    return;
+                }
                 next();
             }).catch(function() { cloudStatus('Cloud: Upload fehlgeschlagen'); next(); });
         }

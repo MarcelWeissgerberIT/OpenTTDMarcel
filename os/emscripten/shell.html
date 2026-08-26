@@ -149,6 +149,48 @@
         text-shadow: 1px 1px #6d3300;
         width: 100%;
       }
+      /* Werbe-Fahne: faellt auf, ohne beim Spielen im Weg zu sein.
+         Wer gekauft hat, sieht sie nie - siehe updateBuyBadge(). */
+      #buy-badge {
+        background: #f8b400;
+        border: 2px solid #a06a00;
+        border-radius: 4px;
+        color: #3a2200;
+        cursor: pointer;
+        display: none;
+        font: bold 13px/1.5 sans-serif;
+        padding: 3px 10px;
+        /* Unten rechts ueber dem Cloud-Knopf: dort ist im Spiel Platz,
+         * oben liegt die Werkzeugleiste. */
+        bottom: 36px;
+        position: fixed;
+        right: 8px;
+        text-decoration: none;
+        z-index: 12;
+      }
+      #buy-badge:hover { background: #ffd257; }
+      #buy-box {
+        background: #fff6e0;
+        border: 2px solid #a06a00;
+        border-radius: 4px;
+        color: #3a2200;
+        font: 13px/1.6 sans-serif;
+        margin-top: 10px;
+        padding: 8px 10px;
+        text-align: left;
+      }
+      #buy-box b { display: block; margin-bottom: 4px; }
+      #buy-box ul { margin: 4px 0 8px 18px; padding: 0; }
+      #buy-box a.buy {
+        background: #f8b400;
+        border: 2px solid #a06a00;
+        border-radius: 3px;
+        color: #3a2200;
+        display: inline-block;
+        font-weight: bold;
+        padding: 4px 12px;
+        text-decoration: none;
+      }
       #cloud-status {
         color: #2b2b2b;
         font-size: 12px;
@@ -177,6 +219,17 @@
     </div>
     <div id="cloud">
       <div id="cloud-panel">
+        <div id="buy-box">
+          <b>&#9733; Das bekommst du mit der Marcel Edition</b>
+          <ul>
+            <li>Spielstände in der Cloud - auf jedem Gerät weiterspielen</li>
+            <li>Pixel-Studio: eigene Fahrzeuge und Häuser malen</li>
+            <li>Immobilien-Modus: Häuser kaufen, Miete kassieren</li>
+            <li>Mega-Flughafen und Mega-Bahnhof</li>
+            <li>Alle künftigen Updates, kein Abo</li>
+          </ul>
+          <a class="buy" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/" target="_blank" rel="noopener">Jetzt holen &ndash; 39&nbsp;&euro;</a>
+        </div>
         <div id="cloud-form">
           <b>Cloud-Spielstände</b><br/>
           Mit Konto anmelden, dann werden Spielstände automatisch gesichert.<br/>
@@ -195,6 +248,7 @@
         <button id="cloud-close">Schließen</button>
       </div>
       <span id="cloud-badge">&#9729; Cloud</span>
+      <a id="buy-badge" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/" target="_blank" rel="noopener">&#9733; Marcel Edition holen</a>
     </div>
 
     <script type='text/javascript'>
@@ -342,13 +396,54 @@
           }
         } catch (e) {}
 
+        /* Hat dieses Konto die Cloud freigeschaltet? Wird vom Server
+         * beantwortet - im Browser laesst sich das nicht faelschen, die
+         * Speicher-Aufrufe pruefen es dort ohnehin noch einmal. */
+        var hasCloud = false;
+
+        function updateBuyBadge() {
+          /* Werbung nur fuer alle, die noch nicht gekauft haben. */
+          document.getElementById('buy-badge').style.display = hasCloud ? 'none' : 'inline-block';
+          document.getElementById('buy-box').style.display = hasCloud ? 'none' : 'block';
+        }
+
+        function refreshEntitlements() {
+          var t = token();
+          if (!t) { hasCloud = false; updateBuyBadge(); return; }
+          fetch(API + '/api/me', { headers: { 'Authorization': 'Bearer ' + t } })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              hasCloud = !!(d && d.entitlements && d.entitlements.indexOf('cloud') >= 0);
+              updateBuyBadge();
+              render();
+            })
+            .catch(function() { updateBuyBadge(); });
+        }
+
         function render() {
           var loggedIn = !!token();
+          /* Angemeldet ohne Kauf: das Anmelde-Formular hilft nicht weiter,
+           * der Werbeblock schon. */
           document.getElementById('cloud-form').style.display = loggedIn ? 'none' : 'block';
-          document.getElementById('cloud-info').style.display = loggedIn ? 'block' : 'none';
+          document.getElementById('cloud-info').style.display = (loggedIn && hasCloud) ? 'block' : 'none';
           document.getElementById('cloud-user').textContent = email() || '';
-          badge.textContent = loggedIn ? '⛅ Cloud an' : '☁ Cloud';
+          badge.textContent = (loggedIn && hasCloud) ? '⛅ Cloud an' : '☁ Cloud';
+          updateBuyBadge();
         }
+
+        /* Vom Spiel-Code aufgerufen, wenn der Server einen Kauf verlangt:
+         * Werbe-Fahne hervorheben und das Angebot aufschlagen. */
+        window.openttd_show_buy = function() {
+          hasCloud = false;
+          updateBuyBadge();
+          panel.style.display = 'block';
+          var b = document.getElementById('buy-badge');
+          b.style.transition = 'transform .2s';
+          b.style.transform = 'scale(1.25)';
+          setTimeout(function() { b.style.transform = 'scale(1)'; }, 400);
+        };
+
+        refreshEntitlements();
 
         Module.onCloudStatus = function(text) {
           statusEl.textContent = text;
@@ -362,6 +457,19 @@
         /* Vom Spiel aufgerufen (Knopf "Konto..." im Speichern/Laden-Dialog). */
         window.openttd_cloud_panel = function() {
           render();
+          /* Vom Spiel-Code aufgerufen, wenn der Server einen Kauf verlangt:
+         * Werbe-Fahne hervorheben und das Angebot aufschlagen. */
+        window.openttd_show_buy = function() {
+          hasCloud = false;
+          updateBuyBadge();
+          panel.style.display = 'block';
+          var b = document.getElementById('buy-badge');
+          b.style.transition = 'transform .2s';
+          b.style.transform = 'scale(1.25)';
+          setTimeout(function() { b.style.transform = 'scale(1)'; }, 400);
+        };
+
+        refreshEntitlements();
           panel.style.display = 'block';
         };
         document.getElementById('cloud-close').addEventListener('click', function() {
