@@ -2,20 +2,21 @@
 <html lang="de">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mein Konto – OpenTTD Marcel</title>
+<title data-t-title="acc_page">Mein Konto – OpenTTD Marcel</title>
 <link rel="stylesheet" href="style.css">
+<script src="lang.js"></script>
 </head>
 <body>
 <div class="panel">
-	<h1>Mein Konto</h1>
-	<p id="who">Lade…</p>
+	<h1 data-t="acc_title"></h1>
+	<p id="who" data-t="acc_loading"></p>
 	<p id="prem"></p>
-	<h2 style="font-size:16px">Cloud-Spielstände</h2>
-	<div id="saves">Lade…</div>
-	<a class="btn" id="play" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt spielen</a>
-	<button class="btn" id="logout" style="background:#c9c9c9; border-color:#6e6e6e; box-shadow:0 4px 0 #6e6e6e;">Abmelden</button>
+	<h2 style="font-size:16px" data-t="acc_saves"></h2>
+	<div id="saves" data-t="acc_loading"></div>
+	<a class="btn" id="play" data-t="acc_play" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/"></a>
+	<button class="btn" id="logout" style="background:#c9c9c9; border-color:#6e6e6e; box-shadow:0 4px 0 #6e6e6e;" data-t="acc_logout"></button>
 	<div class="msg" id="msg"></div>
-	<div class="links"><a href="index.html">Zur&uuml;ck zur Startseite</a></div>
+	<div class="links"><a href="index.html" data-t="acc_home"></a> &middot; <span id="langswitch"></span></div>
 </div>
 <script>
 const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
@@ -25,23 +26,36 @@ const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
 		const r = await fetch(API + '/api/me', { credentials: 'include', headers: t ? { 'Authorization': 'Bearer ' + t } : {} });
 		const d = await r.json();
 		if (!d.ok) { location.href = 'login.html'; return; }
-		document.getElementById('who').textContent = 'Angemeldet als ' + d.email;
+		document.getElementById('who').textContent = OTTD_T('acc_signedin') + ' ' + d.email;
 		/* Login automatisch mit ins Spiel nehmen (getrennte Browser-Speicher). */
 		if (t) document.getElementById('play').href += '#ottd=' + encodeURIComponent(t);
-		document.getElementById('prem').textContent = d.entitlements.length
-			? 'Premium: ' + d.entitlements.join(', ') : 'Premium: noch nicht freigeschaltet';
+		/* Statt einer nackten Merkmalsliste die Aussage, um die es geht -
+		 * und falls es fehlt, gleich der Weg zum Kauf. */
+		const hasCloud = (d.entitlements || []).indexOf('cloud') >= 0;
+		const prem = document.getElementById('prem');
+		prem.textContent = OTTD_T(hasCloud ? 'acc_cloud_on' : 'acc_cloud_off') + ' ';
+		if (!hasCloud) {
+			const a = document.createElement('a');
+			a.href = 'https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/' +
+				(OTTD_LANG === 'en' ? '?lang=en' : '');
+			a.target = '_blank';
+			a.rel = 'noopener';
+			a.textContent = OTTD_T('acc_buy');
+			a.style.color = '#ffe9b0';
+			prem.appendChild(a);
+		}
 		const rs = await fetch(API + '/api/saves', { credentials: 'include', headers: t ? { 'Authorization': 'Bearer ' + t } : {} });
 		const ds = await rs.json();
 		const el = document.getElementById('saves');
 		if (!ds.ok || !ds.saves.length) {
-			el.textContent = 'Noch keine Spielstände in der Cloud. Im Spiel unten rechts auf "Cloud" klicken und anmelden – dann wird jeder Spielstand automatisch gesichert.';
+			el.textContent = OTTD_T('acc_nosaves');
 		} else {
 			el.innerHTML = ds.saves.map(s =>
-				'Slot ' + s.slot + ': <b>' + s.name.replace(/</g, '&lt;') + '</b> (' +
-				Math.round(s.size / 1024) + ' KB, ' + new Date(s.updated_at).toLocaleString('de-DE') + ')'
+				OTTD_T('acc_slot') + ' ' + s.slot + ': <b>' + s.name.replace(/</g, '&lt;') + '</b> (' +
+				Math.round(s.size / 1024) + ' KB, ' + new Date(s.updated_at).toLocaleString(OTTD_LANG === 'en' ? 'en-GB' : 'de-DE') + ')'
 			).join('<br>');
 		}
-	} catch { document.getElementById('msg').textContent = 'Netzwerkfehler.'; }
+	} catch { document.getElementById('msg').textContent = OTTD_T('err_network'); }
 })();
 document.getElementById('logout').addEventListener('click', async () => {
 	const t = localStorage.getItem('ottd_token');

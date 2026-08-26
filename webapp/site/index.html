@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpenTTD Marcel</title>
+<title data-t-title="home_title">OpenTTD Marcel</title>
 <style>
 	:root { --panel:#6d8a37; --panel-dark:#4a6126; --btn:#f5a623; --btn-border:#8a5a00; --text:#1c1c1c; }
 	* { box-sizing:border-box; margin:0; padding:0; }
@@ -23,13 +23,14 @@
 </head>
 <body>
 	<div class="panel">
-		<h1>OpenTTD Marcel</h1>
-		<p>Die Eisenbahn-Wirtschaftssimulation im Browser &mdash; mit Candyland-Welt,
-		Auto-Verbindung und deutscher Oberfl&auml;che.</p>
-		<a class="btn" id="play" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/">Jetzt gratis spielen</a>
-		<p class="hint" style="margin-top:18px"><a href="login.html" style="color:#ffe9b0">Anmelden</a> &middot; <a href="register.html" style="color:#ffe9b0">Konto erstellen</a></p>
-		<p class="hint">Mit Konto werden Spielst&auml;nde automatisch in der Cloud gesichert.</p>
+		<h1 data-t="home_title">OpenTTD Marcel</h1>
+		<p data-t="home_intro"></p>
+		<a class="btn" id="play" data-t="home_play" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/"></a>
+		<p class="hint" style="margin-top:18px"><a href="login.html" style="color:#ffe9b0" data-t="home_login"></a> &middot; <a href="register.html" style="color:#ffe9b0" data-t="home_register"></a></p>
+		<p class="hint" data-t="home_hint"></p>
+		<p class="hint" id="langswitch"></p>
 	</div>
+	<script src="lang.js"></script>
 	<script>
 	/* Angemeldete Nutzer nehmen ihren Login automatisch mit ins Spiel. */
 	try {

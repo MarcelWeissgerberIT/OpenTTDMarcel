@@ -2,28 +2,29 @@
 <html lang="de">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Anmelden – OpenTTD Marcel</title>
+<title data-t-title="login_page">Anmelden – OpenTTD Marcel</title>
 <link rel="stylesheet" href="style.css">
+<script src="lang.js"></script>
 </head>
 <body>
 <div class="panel">
-	<h1>Anmelden</h1>
+	<h1 data-t="login_title"></h1>
 	<form id="f">
-		<label for="email">E-Mail</label>
+		<label for="email" data-t="email"></label>
 		<input id="email" type="email" required autocomplete="email">
-		<label for="pw">Passwort</label>
+		<label for="pw" data-t="password"></label>
 		<input id="pw" type="password" required autocomplete="current-password">
-		<button class="btn" type="submit">Anmelden</button>
+		<button class="btn" type="submit" data-t="login_submit"></button>
 	</form>
 	<div class="msg" id="msg"></div>
-	<div class="links">Noch kein Konto? <a href="register.html">Registrieren</a> &middot; <a href="index.html">Zur&uuml;ck</a></div>
+	<div class="links"><span data-t="login_noaccount"></span> <a href="register.html" data-t="login_toregister"></a> &middot; <a href="index.html" data-t="back"></a> &middot; <span id="langswitch"></span></div>
 </div>
 <script>
 const API = 'https://openttd-api.marcelweissgerber81.workers.dev';
 document.getElementById('f').addEventListener('submit', async (e) => {
 	e.preventDefault();
 	const msg = document.getElementById('msg');
-	msg.textContent = 'Anmelden…';
+	msg.textContent = OTTD_T('login_working');
 	try {
 		const r = await fetch(API + '/api/login', {
 			method: 'POST', credentials: 'include',
@@ -31,8 +32,8 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 			body: JSON.stringify({ email: email.value, password: pw.value }),
 		});
 		const d = await r.json();
-		if (d.ok) { if (d.token) localStorage.setItem('ottd_token', d.token); location.href = 'account.html'; } else { msg.textContent = d.message || 'Fehler.'; }
-	} catch { msg.textContent = 'Netzwerkfehler.'; }
+		if (d.ok) { if (d.token) localStorage.setItem('ottd_token', d.token); location.href = 'account.html'; } else { msg.textContent = d.message || OTTD_T('err_generic'); }
+	} catch { msg.textContent = OTTD_T('err_network'); }
 });
 </script>
 </body>

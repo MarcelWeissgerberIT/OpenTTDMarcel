@@ -6,6 +6,15 @@
 # jedem anderen den Cloud-Zugang schenken.
 name: Verwalter setzen
 
+#
+# Zwei Wege, denselben Job zu starten:
+#
+#  1. Handstart im Actions-Tab. Den zeigt GitHub allerdings nur, wenn
+#     diese Datei im Standard-Branch liegt - solange die Arbeit auf
+#     einem Feature-Branch laeuft, taucht sie dort nicht auf.
+#  2. Deshalb zusaetzlich ueber die Datei webapp/.admin-trigger: eine
+#     Aenderung daran startet den Lauf, und die Adresse kommt aus dem
+#     Secret ADMIN_EMAIL. So bleibt sie aus dem Quelltext heraus.
 on:
   workflow_dispatch:
     inputs:
@@ -18,6 +27,8 @@ on:
         required: false
         type: boolean
         default: false
+  push:
+    paths: ['webapp/.admin-trigger']
 
 concurrency:
   group: admin-set
@@ -48,10 +59,15 @@ jobs:
 
       - name: Recht setzen
         env:
-          TARGET_EMAIL: ${{ inputs.email }}
+          # Beim Handstart die Eingabe, sonst das Secret.
+          TARGET_EMAIL: ${{ inputs.email || secrets.ADMIN_EMAIL }}
           REVOKE: ${{ inputs.revoke }}
         run: |
-          # Die Adresse kommt aus der Eingabe, nicht aus dem Quelltext.
+          if [ -z "$TARGET_EMAIL" ]; then
+            echo "Keine Adresse: entweder beim Handstart eingeben oder das Secret ADMIN_EMAIL setzen." >&2
+            exit 1
+          fi
+          # Die Adresse kommt aus Eingabe oder Secret, nicht aus dem Quelltext.
           # Hochkommas werden verdoppelt, damit sie das SQL nicht sprengen.
           SAFE=$(printf '%s' "$TARGET_EMAIL" | tr '[:upper:]' '[:lower:]' | sed "s/'/''/g")
           VALUE=1
