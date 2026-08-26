@@ -217,6 +217,28 @@ jobs:
           done
           [ -n "$TOKEN" ] || { echo "Login-Antwort enthaelt keinen Token"; exit 1; }
           curl -sS --fail -H "Authorization: Bearer $TOKEN" "$API/api/me" | grep -q "$EMAIL"
+          echo "Cloud ohne Kauf muss abgewiesen werden..."
+          # Das ist der eigentliche Schutz: ohne Kauf keine Cloud. Faellt
+          # er weg, koennte jeder den Speicher nutzen - also hier pruefen,
+          # nicht nur den Gutfall.
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$API/api/saves")
+          if [ "$CODE" != "402" ]; then
+            echo "::error::Cloud-Liste liefert $CODE statt 402 - die Kauf-Sperre greift nicht!"
+            exit 1
+          fi
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT -H "Authorization: Bearer $TOKEN" \
+            --data-binary @/dev/null "$API/api/saves/upload?name=citest.sav")
+          if [ "$CODE" != "402" ]; then
+            echo "::error::Upload liefert $CODE statt 402 - die Kauf-Sperre greift nicht!"
+            exit 1
+          fi
+          echo "  Sperre greift."
+
+          echo "Testkonto freischalten (wie nach einem Kauf)..."
+          npx wrangler d1 execute openttd-web --remote --command \
+            "INSERT INTO entitlements (user_id, feature, granted_at, source)
+             SELECT id, 'cloud', 0, 'ci' FROM users WHERE email = '$EMAIL'"
+
           echo "Save-Sync (Upload/Liste/Download/Delete)..."
           head -c 2048 /dev/urandom > /tmp/citest.sav
           curl -sS --fail -X PUT -H "Authorization: Bearer $TOKEN" --data-binary @/tmp/citest.sav "$API/api/saves/upload?name=citest.sav"

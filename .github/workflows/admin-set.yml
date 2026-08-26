@@ -73,7 +73,15 @@ jobs:
           VALUE=1
           if [ "$REVOKE" = "true" ]; then VALUE=0; fi
           npx wrangler d1 execute openttd-web --remote \
-            --command "UPDATE users SET is_admin = $VALUE WHERE lower(email) = '$SAFE'"
+            --command "UPDATE users SET is_admin = $VALUE WHERE lower(email) = '$SAFE'" \
+            > /tmp/upd.json
+          # Hat das ueberhaupt ein Konto getroffen? Ohne diese Pruefung
+          # laeuft der Workflow gruen durch, obwohl die Adresse im Spiel
+          # nie registriert wurde - und man sucht den Fehler woanders.
+          if grep -q '"changes": 0' /tmp/upd.json; then
+            echo "::error::Kein Konto mit dieser Adresse gefunden. Erst im Spiel registrieren, dann diesen Lauf wiederholen."
+            exit 1
+          fi
           echo "--- Ergebnis ---"
           # Zur Kontrolle nur die Anzahl ausgeben, nicht die Adresse.
           npx wrangler d1 execute openttd-web --remote \
