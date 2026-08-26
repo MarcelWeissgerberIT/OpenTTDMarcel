@@ -80,6 +80,8 @@
 #include "timer/timer.h"
 #include "timer/timer_game_calendar.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 /** Halteauftrag wie im Auftrags-GUI konstruieren (Haltepunkt: Ende). */
@@ -2356,6 +2358,10 @@ static WindowDesc _autoconnect_desc(
 /** Fenster der Auto-Verbindung öffnen (Fork-Feature). */
 void ShowAutoConnectWindow()
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	AllocateWindowDescFront<AutoConnectWindow>(_autoconnect_desc, 0);
 }
 
@@ -2366,6 +2372,10 @@ void ShowAutoConnectWindow()
  */
 void ShowAutoConnectWindowForBeginners()
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	ShowAutoConnectWindow();
 	AutoConnectWindow *w = dynamic_cast<AutoConnectWindow *>(FindWindowById(WindowClass::AutoConnect, 0));
 	if (w == nullptr) return;
@@ -2819,6 +2829,10 @@ static WindowDesc _industry_connect_desc(
 /** Abnehmer-Dialog fuer eine Industrie oeffnen (Fork-Feature). */
 void ShowIndustryConnectWindow(IndustryID ind)
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	AllocateWindowDescFront<IndustryConnectWindow>(_industry_connect_desc, ind.base());
 }
 

@@ -47,6 +47,8 @@
 #include "table/strings.h"
 #include "table/sprites.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 /** Zielauslastung in Prozent: darunter stehen Fahrzeuge leer herum. */
@@ -642,6 +644,10 @@ static WindowDesc _linemgr_desc(
 /** Fork: Linien-Manager oeffnen. */
 void ShowLineManagerWindow()
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	AllocateWindowDescFront<LineManagerWindow>(_linemgr_desc, 0);
 }
 

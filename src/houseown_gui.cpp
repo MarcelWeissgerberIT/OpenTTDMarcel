@@ -60,6 +60,8 @@ void DrawHouseInGUI(int x, int y, HouseID house_id, int view);
 #	include <emscripten.h>
 #endif
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 /** Ein gekauftes Haus; gilt nur fuer die Karte mit passendem Seed. */
@@ -370,6 +372,10 @@ static const IntervalTimer<TimerGameCalendar> _houseown_yearly_timer = {{TimerGa
 /** Haus kaufen: prueft Spielmodus, Besitz und Geld; bucht und speichert. */
 bool HouseOwnBuy(TileIndex tile)
 {
+	/* Der Immobilien-Modus gehoert zur Marcel Edition. Der Hinweis kommt
+	 * nur beim Klick eines Menschen - beim Reihenkauf ueber die ganze
+	 * Stadt (HouseOwnBuyTown) waere er sonst hundertmal zu sehen. */
+	if (!ForkUnlocked()) return false;
 	if (!IsValidTile(tile) || !IsTileType(tile, TileType::House)) return false;
 	if (FindOwned(tile) != nullptr) return false;
 	if (_game_mode != GameMode::Normal || !Company::IsValidID(_local_company)) return false;
@@ -854,6 +860,7 @@ struct HouseInfoWindow : Window {
 			}
 
 			case WID_HO_BUY:
+				if (!ForkUnlocked()) { ForkShowLockedHint(); break; }
 				if (HouseOwnBuy(this->tile)) this->SetDirty();
 				break;
 
@@ -1222,5 +1229,9 @@ static WindowDesc _housepad_desc(
 /** Fork: Immobilien-Pad oeffnen. */
 void ShowHousePadWindow()
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	AllocateWindowDescFront<HousePadWindow>(_housepad_desc, 0);
 }

@@ -43,6 +43,8 @@
 #	include <emscripten.h>
 #endif
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 /** Leinwandgroesse (unskaliert); die Zellgroesse passt sich dem Sprite an. */
@@ -1073,6 +1075,10 @@ extern "C" void CDECL em_openttd_ps_paste_data(const uint8_t *rgba, int w, int h
 /** Pixel-Studio oeffnen (Fork-Feature). */
 void ShowPixelStudioWindow()
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	PixelStudioLoadOverrides();
 	AllocateWindowDescFront<PixelStudioWindow>(_pixelstudio_desc, 0);
 }

@@ -77,6 +77,8 @@
 
 #include "dropdown_common_type.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 
@@ -2125,6 +2127,9 @@ struct MainToolbarWindow : Window {
 		/* disable company list drop downs, if there are no companies */
 		this->SetWidgetsDisabledState(Company::GetNumItems() == 0, WID_TN_STATIONS, WID_TN_FINANCES, WID_TN_TRAINS, WID_TN_ROADVEHS, WID_TN_SHIPS, WID_TN_AIRCRAFT);
 
+		/* Fork: die Auto-Verbindung gehoert zur Marcel Edition. Grau
+		 * statt versteckt - wer sie sieht, fragt sich, was sie kann. */
+		this->SetWidgetDisabledState(WID_TN_AUTOCONNECT, !ForkUnlocked());
 		this->SetWidgetDisabledState(WID_TN_GOAL, Goal::GetNumItems() == 0);
 		this->SetWidgetDisabledState(WID_TN_STORY, StoryPage::GetNumItems() == 0);
 

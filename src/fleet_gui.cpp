@@ -61,6 +61,8 @@
 #include "widgets/fleet_widget.h"
 #include "table/strings.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 /* ==================== Automatische Taktung ==================== */
@@ -782,6 +784,10 @@ static WindowDesc _fleet_desc(
 /** Fork: Fenster "Flotte aufstocken" fuer ein Fahrzeug oeffnen. */
 void ShowFleetWindow(VehicleID veh)
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	const Vehicle *v = Vehicle::GetIfValid(veh);
 	if (v == nullptr || !v->IsPrimaryVehicle()) return;
 	CloseWindowByClass(WindowClass::Fleet);

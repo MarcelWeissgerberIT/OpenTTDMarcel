@@ -44,6 +44,8 @@
 
 #include "dropdown_common_type.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 struct StationTypeFilter
@@ -1506,6 +1508,8 @@ struct StationViewWindow : public Window {
 			}
 			bool mine = st->owner == _local_company && st->owner != OWNER_NONE;
 			this->GetWidget<NWidgetStacked>(WID_SV_UPGRADE_AIRPORT_SEL)->SetDisplayedPlane((is_air || is_rail) && mine ? 0 : SZSP_NONE);
+			/* Ausbauen im Betrieb gehoert zur Marcel Edition. */
+			this->SetWidgetDisabledState(WID_SV_UPGRADE_AIRPORT, !ForkUnlocked());
 		}
 
 		extern const Station *_viewport_highlight_station;
@@ -2105,6 +2109,8 @@ struct StationViewWindow : public Window {
 				break;
 
 			case WID_SV_UPGRADE_AIRPORT: {
+				/* Ausbauen im Betrieb gehoert zur Marcel Edition. */
+				if (!ForkUnlocked()) { ForkShowLockedHint(); break; }
 				extern StringID AirUpgradeStart(Station *st, bool always_queue = false);
 				extern StringID RailUpgradeDo(Station *st);
 				Station *st = Station::Get(this->window_number);

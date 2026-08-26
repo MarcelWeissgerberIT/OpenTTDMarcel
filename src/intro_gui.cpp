@@ -40,6 +40,8 @@
 #include "table/strings.h"
 #include "table/sprites.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 
@@ -280,6 +282,10 @@ struct SelectGameWindow : public Window {
 
 	void OnPaint() override
 	{
+		/* Ohne Kauf ist das Pixel-Studio zu - sichtbar, aber grau. Wer es
+		 * gar nicht erst sieht, vermisst es auch nicht; wer es sieht,
+		 * fragt sich, was dahintersteckt. */
+		this->SetWidgetDisabledState(WID_SGI_PIXELSTUDIO, !ForkUnlocked());
 		this->SetWidgetLoweredState(WID_SGI_SCALE_100, _gui_scale == 100);
 		this->SetWidgetLoweredState(WID_SGI_SCALE_150, _gui_scale == 150);
 		this->SetWidgetLoweredState(WID_SGI_SCALE_200, _gui_scale == 200);
@@ -316,7 +322,10 @@ struct SelectGameWindow : public Window {
 				break;
 
 			case WID_SGI_PIXELSTUDIO: {
-				/* Fork: Fahrzeuggrafiken direkt im Spiel bearbeiten. */
+				/* Fork: Fahrzeuggrafiken direkt im Spiel bearbeiten.
+				 * Der graue Knopf laesst sich nicht klicken - der Hinweis
+				 * kommt daher aus dem Fenster selbst, falls jemand ueber
+				 * einen anderen Weg hierher findet. */
 				extern void ShowPixelStudioWindow();
 				ShowPixelStudioWindow();
 				break;

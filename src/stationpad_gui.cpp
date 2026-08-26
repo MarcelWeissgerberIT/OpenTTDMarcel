@@ -40,6 +40,8 @@
 #include "table/strings.h"
 #include "table/sprites.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 /** Filterarten des Pads. */
@@ -376,5 +378,9 @@ static WindowDesc _stationpad_desc(
 /** Stationen-Pad oeffnen (Fork-Feature). */
 void ShowStationPadWindow()
 {
+	/* Gehoert zur Marcel Edition. Ohne Kauf bleibt es beim Hinweis -
+	 * das Grundspiel laeuft weiter, nur die Zugabe ist zu. */
+	if (!ForkUnlocked()) { ForkShowLockedHint(); return; }
+
 	AllocateWindowDescFront<StationPadWindow>(_stationpad_desc, 0);
 }

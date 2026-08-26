@@ -54,6 +54,8 @@
 
 #include "table/strings.h"
 
+#include "forkunlock.h"
+
 #include "safeguards.h"
 
 
@@ -3243,6 +3245,8 @@ public:
 		bool is_localcompany = v->owner == _local_company;
 		bool refittable_and_stopped_in_depot = IsVehicleRefittable(v);
 
+		/* Fork: Flotte aufstocken gehoert zur Marcel Edition. */
+		this->SetWidgetDisabledState(WID_VV_FLEET, !ForkUnlocked());
 		this->SetWidgetDisabledState(WID_VV_RENAME, !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_GOTO_DEPOT, !is_localcompany);
 		this->SetWidgetDisabledState(WID_VV_REFIT, !refittable_and_stopped_in_depot || !is_localcompany);

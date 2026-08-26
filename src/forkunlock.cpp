@@ -25,6 +25,7 @@
  */
 
 #include "stdafx.h"
+#include <cstdlib>
 #include "forkunlock.h"
 #include "window_func.h"
 #include "gfx_func.h"
@@ -71,7 +72,11 @@ bool ForkUnlocked()
 #ifdef __EMSCRIPTEN__
 	return _fork_unlocked;
 #else
-	return true;
+	/* Ausserhalb des Browsers gibt es niemanden, der den Stand liefern
+	 * koennte - dort ist alles offen. Fuer den Testlauf laesst sich die
+	 * Sperre ueber eine Umgebungsvariable trotzdem einschalten. */
+	static const bool locked_for_test = std::getenv("OTTD_FORK_LOCKED") != nullptr;
+	return !locked_for_test;
 #endif
 }
 
