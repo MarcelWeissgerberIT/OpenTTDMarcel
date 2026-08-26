@@ -220,35 +220,29 @@
     <div id="cloud">
       <div id="cloud-panel">
         <div id="buy-box">
-          <b>&#9733; Das bekommst du mit der Marcel Edition</b>
-          <ul>
-            <li>Spielstände in der Cloud - auf jedem Gerät weiterspielen</li>
-            <li>Pixel-Studio: eigene Fahrzeuge und Häuser malen</li>
-            <li>Immobilien-Modus: Häuser kaufen, Miete kassieren</li>
-            <li>Mega-Flughafen und Mega-Bahnhof</li>
-            <li>Alle künftigen Updates, kein Abo</li>
-          </ul>
-          <a class="buy" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/" target="_blank" rel="noopener">Jetzt holen &ndash; 39&nbsp;&euro;</a>
+          <b id="buy-title"></b>
+          <ul id="buy-list"></ul>
+          <a class="buy" id="buy-cta" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/" target="_blank" rel="noopener"></a>
         </div>
         <div id="cloud-form">
-          <b>Cloud-Spielstände</b><br/>
-          Mit Konto anmelden, dann werden Spielstände automatisch gesichert.<br/>
+          <b id="cloud-title"></b><br/>
+          <span id="cloud-sub"></span><br/>
           <input type="email" id="cloud-email" placeholder="E-Mail" autocomplete="email"/>
           <input type="password" id="cloud-pw" placeholder="Passwort" autocomplete="current-password"/>
-          <button id="cloud-login">Anmelden</button>
-          <a href="https://openttd-web-ene.pages.dev/register.html" target="_blank" rel="noopener">Konto erstellen</a>
+          <button id="cloud-login"></button>
+          <a id="cloud-register" href="https://openttd-web-ene.pages.dev/register.html" target="_blank" rel="noopener"></a>
         </div>
         <div id="cloud-info" style="display:none">
-          <b>Cloud-Spielstände</b><br/>
-          Angemeldet als <span id="cloud-user"></span>.<br/>
-          Spielstände werden nach jedem Speichern automatisch gesichert.
-          <button id="cloud-logout">Abmelden</button>
+          <b id="cloud-title2"></b><br/>
+          <span id="cloud-as"></span> <span id="cloud-user"></span>.<br/>
+          <span id="cloud-auto"></span>
+          <button id="cloud-logout"></button>
         </div>
         <div id="cloud-status"></div>
-        <button id="cloud-close">Schließen</button>
+        <button id="cloud-close"></button>
       </div>
       <span id="cloud-badge">&#9729; Cloud</span>
-      <a id="buy-badge" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/" target="_blank" rel="noopener">&#9733; Marcel Edition holen</a>
+      <a id="buy-badge" href="https://marcelweissgerberit.github.io/OpenTTDMarcel/kaufen/" target="_blank" rel="noopener"></a>
     </div>
 
     <script type='text/javascript'>
@@ -369,6 +363,85 @@
 
       /* ---------- Cloud-Sync-Panel (Phase 4) ---------- */
       (function() {
+        /* Zweisprachig wie das Spiel selbst: OpenTTD folgt der
+         * Browsersprache, also darf der Rahmen drumherum nicht auf
+         * Deutsch stehenbleiben. */
+        var DE = (navigator.language || 'de').toLowerCase().indexOf('de') === 0;
+        var T = DE ? {
+          buyBadge: '\u2605 Marcel Edition holen',
+          buyTitle: '\u2605 Das bekommst du mit der Marcel Edition',
+          buyItems: [
+            'Spielst\u00e4nde in der Cloud - auf jedem Ger\u00e4t weiterspielen',
+            'Pixel-Studio: eigene Fahrzeuge und H\u00e4user malen',
+            'Immobilien-Modus: H\u00e4user kaufen, Miete kassieren',
+            'Mega-Flughafen und Mega-Bahnhof',
+            'Alle k\u00fcnftigen Updates, kein Abo',
+          ],
+          buyCta: 'Jetzt holen \u2013 39\u00a0\u20ac',
+          cloudTitle: 'Cloud-Spielst\u00e4nde',
+          cloudSub: 'Mit Konto anmelden, dann werden Spielst\u00e4nde automatisch gesichert.',
+          login: 'Anmelden',
+          register: 'Konto erstellen',
+          as: 'Angemeldet als',
+          auto: 'Spielst\u00e4nde werden nach jedem Speichern automatisch gesichert.',
+          logout: 'Abmelden',
+          close: 'Schlie\u00dfen',
+          email: 'E-Mail', pw: 'Passwort',
+          needBoth: 'Bitte E-Mail und Passwort eingeben.',
+          loggingIn: 'Anmeldung l\u00e4uft...',
+          loginFailed: 'Anmeldung fehlgeschlagen.',
+        } : {
+          buyBadge: '\u2605 Get the Marcel Edition',
+          buyTitle: '\u2605 What you get with the Marcel Edition',
+          buyItems: [
+            'Cloud saves - carry on from any device',
+            'Pixel Studio: paint your own vehicles and houses',
+            'Real-estate mode: buy houses, collect rent',
+            'Mega airport and mega station',
+            'All future updates, no subscription',
+          ],
+          buyCta: 'Get it \u2013 39\u00a0\u20ac',
+          cloudTitle: 'Cloud saves',
+          cloudSub: 'Sign in with your account and saves are backed up automatically.',
+          login: 'Sign in',
+          register: 'Create account',
+          as: 'Signed in as',
+          auto: 'Saves are backed up automatically every time you save.',
+          logout: 'Sign out',
+          close: 'Close',
+          email: 'Email', pw: 'Password',
+          needBoth: 'Please enter email and password.',
+          loggingIn: 'Signing in...',
+          loginFailed: 'Sign-in failed.',
+        };
+
+        function applyTexts() {
+          function set(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; }
+          set('buy-badge', T.buyBadge);
+          set('buy-title', T.buyTitle);
+          set('buy-cta', T.buyCta);
+          var ul = document.getElementById('buy-list');
+          if (ul) ul.innerHTML = T.buyItems.map(function(t) {
+            var li = document.createElement('li');
+            li.textContent = t;
+            return li.outerHTML;
+          }).join('');
+          set('cloud-title', T.cloudTitle);
+          set('cloud-title2', T.cloudTitle);
+          set('cloud-sub', T.cloudSub);
+          set('cloud-login', T.login);
+          set('cloud-register', T.register);
+          set('cloud-as', T.as);
+          set('cloud-auto', T.auto);
+          set('cloud-logout', T.logout);
+          set('cloud-close', T.close);
+          var em = document.getElementById('cloud-email');
+          if (em) em.placeholder = T.email;
+          var pw = document.getElementById('cloud-pw');
+          if (pw) pw.placeholder = T.pw;
+        }
+        applyTexts();
+
         var API = 'https://openttd-api.marcelweissgerber81.workers.dev';
         var badge = document.getElementById('cloud-badge');
         var panel = document.getElementById('cloud-panel');
@@ -489,8 +562,8 @@
         document.getElementById('cloud-login').addEventListener('click', function() {
           var mail = document.getElementById('cloud-email').value.trim();
           var pw = document.getElementById('cloud-pw').value;
-          if (!mail || !pw) { statusEl.textContent = 'Bitte E-Mail und Passwort eingeben.'; return; }
-          statusEl.textContent = 'Anmeldung läuft...';
+          if (!mail || !pw) { statusEl.textContent = T.needBoth; return; }
+          statusEl.textContent = T.loggingIn;
           fetch(API + '/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -498,7 +571,7 @@
           }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
             .then(function(res) {
               if (!res.ok || !res.d.token) {
-                statusEl.textContent = res.d && res.d.message ? res.d.message : 'Anmeldung fehlgeschlagen.';
+                statusEl.textContent = res.d && res.d.message ? res.d.message : T.loginFailed;
                 return;
               }
               try {

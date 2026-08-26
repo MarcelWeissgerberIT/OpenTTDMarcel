@@ -1,0 +1,64 @@
+# Ein Konto zum Verwalter machen (oder das Recht wieder nehmen).
+#
+# Bewusst als Handstart mit Eingabefeld: die E-Mail-Adresse bleibt damit
+# ausserhalb des Quelltexts. Ueber die Oberflaeche geht das absichtlich
+# nicht - wer sich selbst zum Verwalter machen koennte, koennte auch
+# jedem anderen den Cloud-Zugang schenken.
+name: Verwalter setzen
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'E-Mail des Kontos (muss im Spiel bereits registriert sein)'
+        required: true
+        type: string
+      revoke:
+        description: 'Recht entziehen statt vergeben'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: admin-set
+
+jobs:
+  set-admin:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Datenbank-Kennung eintragen
+        run: |
+          DB_ID=$(npx wrangler d1 list --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);const db=j.find(x=>x.name==='openttd-web');if(!db){console.error('db not found');process.exit(1)};console.log(db.uuid)})")
+          sed -i "s/^database_id = .*/database_id = \"$DB_ID\"/" wrangler.toml
+
+      - name: Recht setzen
+        env:
+          TARGET_EMAIL: ${{ inputs.email }}
+          REVOKE: ${{ inputs.revoke }}
+        run: |
+          # Die Adresse kommt aus der Eingabe, nicht aus dem Quelltext.
+          # Hochkommas werden verdoppelt, damit sie das SQL nicht sprengen.
+          SAFE=$(printf '%s' "$TARGET_EMAIL" | tr '[:upper:]' '[:lower:]' | sed "s/'/''/g")
+          VALUE=1
+          if [ "$REVOKE" = "true" ]; then VALUE=0; fi
+          npx wrangler d1 execute openttd-web --remote \
+            --command "UPDATE users SET is_admin = $VALUE WHERE lower(email) = '$SAFE'"
+          echo "--- Ergebnis ---"
+          # Zur Kontrolle nur die Anzahl ausgeben, nicht die Adresse.
+          npx wrangler d1 execute openttd-web --remote \
+            --command "SELECT count(*) AS verwalter FROM users WHERE is_admin = 1"
