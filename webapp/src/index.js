@@ -426,6 +426,54 @@ async function handleAdminPurchases(request, env, cors) {
 	return json({ ok: true, purchases: rows.results || [] }, 200, cors);
 }
 
+/**
+ * Fork: Zugang von Hand setzen oder entziehen.
+ *
+ * Der Kauf laeuft ueber die E-Mail, die bei Stripe hinterlegt ist. Wer
+ * im Spiel ein Konto mit einer anderen Adresse anlegt, faellt durchs
+ * Raster - dann hilft nur ein Mensch, der nachsieht und freischaltet.
+ * Genau dafuer ist das hier.
+ */
+async function handleAdminGrant(request, env, cors) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	if (user.is_admin !== 1) return json({ error: 'forbidden' }, 403, cors);
+
+	const body = await request.json().catch(() => null);
+	const email = (body && body.email || '').trim().toLowerCase();
+	if (!EMAIL_RE.test(email)) return json({ error: 'invalid_input', message: 'Keine gueltige E-Mail.' }, 400, cors);
+	const revoke = !!(body && body.revoke);
+
+	const target = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
+	if (!target) {
+		return json({
+			error: 'no_account',
+			message: 'Zu dieser E-Mail gibt es noch kein Spiel-Konto. Sobald eines angelegt wird, ' +
+				'greift der Kauf automatisch - oder hier erneut freischalten.',
+		}, 404, cors);
+	}
+
+	if (revoke) {
+		await env.DB.prepare('DELETE FROM entitlements WHERE user_id = ? AND feature = ?')
+			.bind(target.id, FEATURE_CLOUD).run();
+	} else {
+		await grantFeature(env, target.id, FEATURE_CLOUD, 'manual');
+	}
+	return json({ ok: true, email, cloud: !revoke }, 200, cors);
+}
+
+/** Fork: Wer ist freigeschaltet? Fuer die Anzeige in der Verwaltung. */
+async function handleAdminEntitlements(request, env, cors) {
+	const user = await getSessionUser(env, request);
+	if (!user) return json({ error: 'not_logged_in' }, 401, cors);
+	if (user.is_admin !== 1) return json({ error: 'forbidden' }, 403, cors);
+	const rows = await env.DB.prepare(
+		`SELECT u.email AS email, e.feature AS feature, e.source AS source, e.granted_at AS granted_at
+		 FROM entitlements e JOIN users u ON u.id = e.user_id
+		 ORDER BY e.granted_at DESC LIMIT 500`).all();
+	return json({ ok: true, entitlements: rows.results || [] }, 200, cors);
+}
+
 /* ---------- Geteilte Welten (kurzer Link -> Spielstand aus R2) ---------- */
 
 const MAX_SHARE_BYTES = 8 * 1024 * 1024;
@@ -651,6 +699,8 @@ export default {
 			if (url.pathname === '/api/settings' && request.method === 'PUT') return await handleSettingsPut(request, env, cors);
 			if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') return await handleStripeWebhook(request, env);
 			if (url.pathname === '/api/admin/purchases' && request.method === 'GET') return await handleAdminPurchases(request, env, cors);
+			if (url.pathname === '/api/admin/entitlements' && request.method === 'GET') return await handleAdminEntitlements(request, env, cors);
+			if (url.pathname === '/api/admin/grant' && request.method === 'POST') return await handleAdminGrant(request, env, cors);
 			if (url.pathname === '/api/share' && request.method === 'POST') return await handleShareUpload(request, env, cors, url);
 			if (url.pathname === '/api/share' && request.method === 'GET') return await handleShareDownload(request, env, cors, url);
 			if (url.pathname === '/api/share/info' && request.method === 'GET') return await handleShareInfo(request, env, cors, url);

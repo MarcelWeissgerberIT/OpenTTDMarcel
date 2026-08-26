@@ -15,6 +15,13 @@ th { background: #c9c9c9; }
 .st-failed { background: #b03030; }
 .st-refunded { background: #555; }
 </style>
+<style>
+	.grantrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+	.grantrow input { flex: 1 1 240px; padding: 6px; }
+	.btn-off { background: #8a3b3b; }
+	.hint { font-size: 13px; opacity: .85; }
+	#ents table { margin-top: 6px; }
+</style>
 </head>
 <body>
 <div class="panel">
@@ -22,6 +29,17 @@ th { background: #c9c9c9; }
 	<p id="who">Lade…</p>
 	<div id="list">Lade…</div>
 	<button class="btn" id="reload">Aktualisieren</button>
+
+	<h2>Zugang von Hand setzen</h2>
+	<p class="hint">Der Kauf läuft über die E-Mail, die bei Stripe hinterlegt ist. Wer im Spiel
+	ein Konto mit einer anderen Adresse angelegt hat, wird nicht automatisch freigeschaltet –
+	hier geht es von Hand.</p>
+	<div class="grantrow">
+		<input type="email" id="grant-email" placeholder="E-Mail des Spiel-Kontos"/>
+		<button class="btn" id="grant">Freischalten</button>
+		<button class="btn btn-off" id="revoke">Entziehen</button>
+	</div>
+	<div id="ents">Lade…</div>
 	<div class="msg" id="msg"></div>
 	<div class="links"><a href="account.html">Zum Konto</a> &middot; <a href="index.html">Zur Startseite</a></div>
 </div>
@@ -50,22 +68,79 @@ async function load() {
 		document.getElementById('who').textContent = 'Angemeldet als ' + (me.email || '?') + ' – ' + d.purchases.length + ' Käufe';
 		const el = document.getElementById('list');
 		if (!d.purchases.length) { el.textContent = 'Noch keine Käufe eingegangen.'; return; }
-		el.innerHTML = '<table><tr><th>Datum</th><th>Käufer</th><th>Betrag</th><th>Status</th><th>Referenz</th></tr>' +
+		el.innerHTML = '<table><tr><th>Datum</th><th>Käufer</th><th>Betrag</th><th>Status</th><th>Referenz</th><th></th></tr>' +
 			d.purchases.map(p => {
 				const amount = p.amount != null ? (p.amount / 100).toFixed(2) + ' ' + esc((p.currency || '').toUpperCase()) : '–';
 				const ref = p.payment_intent
 					? '<a href="https://dashboard.stripe.com/payments/' + esc(p.payment_intent) + '" target="_blank" rel="noopener">' + esc(p.payment_intent) + '</a>'
 					: esc(p.checkout_session);
+				/* Freischalten direkt aus der Kaufzeile - der kuerzeste Weg,
+				 * wenn sich jemand meldet, dass die Cloud fehlt. */
+				const act = p.status === 'paid' && p.email
+					? '<button class="btn btn-grant" data-mail="' + esc(p.email) + '">Freischalten</button>'
+					: '';
 				return '<tr><td>' + new Date(p.created_at).toLocaleString('de-DE') +
 					'</td><td>' + esc(p.email) + (p.name ? '<br>' + esc(p.name) : '') +
 					'</td><td>' + amount +
 					'</td><td><span class="st st-' + esc(p.status) + '">' + esc(LABELS[p.status] || p.status) + '</span>' +
-					'</td><td>' + ref + '</td></tr>';
+					'</td><td>' + ref + '</td><td>' + act + '</td></tr>';
 			}).join('') + '</table>';
+		el.querySelectorAll('.btn-grant').forEach(b => {
+			b.addEventListener('click', () => grant(b.dataset.mail, false));
+		});
 	} catch { msg.textContent = 'Netzwerkfehler.'; }
 }
-document.getElementById('reload').addEventListener('click', load);
+async function loadEnts() {
+	const el = document.getElementById('ents');
+	try {
+		const r = await fetch(API + '/api/admin/entitlements', { credentials: 'include', headers: hdrs() });
+		if (!r.ok) { el.textContent = ''; return; }
+		const d = await r.json();
+		const list = (d.entitlements || []).filter(e => e.feature === 'cloud');
+		if (!list.length) { el.textContent = 'Noch niemand freigeschaltet.'; return; }
+		el.innerHTML = '<table><tr><th>Freigeschaltet</th><th>seit</th><th>Quelle</th><th></th></tr>' +
+			list.map(e => '<tr><td>' + esc(e.email) + '</td><td>' +
+				new Date(e.granted_at).toLocaleString('de-DE') + '</td><td>' +
+				(e.source === 'stripe' ? 'Kauf' : 'von Hand') +
+				'</td><td><button class="btn btn-off btn-rev" data-mail="' + esc(e.email) + '">Entziehen</button></td></tr>').join('') +
+			'</table>';
+		el.querySelectorAll('.btn-rev').forEach(b => {
+			b.addEventListener('click', () => grant(b.dataset.mail, true));
+		});
+	} catch { el.textContent = ''; }
+}
+
+/* Freischalten oder entziehen - beides derselbe Aufruf, damit die
+ * Verwaltung nur eine Stelle hat, an der sich etwas aendert. */
+async function grant(email, revoke) {
+	const msg = document.getElementById('msg');
+	msg.textContent = revoke ? 'Entziehe…' : 'Schalte frei…';
+	try {
+		const r = await fetch(API + '/api/admin/grant', {
+			method: 'POST', credentials: 'include',
+			headers: Object.assign({ 'Content-Type': 'application/json' }, hdrs()),
+			body: JSON.stringify({ email, revoke: !!revoke }),
+		});
+		const d = await r.json().catch(() => ({}));
+		if (!r.ok) { msg.textContent = d.message || 'Hat nicht geklappt.'; return; }
+		msg.textContent = revoke
+			? esc(email) + ' hat keinen Cloud-Zugang mehr.'
+			: esc(email) + ' ist freigeschaltet.';
+		loadEnts();
+	} catch { msg.textContent = 'Netzwerkfehler.'; }
+}
+
+document.getElementById('grant').addEventListener('click', () => {
+	const m = document.getElementById('grant-email').value.trim();
+	if (m) grant(m, false);
+});
+document.getElementById('revoke').addEventListener('click', () => {
+	const m = document.getElementById('grant-email').value.trim();
+	if (m) grant(m, true);
+});
+document.getElementById('reload').addEventListener('click', () => { load(); loadEnts(); });
 load();
+loadEnts();
 </script>
 </body>
 </html>
